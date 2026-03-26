@@ -239,6 +239,9 @@ export function createDemoData() {
     },
     sessions: {},
     attempts: [],
+    reflections: {
+      [DEMO_USER_ID]: [],
+    },
     events: [],
   };
 }

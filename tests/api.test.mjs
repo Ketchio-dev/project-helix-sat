@@ -22,7 +22,7 @@ async function withServer(run) {
   }
 }
 
-test('api serves profile, plan, diagnostic progression, attempt submission, and tutor hint', async () => {
+test('api serves profile, plan, diagnostic progression, attempt submission, review, reflection, and tutor hint', async () => {
   await withServer(async (baseUrl) => {
     const me = await fetch(`${baseUrl}/api/me`, { headers: authHeaders }).then((res) => res.json());
     assert.equal(me.id, 'demo-student');
@@ -44,44 +44,35 @@ test('api serves profile, plan, diagnostic progression, attempt submission, and 
       headers: authHeaders,
       body: JSON.stringify({
         itemId: diagnostic.items[0].itemId,
-        selectedAnswer: 'B',
+        selectedAnswer: 'A',
         sessionId: diagnostic.session.id,
         mode: 'learn',
-        confidenceLevel: 3,
+        confidenceLevel: 4,
         responseTimeMs: 45000,
       }),
     }).then((res) => res.json());
     assert.equal(attemptOne.sessionProgress.answered, 1);
     assert.ok(attemptOne.nextItem);
+    assert.ok(Array.isArray(attemptOne.review.recommendations));
+    assert.equal(attemptOne.review.recommendations[0].itemId, diagnostic.items[0].itemId);
 
-    const attemptTwo = await fetch(`${baseUrl}/api/attempt/submit`, {
+    const review = await fetch(`${baseUrl}/api/review/recommendations`, {
+      headers: authHeaders,
+    }).then((res) => res.json());
+    assert.ok(review.reflectionPrompt);
+    assert.ok(review.recommendations.length >= 1);
+
+    const reflection = await fetch(`${baseUrl}/api/reflection/submit`, {
       method: 'POST',
       headers: authHeaders,
       body: JSON.stringify({
-        itemId: diagnostic.items[1].itemId,
-        selectedAnswer: 'B',
         sessionId: diagnostic.session.id,
-        mode: 'learn',
-        confidenceLevel: 4,
-        responseTimeMs: 25000,
+        prompt: review.reflectionPrompt,
+        response: 'I will re-read the exact scope before I commit to an answer.',
       }),
     }).then((res) => res.json());
-    assert.equal(attemptTwo.sessionProgress.answered, 2);
-
-    const attemptThree = await fetch(`${baseUrl}/api/attempt/submit`, {
-      method: 'POST',
-      headers: authHeaders,
-      body: JSON.stringify({
-        itemId: diagnostic.items[2].itemId,
-        selectedAnswer: 'C',
-        sessionId: diagnostic.session.id,
-        mode: 'learn',
-        confidenceLevel: 2,
-        responseTimeMs: 38000,
-      }),
-    }).then((res) => res.json());
-    assert.equal(attemptThree.sessionProgress.isComplete, true);
-    assert.equal(attemptThree.nextItem, null);
+    assert.equal(reflection.saved, true);
+    assert.equal(reflection.totalReflections, 1);
 
     const hint = await fetch(`${baseUrl}/api/tutor/hint`, {
       method: 'POST',
@@ -124,7 +115,7 @@ test('api rejects items that do not belong to the active session', async () => {
   });
 });
 
-test('api requires demo auth and enforces request size guard', async () => {
+test('api requires demo auth, enforces request size guard, and validates reflection payloads', async () => {
   await withServer(async (baseUrl) => {
     const unauthorized = await fetch(`${baseUrl}/api/me`);
     assert.equal(unauthorized.status, 401);
@@ -135,5 +126,12 @@ test('api requires demo auth and enforces request size guard', async () => {
       body: JSON.stringify({ filler: 'x'.repeat(40_000) }),
     });
     assert.equal(oversized.status, 413);
+
+    const invalidReflection = await fetch(`${baseUrl}/api/reflection/submit`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ response: '   ' }),
+    });
+    assert.equal(invalidReflection.status, 400);
   });
 });

@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Project Helix SAT API
   version: 0.1.0
-  description: Starter contract for the learning, assessment, and tutor core.
+  description: Starter contract for the learning, assessment, review, reflection, and tutor core.
 paths:
   /health:
     get:
@@ -39,13 +39,25 @@ paths:
       summary: Fetch the learner dashboard aggregate
       responses:
         '200':
-          description: Learner dashboard payload including profile, projection, plan, error DNA, and starter items
+          description: Learner dashboard payload including profile, projection, plan, error DNA, and review snapshot
   /api/attempt/submit:
     post:
       summary: Submit a learner attempt
       responses:
         '200':
-          description: Attempt accepted and learner-state update queued
+          description: Attempt accepted and learner-state update payload returned
+  /api/review/recommendations:
+    get:
+      summary: Fetch review recommendations grounded in recent mistakes
+      responses:
+        '200':
+          description: Review recommendations and a reflection prompt
+  /api/reflection/submit:
+    post:
+      summary: Save a learner reflection tied to the current session or review loop
+      responses:
+        '200':
+          description: Reflection saved
   /api/tutor/hint:
     post:
       summary: Request a tutor hint grounded in canonical rationale

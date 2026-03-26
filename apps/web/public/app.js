@@ -2,6 +2,7 @@ const state = {
   userId: 'demo-student',
   currentItem: null,
   currentSessionId: null,
+  reflectionPrompt: '',
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -25,7 +26,7 @@ function clear(element) {
   element.replaceChildren();
 }
 
-function node(tag, { className, text, htmlFor, value, type, name, checked, id } = {}, children = []) {
+function node(tag, { className, text, htmlFor, value, type, name, checked, id, placeholder, rows } = {}, children = []) {
   const element = document.createElement(tag);
   if (className) element.className = className;
   if (text !== undefined) element.textContent = text;
@@ -35,6 +36,8 @@ function node(tag, { className, text, htmlFor, value, type, name, checked, id } 
   if (name) element.name = name;
   if (checked !== undefined) element.checked = checked;
   if (id) element.id = id;
+  if (placeholder) element.placeholder = placeholder;
+  if (rows !== undefined) element.rows = rows;
   for (const child of children) {
     if (child) element.append(child);
   }
@@ -116,6 +119,49 @@ function renderErrorDna(errorDna) {
   }
 }
 
+function renderReview(review) {
+  const meta = $('#reviewMeta');
+  const container = $('#reviewRecommendations');
+  clear(container);
+
+  if (!review) {
+    meta.textContent = 'No review data yet.';
+    $('#reflectionPrompt').textContent = 'Complete a diagnostic or load the dashboard to get a reflection prompt.';
+    state.reflectionPrompt = '';
+    return;
+  }
+
+  meta.textContent = review.dominantError
+    ? `Top mistake pattern: ${review.dominantError}`
+    : 'Review recommendations are ready.';
+
+  state.reflectionPrompt = review.reflectionPrompt ?? '';
+  $('#reflectionPrompt').textContent = state.reflectionPrompt || 'Write one rule you will reuse next time.';
+
+  const list = node('div', { className: 'stack' });
+  for (const recommendation of review.recommendations ?? []) {
+    const card = node('article', { className: 'review-item' });
+    card.append(node('strong', { text: `${recommendation.section} · ${recommendation.skill}` }));
+    card.append(node('p', { text: recommendation.prompt }));
+    card.append(node('p', { className: 'muted', text: recommendation.reason }));
+    if (recommendation.rationalePreview) {
+      card.append(node('p', { className: 'review-rationale', text: recommendation.rationalePreview }));
+    }
+    card.append(node('p', { className: 'muted', text: `Next action: ${recommendation.recommendedAction}` }));
+    list.append(card);
+  }
+
+  if (!(review.recommendations ?? []).length) {
+    list.append(node('p', { className: 'muted', text: 'No review recommendations available yet.' }));
+  }
+
+  if (review.lastReflection?.response) {
+    list.append(node('p', { className: 'muted', text: `Last reflection: ${review.lastReflection.response}` }));
+  }
+
+  container.append(list);
+}
+
 function renderItem(item) {
   state.currentItem = item;
   const container = $('#itemArea');
@@ -163,6 +209,11 @@ function renderSessionProgress(progress) {
   $('#diagnosticStatus').textContent = `Diagnostic progress: ${progress.answered}/${progress.total} answered.`;
 }
 
+async function loadReviewRecommendations() {
+  const review = await json('/api/review/recommendations');
+  renderReview(review);
+}
+
 async function loadDashboard() {
   try {
     const dashboard = await json('/api/dashboard/learner');
@@ -171,6 +222,7 @@ async function loadDashboard() {
     renderProjection(dashboard.projection);
     renderPlan(dashboard.plan);
     renderErrorDna(dashboard.errorDna);
+    renderReview(dashboard.review);
     if (!state.currentSessionId) renderItem(null);
     $('#diagnosticStatus').textContent = dashboard.profile.lastSessionSummary || 'No active diagnostic session.';
   } catch (error) {
@@ -178,7 +230,10 @@ async function loadDashboard() {
   }
 }
 
-$('#refreshDashboard').addEventListener('click', loadDashboard);
+$('#refreshDashboard').addEventListener('click', async () => {
+  await loadDashboard();
+  await loadReviewRecommendations();
+});
 
 $('#startDiagnostic').addEventListener('click', async () => {
   try {
@@ -221,6 +276,7 @@ $('#attemptForm').addEventListener('submit', async (event) => {
     renderProjection(result.projection);
     renderPlan(result.plan);
     renderErrorDna(result.errorDna);
+    renderReview(result.review);
     renderSessionProgress(result.sessionProgress);
     if (result.nextItem) {
       renderItem(result.nextItem);
@@ -250,4 +306,32 @@ $('#getHint').addEventListener('click', async () => {
   }
 });
 
-loadDashboard();
+$('#reflectionForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const response = $('#reflectionResponse').value.trim();
+  if (!response) {
+    $('#reflectionResult').textContent = 'Write a reflection before saving.';
+    return;
+  }
+
+  try {
+    const result = await json('/api/reflection/submit', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: state.userId,
+        sessionId: state.currentSessionId,
+        prompt: state.reflectionPrompt,
+        response,
+      }),
+    });
+    $('#reflectionResult').textContent = JSON.stringify(result, null, 2);
+    $('#reflectionResponse').value = '';
+    await loadReviewRecommendations();
+  } catch (error) {
+    $('#reflectionResult').textContent = error.message;
+  }
+});
+
+loadDashboard().then(loadReviewRecommendations).catch((error) => {
+  $('#diagnosticStatus').textContent = error.message;
+});

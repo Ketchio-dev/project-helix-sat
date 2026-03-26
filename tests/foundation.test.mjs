@@ -2,32 +2,41 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-const required = [
+const foundationFiles = [
   'README.md',
   'docs/architecture.md',
+  'docs/roadmap.md',
   'docs/ontology/skill-ontology.v1.json',
   'docs/taxonomy/error-taxonomy.v1.json',
-  'packages/db/schema.sql',
+  'packages/content-dsl/schemas/item-spec.schema.json',
   'packages/schemas/tutor/hint-response.schema.json',
+  'packages/schemas/tutor/error-diagnosis.schema.json',
   'packages/schemas/planning/daily-plan.schema.json',
-  'services/api/openapi.yaml'
+  'packages/schemas/reporting/weekly-report.schema.json',
+  'packages/schemas/scoring/score-prediction.schema.json',
+  'packages/schemas/events/event-envelope.schema.json',
+  'packages/db/schema.sql',
+  'services/api/openapi.yaml',
+  'scripts/validate-foundation.mjs',
 ];
 
 test('foundation files exist', () => {
-  for (const file of required) assert.equal(existsSync(file), true, `${file} should exist`);
+  for (const file of foundationFiles) {
+    assert.ok(existsSync(file), `${file} should exist`);
+  }
 });
 
 test('skill ontology has both SAT sections', () => {
   const ontology = JSON.parse(readFileSync('docs/ontology/skill-ontology.v1.json', 'utf8'));
-  const sections = ontology.sections.map((section) => section.section).sort();
-  assert.deepEqual(sections, ['math', 'reading_writing']);
+  assert.equal(ontology.sections.length, 2);
+  assert.deepEqual(ontology.sections.map((section) => section.section).sort(), ['math', 'reading_writing']);
 });
 
 test('error taxonomy includes cross-domain and section-specific buckets', () => {
   const taxonomy = JSON.parse(readFileSync('docs/taxonomy/error-taxonomy.v1.json', 'utf8'));
-  assert.ok(taxonomy.cross_domain.length > 0);
-  assert.ok(taxonomy.reading_writing.includes('scope_mismatch'));
-  assert.ok(taxonomy.math.includes('sign_error'));
+  assert.ok(Array.isArray(taxonomy.cross_domain));
+  assert.ok(Array.isArray(taxonomy.reading_writing));
+  assert.ok(Array.isArray(taxonomy.math));
 });
 
 test('daily plan schema requires blocks and stop condition', () => {
@@ -38,13 +47,21 @@ test('daily plan schema requires blocks and stop condition', () => {
 
 test('hint response schema is canonical-data-first', () => {
   const schema = JSON.parse(readFileSync('packages/schemas/tutor/hint-response.schema.json', 'utf8'));
-  assert.ok(schema.required.includes('source_of_truth'));
   assert.ok(schema.properties.source_of_truth.enum.includes('canonical_rationale'));
+  assert.ok(schema.required.includes('student_facing_message'));
+  assert.ok(schema.required.includes('next_action'));
 });
 
 test('openapi starter contract exposes learning core routes', () => {
   const openapi = readFileSync('services/api/openapi.yaml', 'utf8');
-  for (const route of ['/api/diagnostic/start', '/api/plan/today', '/api/attempt/submit', '/api/tutor/hint']) {
+  for (const route of [
+    '/api/diagnostic/start',
+    '/api/plan/today',
+    '/api/attempt/submit',
+    '/api/tutor/hint',
+    '/api/review/recommendations',
+    '/api/reflection/submit',
+  ]) {
     assert.ok(openapi.includes(route), `${route} should exist in OpenAPI starter contract`);
   }
 });

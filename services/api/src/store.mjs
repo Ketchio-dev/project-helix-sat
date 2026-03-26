@@ -24,9 +24,31 @@ function summarizeSessionProgress(sessionItems = []) {
   };
 }
 
+function getReflectionPrompt(errorDna = {}) {
+  const dominantError = Object.entries(errorDna).sort((a, b) => b[1] - a[1])[0]?.[0];
+  if (!dominantError) {
+    return 'What is one rule you want to remember on the next SAT block, and when will you use it?';
+  }
+  return `Your biggest recent pattern is ${dominantError}. What cue will you use to catch it earlier next time?`;
+}
+
+function createFallbackRecommendation(item, reason, action) {
+  return {
+    itemId: item.itemId,
+    section: item.section,
+    skill: item.skill,
+    prompt: item.prompt,
+    reason,
+    recommendedAction: action,
+    rationalePreview: null,
+    errorTag: null,
+  };
+}
+
 export function createStore(seed = createDemoData()) {
   const state = structuredClone(seed);
   state.sessionItems ??= {};
+  state.reflections ??= {};
 
   const api = {
     getUser(userId = DEMO_USER_ID) {
@@ -61,6 +83,16 @@ export function createStore(seed = createDemoData()) {
       return state.errorDna[userId] ?? {};
     },
 
+    getAttempts(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      return state.attempts.filter((attempt) => attempt.user_id === userId);
+    },
+
+    getReflections(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      return state.reflections[userId] ?? [];
+    },
+
     getPlan(userId = DEMO_USER_ID) {
       return generateDailyPlan({
         profile: state.learnerProfiles[userId],
@@ -75,6 +107,56 @@ export function createStore(seed = createDemoData()) {
       return projectScoreBand(api.getSkillStates(userId), profile.target_score);
     },
 
+    getReviewRecommendations(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const attempts = api.getAttempts(userId);
+      const recentIncorrect = [...attempts]
+        .reverse()
+        .filter((attempt) => !attempt.is_correct)
+        .slice(0, 3);
+
+      const recommendations = recentIncorrect.map((attempt) => {
+        const item = api.getItem(attempt.item_id);
+        const rationale = api.getRationale(attempt.item_id);
+        const errorTag = rationale?.misconceptionByChoice?.[attempt.selected_answer] ?? null;
+        return {
+          itemId: item.itemId,
+          section: item.section,
+          skill: item.skill,
+          prompt: item.prompt,
+          reason: errorTag
+            ? `You recently missed this with the pattern ${errorTag}.`
+            : 'You recently missed this and should revisit the canonical reasoning.',
+          recommendedAction: item.section === 'math'
+            ? 'Redo the setup slowly, then solve once without skipping the final isolation step.'
+            : 'Re-read the exact sentence role or word-in-context evidence before looking at the choices.',
+          rationalePreview: rationale?.canonical_correct_rationale ?? null,
+          errorTag,
+        };
+      });
+
+      if (!recommendations.length) {
+        const fallbackItems = Object.values(state.items).slice(0, 2);
+        recommendations.push(
+          ...fallbackItems.map((item) => createFallbackRecommendation(
+            item,
+            'No wrong attempts yet, so start with high-value canonical review.',
+            'Review the rationale, then solve once in learn mode and once at normal pace.',
+          )),
+        );
+      }
+
+      const reflectionPrompt = getReflectionPrompt(api.getErrorDna(userId));
+      const lastReflection = api.getReflections(userId).at(-1) ?? null;
+      return {
+        generatedAt: new Date().toISOString(),
+        dominantError: Object.entries(api.getErrorDna(userId)).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
+        reflectionPrompt,
+        recommendations,
+        lastReflection,
+      };
+    },
+
     getDashboard(userId = DEMO_USER_ID) {
       return {
         profile: api.getProfile(userId),
@@ -82,6 +164,7 @@ export function createStore(seed = createDemoData()) {
         plan: api.getPlan(userId),
         errorDna: api.getErrorDna(userId),
         items: api.listItems(4),
+        review: api.getReviewRecommendations(userId),
       };
     },
 
@@ -205,8 +288,35 @@ export function createStore(seed = createDemoData()) {
         projection: api.getProjection(userId),
         plan: api.getPlan(userId),
         errorDna: api.getErrorDna(userId),
+        review: api.getReviewRecommendations(userId),
         sessionProgress,
         nextItem: nextSessionItem ? toClientItem(api.getItem(nextSessionItem.item_id)) : null,
+      };
+    },
+
+    submitReflection({ userId = DEMO_USER_ID, sessionId = null, prompt, response }) {
+      api.getUser(userId);
+      const trimmedResponse = `${response ?? ''}`.trim();
+      const trimmedPrompt = `${prompt ?? getReflectionPrompt(api.getErrorDna(userId))}`.trim();
+      if (!trimmedResponse) {
+        throw new HttpError(400, 'reflection response is required');
+      }
+      const reflection = {
+        id: createId('reflection'),
+        user_id: userId,
+        session_id: sessionId,
+        prompt: trimmedPrompt,
+        response: trimmedResponse,
+        created_at: new Date().toISOString(),
+      };
+      state.reflections[userId] ??= [];
+      state.reflections[userId].push(reflection);
+      state.events.push(createEvent({ userId, sessionId, eventName: 'reflection_submitted', payload: { prompt: trimmedPrompt } }));
+      return {
+        saved: true,
+        reflection,
+        totalReflections: state.reflections[userId].length,
+        nextAction: 'Use this rule in your next timed or review block.',
       };
     },
   };

@@ -13,7 +13,7 @@
           <p class="eyebrow">Adaptive SAT Intelligence Platform</p>
           <h1>Project Helix SAT</h1>
           <p class="subtitle">
-            A runnable MVP vertical slice for diagnostic -> attempt -> plan -> tutor hint -> projection.
+            A runnable MVP vertical slice for diagnostic -> attempt -> review -> reflection -> tutor hint -> projection.
           </p>
         </div>
         <div class="hero-actions">
@@ -71,6 +71,26 @@
             <button type="button" id="getHint">Get Tutor Hint</button>
           </div>
         </form>
+      </section>
+
+      <section class="grid two">
+        <article class="card">
+          <h2>Review Recommendations</h2>
+          <div id="reviewMeta" class="notice">No review data yet.</div>
+          <div id="reviewRecommendations"></div>
+        </article>
+        <article class="card">
+          <h2>Reflection</h2>
+          <p id="reflectionPrompt" class="notice">Complete a diagnostic or load the dashboard to get a reflection prompt.</p>
+          <form id="reflectionForm" class="reflection-form">
+            <label for="reflectionResponse">Your rule for next time</label>
+            <textarea id="reflectionResponse" rows="6" placeholder="Write the mistake pattern you want to catch next time."></textarea>
+            <div class="row gap">
+              <button type="submit">Save Reflection</button>
+            </div>
+          </form>
+          <pre id="reflectionResult">No reflection saved yet.</pre>
+        </article>
       </section>
 
       <section class="grid two">

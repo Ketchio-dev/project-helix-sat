@@ -17,7 +17,7 @@ body {
   background: var(--bg);
   color: var(--text);
 }
-button, select {
+button, select, textarea {
   font: inherit;
 }
 button {
@@ -37,6 +37,14 @@ pre {
   padding: 1rem;
   border-radius: 12px;
   min-height: 120px;
+}
+textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  resize: vertical;
+  background: #fbfcff;
 }
 .shell {
   max-width: 1180px;
@@ -103,24 +111,43 @@ pre {
   margin-bottom: 0.35rem;
   font-size: 0.85rem;
 }
-.choice-list {
+.choice-list,
+.stack {
   display: grid;
   gap: 0.7rem;
   margin-top: 1rem;
 }
-.choice {
+.choice,
+.review-item {
   display: flex;
-  gap: 0.65rem;
+  flex-direction: column;
+  gap: 0.45rem;
   align-items: flex-start;
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.85rem 1rem;
+  background: #fbfcff;
 }
-.attempt-form {
+.choice {
+  flex-direction: row;
+  gap: 0.65rem;
+}
+.review-item p {
+  margin: 0;
+}
+.review-rationale {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+.attempt-form,
+.reflection-form {
   margin-top: 1rem;
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.reflection-form {
+  grid-template-columns: 1fr;
 }
 .row.gap {
   display: flex;
