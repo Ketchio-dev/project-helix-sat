@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { createAppServer } from '../services/api/server.mjs';
 import { createStore } from '../services/api/src/store.mjs';
 
@@ -9,8 +12,8 @@ const authHeaders = {
   'X-Demo-User-Id': 'demo-student',
 };
 
-async function withServer(run) {
-  const server = createAppServer();
+async function withServer(run, options = {}) {
+  const server = createAppServer(options);
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const address = server.address();
@@ -559,4 +562,57 @@ test('store rejects attempts after exam time expires and returns a resumable sum
   assert.equal(thrown.payload.moduleSummary.readinessSignal, 'expired_unfinished');
   assert.match(thrown.payload.moduleSummary.nextAction, /Time expired/i);
   assert.ok(store.getSession(moduleSimulation.session.id).ended_at);
+});
+
+test('api restores unfinished exam sessions across server restart when file persistence is enabled', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'helix-sat-state-'));
+  const stateFilePath = join(tempDir, 'prototype-state.json');
+
+  try {
+    let sessionId = null;
+    let nextItemId = null;
+
+    await withServer(async (baseUrl) => {
+      const timedSet = await fetch(`${baseUrl}/api/timed-set/start`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({}),
+      }).then((res) => res.json());
+
+      sessionId = timedSet.session.id;
+
+      const attempt = await fetch(`${baseUrl}/api/attempt/submit`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          itemId: timedSet.currentItem.itemId,
+          selectedAnswer: 'A',
+          sessionId,
+          mode: 'exam',
+          confidenceLevel: 3,
+          responseTimeMs: 48000,
+        }),
+      }).then((res) => res.json());
+
+      nextItemId = attempt.nextItem.itemId;
+      assert.equal(attempt.sessionProgress.answered, 1);
+    }, { stateFilePath });
+
+    await withServer(async (baseUrl) => {
+      const active = await fetch(`${baseUrl}/api/session/active`, {
+        headers: authHeaders,
+      }).then((res) => res.json());
+
+      assert.equal(active.hasActiveSession, true);
+      assert.equal(active.resumeAvailable, true);
+      assert.equal(active.resumeReason, 'unfinished_exam_session');
+      assert.equal(active.activeSession.session.id, sessionId);
+      assert.equal(active.activeSession.session.type, 'timed_set');
+      assert.equal(active.activeSession.sessionProgress.answered, 1);
+      assert.equal(active.activeSession.currentItem.itemId, nextItemId);
+      assert.equal(active.activeSession.timedSummary.completed, false);
+    }, { stateFilePath });
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 });

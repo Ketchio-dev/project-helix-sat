@@ -4,6 +4,7 @@ import { generateDailyPlan } from '../../../packages/assessment/src/daily-plan-g
 import { projectScoreBand } from '../../../packages/scoring/src/score-predictor.mjs';
 import { updateErrorDna, updateLearnerSkillState } from '../../../packages/assessment/src/learner-state.mjs';
 import { createEvent } from '../../../packages/telemetry/src/events.mjs';
+import { createMemoryStateStorage } from './state-storage.mjs';
 
 function createId(prefix) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
@@ -145,11 +146,16 @@ function toAssignmentDraft({ id, title, objective, minutes, focusSkill, mode, ra
   };
 }
 
-export function createStore(seed = createDemoData()) {
-  const state = structuredClone(seed);
+export function createStore({ seed = createDemoData(), storage = createMemoryStateStorage({ seed }) } = {}) {
+  const state = storage.load();
   state.sessionItems ??= {};
   state.reflections ??= {};
   state.teacherAssignments ??= {};
+  state.events ??= [];
+
+  function persistState() {
+    storage.save(state);
+  }
 
   const api = {
     getUser(userId = DEMO_USER_ID) {
@@ -778,6 +784,7 @@ export function createStore(seed = createDemoData()) {
         eventName: 'timed_set_started',
         payload: { mode: 'exam', timeLimitSec: session.time_limit_sec },
       }));
+      persistState();
       return api.buildSessionPayload(session, { started: true, resumed: false, conflict: false });
     },
 
@@ -820,6 +827,7 @@ export function createStore(seed = createDemoData()) {
         eventName: 'module_started',
         payload: { mode: 'exam', timeLimitSec: session.time_limit_sec, itemCount: assignedItems.length },
       }));
+      persistState();
       return api.buildSessionPayload(session, { started: true, resumed: false, conflict: false });
     },
 
@@ -840,6 +848,7 @@ export function createStore(seed = createDemoData()) {
       }));
       state.sessionItems[session.id] = assignedItems;
       state.events.push(createEvent({ userId, sessionId: session.id, eventName: 'diagnostic_started', payload: { mode: 'diagnostic' } }));
+      persistState();
       return {
         session,
         items: assignedItems.map((entry) => toClientItem(api.getItem(entry.item_id))),
@@ -871,6 +880,7 @@ export function createStore(seed = createDemoData()) {
             eventName: 'session_completed',
             payload: { type: session.type, expired: true },
           }));
+          persistState();
         }
         throw new HttpError(409, 'Exam session expired', {
           error: 'Exam session expired',
@@ -936,6 +946,7 @@ export function createStore(seed = createDemoData()) {
         state.sessions[sessionId].ended_at = new Date().toISOString();
         state.events.push(createEvent({ userId, sessionId, eventName: 'session_completed', payload: { type: session.type } }));
       }
+      persistState();
 
       return {
         attempt,
@@ -967,6 +978,7 @@ export function createStore(seed = createDemoData()) {
         session.ended_at = new Date().toISOString();
         state.events.push(createEvent({ userId, sessionId, eventName: 'session_completed', payload: { type: session.type, finishedEarly: true } }));
       }
+      persistState();
 
       return {
         session,
@@ -997,6 +1009,7 @@ export function createStore(seed = createDemoData()) {
           payload: { type: session.type, finishedEarly: true },
         }));
       }
+      persistState();
 
       return {
         session,
@@ -1026,6 +1039,7 @@ export function createStore(seed = createDemoData()) {
       state.reflections[userId] ??= [];
       state.reflections[userId].push(reflection);
       state.events.push(createEvent({ userId, sessionId, eventName: 'reflection_submitted', payload: { prompt: trimmedPrompt } }));
+      persistState();
       return {
         saved: true,
         reflection,
@@ -1071,6 +1085,7 @@ export function createStore(seed = createDemoData()) {
         eventName: 'teacher_assignment_saved',
         payload: { assignmentId: assignment.id, focusSkill: assignment.focusSkill, minutes: assignment.minutes },
       }));
+      persistState();
 
       return {
         saved: true,

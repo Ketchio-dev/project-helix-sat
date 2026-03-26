@@ -82,3 +82,21 @@ Example:
 ```bash
 curl -H 'X-Demo-User-Id: demo-student' http://localhost:4321/api/dashboard/learner
 ```
+
+## Durable local state across restarts
+The prototype now supports an env-gated file-backed state mode without adding dependencies.
+
+Start with a persistence file:
+```bash
+HELIX_STATE_FILE=.data/helix-sat-state.json npm start
+```
+
+Quick smoke path:
+1. Start a timed set or module simulation
+2. Submit at least one attempt
+3. Restart the server with the same `HELIX_STATE_FILE`
+4. Call:
+   ```bash
+   curl -H 'X-Demo-User-Id: demo-student' http://localhost:4321/api/session/active
+   ```
+5. Confirm the same unfinished session/current item is returned
