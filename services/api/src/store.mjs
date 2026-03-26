@@ -715,6 +715,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           activeSessionType: activeExamSession.type,
         },
       }));
+      persistState();
 
       return {
         started: false,

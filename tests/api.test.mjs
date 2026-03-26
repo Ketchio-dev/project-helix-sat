@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createAppServer } from '../services/api/server.mjs';
@@ -11,6 +11,16 @@ const authHeaders = {
   'Content-Type': 'application/json',
   'X-Demo-User-Id': 'demo-student',
 };
+
+async function withPersistentStateFile(prefix, run) {
+  const tempDir = await mkdtemp(join(tmpdir(), prefix));
+  const stateFilePath = join(tempDir, 'prototype-state.json');
+  try {
+    await run({ tempDir, stateFilePath });
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+}
 
 async function withServer(run, options = {}) {
   const server = createAppServer(options);
@@ -565,10 +575,7 @@ test('store rejects attempts after exam time expires and returns a resumable sum
 });
 
 test('api restores unfinished exam sessions across server restart when file persistence is enabled', async () => {
-  const tempDir = await mkdtemp(join(tmpdir(), 'helix-sat-state-'));
-  const stateFilePath = join(tempDir, 'prototype-state.json');
-
-  try {
+  await withPersistentStateFile('helix-sat-state-', async ({ stateFilePath }) => {
     let sessionId = null;
     let nextItemId = null;
 
@@ -612,7 +619,227 @@ test('api restores unfinished exam sessions across server restart when file pers
       assert.equal(active.activeSession.currentItem.itemId, nextItemId);
       assert.equal(active.activeSession.timedSummary.completed, false);
     }, { stateFilePath });
-  } finally {
-    await rm(tempDir, { recursive: true, force: true });
-  }
+  });
+});
+
+test('api restores unfinished diagnostic sessions across server restart when file persistence is enabled', async () => {
+  await withPersistentStateFile('helix-sat-diagnostic-state-', async ({ stateFilePath }) => {
+    let sessionId = null;
+    let nextItemId = null;
+
+    await withServer(async (baseUrl) => {
+      const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({}),
+      }).then((res) => res.json());
+
+      sessionId = diagnostic.session.id;
+
+      const attempt = await fetch(`${baseUrl}/api/attempt/submit`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          itemId: diagnostic.currentItem.itemId,
+          selectedAnswer: 'A',
+          sessionId,
+          mode: 'learn',
+          confidenceLevel: 4,
+          responseTimeMs: 42000,
+        }),
+      }).then((res) => res.json());
+
+      nextItemId = attempt.nextItem.itemId;
+      assert.equal(attempt.sessionProgress.answered, 1);
+    }, { stateFilePath });
+
+    await withServer(async (baseUrl) => {
+      const active = await fetch(`${baseUrl}/api/session/active`, {
+        headers: authHeaders,
+      }).then((res) => res.json());
+
+      assert.equal(active.hasActiveSession, true);
+      assert.equal(active.resumeReason, 'unfinished_session');
+      assert.equal(active.activeSession.session.id, sessionId);
+      assert.equal(active.activeSession.session.type, 'diagnostic');
+      assert.equal(active.activeSession.sessionProgress.answered, 1);
+      assert.equal(active.activeSession.currentItem.itemId, nextItemId);
+    }, { stateFilePath });
+  });
+});
+
+test('api keeps completed session history and dashboard summaries across restart when file persistence is enabled', async () => {
+  await withPersistentStateFile('helix-sat-complete-state-', async ({ stateFilePath }) => {
+    let sessionId = null;
+
+    await withServer(async (baseUrl) => {
+      const timedSet = await fetch(`${baseUrl}/api/timed-set/start`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({}),
+      }).then((res) => res.json());
+      sessionId = timedSet.session.id;
+
+      for (const [index, item] of timedSet.items.entries()) {
+        await fetch(`${baseUrl}/api/attempt/submit`, {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({
+            itemId: item.itemId,
+            selectedAnswer: index === 1 ? 'B' : 'A',
+            sessionId,
+            mode: 'exam',
+            confidenceLevel: 3,
+            responseTimeMs: 60000,
+          }),
+        }).then((res) => res.json());
+      }
+
+      const finished = await fetch(`${baseUrl}/api/timed-set/finish`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ sessionId }),
+      }).then((res) => res.json());
+
+      assert.equal(finished.timedSummary.completed, true);
+    }, { stateFilePath });
+
+    await withServer(async (baseUrl) => {
+      const active = await fetch(`${baseUrl}/api/session/active`, {
+        headers: authHeaders,
+      }).then((res) => res.json());
+      assert.equal(active.hasActiveSession, false);
+
+      const history = await fetch(`${baseUrl}/api/sessions/history`, {
+        headers: authHeaders,
+      }).then((res) => res.json());
+      const timedHistory = history.sessions.find((session) => session.sessionId === sessionId);
+      assert.ok(timedHistory);
+      assert.equal(timedHistory.status, 'complete');
+      assert.equal(timedHistory.timedSummary.completed, true);
+
+      const dashboard = await fetch(`${baseUrl}/api/dashboard/learner`, {
+        headers: authHeaders,
+      }).then((res) => res.json());
+      assert.equal(dashboard.latestTimedSetSummary.sessionId, sessionId);
+      assert.equal(dashboard.latestTimedSetSummary.completed, true);
+    }, { stateFilePath });
+  });
+});
+
+test('api keeps reflections and teacher assignments across restart when file persistence is enabled', async () => {
+  await withPersistentStateFile('helix-sat-support-state-', async ({ stateFilePath }) => {
+    await withServer(async (baseUrl) => {
+      const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({}),
+      }).then((res) => res.json());
+
+      const review = await fetch(`${baseUrl}/api/review/recommendations`, {
+        headers: authHeaders,
+      }).then((res) => res.json());
+
+      const reflection = await fetch(`${baseUrl}/api/reflection/submit`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          sessionId: diagnostic.session.id,
+          prompt: review.reflectionPrompt,
+          response: 'I will slow down and verify the exact sentence role before choosing.',
+        }),
+      }).then((res) => res.json());
+      assert.equal(reflection.saved, true);
+
+      const assignment = await fetch(`${baseUrl}/api/teacher/assignments`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          title: 'Sentence-role reset',
+          objective: 'Reinforce sentence-role reading before the next timed block.',
+          minutes: 15,
+          focusSkill: 'rw_text_structure_and_purpose',
+          mode: 'review',
+        }),
+      }).then((res) => res.json());
+      assert.equal(assignment.saved, true);
+    }, { stateFilePath });
+
+    await withServer(async (baseUrl) => {
+      const review = await fetch(`${baseUrl}/api/review/recommendations`, {
+        headers: authHeaders,
+      }).then((res) => res.json());
+      assert.equal(review.lastReflection.response, 'I will slow down and verify the exact sentence role before choosing.');
+
+      const assignments = await fetch(`${baseUrl}/api/teacher/assignments`, {
+        headers: authHeaders,
+      }).then((res) => res.json());
+      assert.ok(assignments.saved.some((assignment) => assignment.title === 'Sentence-role reset'));
+    }, { stateFilePath });
+  });
+});
+
+test('api falls back safely when the persistence file is corrupted', async () => {
+  await withPersistentStateFile('helix-sat-corrupt-state-', async ({ tempDir, stateFilePath }) => {
+    await writeFile(stateFilePath, '{"mutableState": invalid-json');
+
+    await withServer(async (baseUrl) => {
+      const active = await fetch(`${baseUrl}/api/session/active`, {
+        headers: authHeaders,
+      }).then((res) => res.json());
+
+      assert.equal(active.hasActiveSession, false);
+      assert.equal(active.activeSession, null);
+    }, { stateFilePath });
+
+    const files = await readdir(tempDir);
+    assert.ok(files.some((name) => name.startsWith('prototype-state.json.corrupt-')));
+  });
+});
+
+test('api falls back safely when the persistence file has a valid JSON envelope but invalid state shape', async () => {
+  await withPersistentStateFile('helix-sat-invalid-shape-state-', async ({ tempDir, stateFilePath }) => {
+    await writeFile(stateFilePath, JSON.stringify({
+      mutableState: {
+        sessions: [],
+        attempts: {},
+      },
+    }, null, 2));
+
+    await withServer(async (baseUrl) => {
+      const active = await fetch(`${baseUrl}/api/session/active`, {
+        headers: authHeaders,
+      }).then((res) => res.json());
+
+      assert.equal(active.hasActiveSession, false);
+      assert.equal(active.activeSession, null);
+    }, { stateFilePath });
+
+    const files = await readdir(tempDir);
+    assert.ok(files.some((name) => name.startsWith('prototype-state.json.corrupt-')));
+  });
+});
+
+test('api persists exam-session conflict telemetry in file-backed mode', async () => {
+  await withPersistentStateFile('helix-sat-conflict-state-', async ({ stateFilePath }) => {
+    await withServer(async (baseUrl) => {
+      await fetch(`${baseUrl}/api/timed-set/start`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({}),
+      }).then((res) => res.json());
+
+      const conflict = await fetch(`${baseUrl}/api/module/start`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({}),
+      });
+
+      assert.equal(conflict.status, 409);
+    }, { stateFilePath });
+
+    const persisted = JSON.parse(await readFile(stateFilePath, 'utf8'));
+    const events = persisted.mutableState?.events ?? [];
+    assert.ok(events.some((event) => event.event_name === 'exam_session_resume_required'));
+  });
 });

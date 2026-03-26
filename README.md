@@ -100,3 +100,9 @@ Quick smoke path:
    curl -H 'X-Demo-User-Id: demo-student' http://localhost:4321/api/session/active
    ```
 5. Confirm the same unfinished session/current item is returned
+
+If the state file becomes malformed, the server now falls back to seeded state
+and preserves the bad file as `*.corrupt-<timestamp>` for inspection.
+
+Current limitation: this file-backed mode is intended for a single local server
+process. Multiple writers sharing one `HELIX_STATE_FILE` are not coordinated.

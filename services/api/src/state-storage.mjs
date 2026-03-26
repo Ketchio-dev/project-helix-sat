@@ -14,8 +14,38 @@ const MUTABLE_STATE_KEYS = [
   'teacherAssignments',
 ];
 
+const STATE_SHAPE_VALIDATORS = {
+  users: isRecord,
+  learnerProfiles: isRecord,
+  skillStates: isRecord,
+  errorDna: isRecord,
+  attempts: Array.isArray,
+  sessions: isRecord,
+  sessionItems: isRecord,
+  events: Array.isArray,
+  reflections: isRecord,
+  teacherAssignments: isRecord,
+};
+
 function clone(value) {
   return structuredClone(value);
+}
+
+function isRecord(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeSnapshot(parsed) {
+  const candidate = isRecord(parsed?.mutableState) ? parsed.mutableState : parsed;
+  if (!isRecord(candidate)) {
+    throw new Error('Persistence snapshot must be an object');
+  }
+  for (const [key, validate] of Object.entries(STATE_SHAPE_VALIDATORS)) {
+    if (candidate[key] !== undefined && !validate(candidate[key])) {
+      throw new Error(`Persistence snapshot has invalid shape for ${key}`);
+    }
+  }
+  return candidate;
 }
 
 function pickMutableState(state) {
@@ -55,6 +85,13 @@ export function createMemoryStateStorage({ seed }) {
 export function createFileStateStorage({ seed, filePath }) {
   const resolvedFilePath = resolve(filePath);
 
+  function backupCorruptFile() {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = `${resolvedFilePath}.corrupt-${stamp}`;
+    renameSync(resolvedFilePath, backupPath);
+    return backupPath;
+  }
+
   return {
     mode: 'file',
     describe() {
@@ -64,9 +101,17 @@ export function createFileStateStorage({ seed, filePath }) {
       try {
         const raw = readFileSync(resolvedFilePath, 'utf8');
         const parsed = JSON.parse(raw);
-        return mergeSeedWithSnapshot(seed, parsed.mutableState ?? parsed);
+        return mergeSeedWithSnapshot(seed, normalizeSnapshot(parsed));
       } catch (error) {
         if (error?.code === 'ENOENT') {
+          return mergeSeedWithSnapshot(seed);
+        }
+        if (
+          error instanceof SyntaxError
+          || error?.message === 'Persistence snapshot must be an object'
+          || error?.message?.startsWith('Persistence snapshot has invalid shape for ')
+        ) {
+          backupCorruptFile();
           return mergeSeedWithSnapshot(seed);
         }
         throw error;
