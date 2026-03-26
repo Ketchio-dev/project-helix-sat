@@ -4,36 +4,48 @@ info:
   version: 0.1.0
   description: Starter contract for the learning, assessment, and tutor core.
 paths:
-  /diagnostic/start:
+  /api/diagnostic/start:
     post:
       summary: Start a diagnostic session
       responses:
         '201':
           description: Diagnostic session created
-  /plan/today:
+  /api/plan/today:
     get:
       summary: Fetch today's adaptive plan
       responses:
         '200':
           description: Daily plan response
-  /attempt/submit:
+  /api/dashboard/learner:
+    get:
+      summary: Fetch the learner dashboard aggregate
+      responses:
+        '200':
+          description: Learner dashboard payload including profile, projection, plan, error DNA, and starter items
+  /api/attempt/submit:
     post:
       summary: Submit a learner attempt
       responses:
         '200':
           description: Attempt accepted and learner-state update queued
-  /tutor/hint:
+  /api/tutor/hint:
     post:
       summary: Request a tutor hint grounded in canonical rationale
       responses:
         '200':
           description: Structured hint response
-  /module/start:
+  /api/module/start:
     post:
       summary: Start a timed module or exam-mode block
       responses:
         '201':
           description: Module created
+  /api/projection/latest:
+    get:
+      summary: Fetch the latest projected score band
+      responses:
+        '200':
+          description: Projected score response
 components:
   schemas:
     DailyPlan:

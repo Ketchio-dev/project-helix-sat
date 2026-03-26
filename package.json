@@ -3,13 +3,17 @@
   "private": true,
   "version": "0.1.0",
   "description": "Foundation workspace for Project Helix SAT",
+  "type": "module",
   "workspaces": [
     "apps/*",
     "services/*",
     "packages/*"
   ],
   "scripts": {
-    "check": "node scripts/validate-foundation.mjs && node --test",
+    "start": "node services/api/server.mjs",
+    "dev": "node services/api/server.mjs",
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/validate-foundation.mjs && npm run build && node --test",
     "check:schemas": "node scripts/validate-foundation.mjs",
     "test": "node --test"
   },

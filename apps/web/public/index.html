@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Helix SAT</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Adaptive SAT Intelligence Platform</p>
+          <h1>Project Helix SAT</h1>
+          <p class="subtitle">
+            A runnable MVP vertical slice for diagnostic -> attempt -> plan -> tutor hint -> projection.
+          </p>
+        </div>
+        <div class="hero-actions">
+          <button id="refreshDashboard">Refresh Dashboard</button>
+          <button id="startDiagnostic">Start Diagnostic</button>
+        </div>
+      </header>
+
+      <section class="grid two">
+        <article class="card">
+          <h2>Learner Snapshot</h2>
+          <div id="profile"></div>
+        </article>
+        <article class="card">
+          <h2>Projected Score Band</h2>
+          <div id="projection"></div>
+        </article>
+      </section>
+
+      <section class="grid two">
+        <article class="card">
+          <h2>Today's Plan</h2>
+          <div id="plan"></div>
+        </article>
+        <article class="card">
+          <h2>Error DNA</h2>
+          <div id="errorDna"></div>
+        </article>
+      </section>
+
+      <section class="card">
+        <h2>Practice Item</h2>
+        <div id="diagnosticStatus" class="notice"></div>
+        <div id="itemArea"></div>
+        <form id="attemptForm" class="attempt-form hidden">
+          <label>
+            Confidence
+            <select id="confidenceLevel">
+              <option value="1">1 - guessing</option>
+              <option value="2">2 - low</option>
+              <option value="3" selected>3 - medium</option>
+              <option value="4">4 - high</option>
+            </select>
+          </label>
+          <label>
+            Mode
+            <select id="modeSelect">
+              <option value="learn" selected>Learn mode</option>
+              <option value="review">Review mode</option>
+              <option value="exam">Exam mode</option>
+            </select>
+          </label>
+          <div class="row gap">
+            <button type="submit">Submit Attempt</button>
+            <button type="button" id="getHint">Get Tutor Hint</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="grid two">
+        <article class="card">
+          <h2>Last Attempt Result</h2>
+          <pre id="attemptResult">No attempts yet.</pre>
+        </article>
+        <article class="card">
+          <h2>Tutor Hint</h2>
+          <pre id="hintResult">Hints appear here.</pre>
+        </article>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

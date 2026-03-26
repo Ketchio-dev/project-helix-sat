@@ -1,5 +1,6 @@
 .DS_Store
 .omx/
+.omc/
 node_modules/
 coverage/
 .env
