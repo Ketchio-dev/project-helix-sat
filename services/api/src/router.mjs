@@ -56,6 +56,14 @@ export function createRouter({ store, webRoot }) {
         return sendJson(response, 200, store.getParentSummary(authenticatedUserId));
       }
 
+      if (request.method === 'GET' && pathname === '/api/teacher/brief') {
+        return sendJson(response, 200, store.getTeacherBrief(authenticatedUserId));
+      }
+
+      if (request.method === 'GET' && pathname === '/api/teacher/assignments') {
+        return sendJson(response, 200, store.getTeacherAssignments(authenticatedUserId));
+      }
+
       if (request.method === 'GET' && pathname === '/api/review/recommendations') {
         const limit = Number(url.searchParams.get('limit') ?? 3);
         return sendJson(response, 200, store.getReviewRecommendations(authenticatedUserId, limit));
@@ -100,6 +108,11 @@ export function createRouter({ store, webRoot }) {
       if (request.method === 'POST' && pathname === '/api/reflection/submit') {
         const body = await readJsonBody(request);
         return sendJson(response, 200, store.submitReflection({ ...body, userId: authenticatedUserId }));
+      }
+
+      if (request.method === 'POST' && pathname === '/api/teacher/assignments') {
+        const body = await readJsonBody(request);
+        return sendJson(response, 200, store.saveTeacherAssignment({ ...body, userId: authenticatedUserId }));
       }
 
       if (request.method === 'GET') {

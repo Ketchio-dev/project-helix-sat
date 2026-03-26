@@ -55,6 +55,50 @@
         </article>
       </section>
 
+      <section class="grid two">
+        <article class="card">
+          <h2>Teacher Brief</h2>
+          <div id="teacherBrief"></div>
+        </article>
+        <article class="card">
+          <h2>Teacher Assignments</h2>
+          <div id="teacherAssignments"></div>
+          <form id="teacherAssignmentForm" class="teacher-assignment-form">
+            <label>
+              Title
+              <input id="teacherAssignmentTitle" type="text" placeholder="e.g. Scope repair warm-up" />
+            </label>
+            <label>
+              Objective
+              <textarea id="teacherAssignmentObjective" rows="3" placeholder="What should the student accomplish in this assignment?"></textarea>
+            </label>
+            <div class="grid two compact-grid">
+              <label>
+                Minutes
+                <input id="teacherAssignmentMinutes" type="number" min="5" step="5" value="20" />
+              </label>
+              <label>
+                Focus skill
+                <input id="teacherAssignmentFocusSkill" type="text" placeholder="e.g. rw_text_structure_and_purpose" />
+              </label>
+            </div>
+            <label>
+              Mode
+              <select id="teacherAssignmentMode">
+                <option value="warmup">Warm-up</option>
+                <option value="review" selected>Review</option>
+                <option value="timed_set">Timed set</option>
+                <option value="homework">Homework</option>
+              </select>
+            </label>
+            <div class="row gap">
+              <button type="submit">Save Assignment</button>
+            </div>
+          </form>
+          <pre id="teacherAssignmentResult">No teacher assignment saved yet.</pre>
+        </article>
+      </section>
+
       <section class="card">
         <h2>Practice Item</h2>
         <div id="diagnosticStatus" class="notice"></div>

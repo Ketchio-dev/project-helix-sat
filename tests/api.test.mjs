@@ -162,6 +162,54 @@ test('api returns a parent-facing learner summary', async () => {
   });
 });
 
+test('api returns a teacher-facing learner brief', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/teacher/brief`, {
+      headers: authHeaders,
+    });
+    assert.equal(response.status, 200);
+
+    const brief = await response.json();
+    assert.equal(typeof brief.learnerName, 'string');
+    assert.ok(Array.isArray(brief.interventionPriorities));
+    assert.equal(typeof brief.teacherActionNote, 'string');
+  });
+});
+
+test('api returns teacher assignment recommendations', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/teacher/assignments`, {
+      headers: authHeaders,
+    });
+    assert.equal(response.status, 200);
+
+    const assignments = await response.json();
+    assert.ok(Array.isArray(assignments.recommended));
+    assert.ok(Array.isArray(assignments.saved));
+  });
+});
+
+test('api saves a teacher assignment draft', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/teacher/assignments`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({
+        title: 'Scope mismatch recovery',
+        objective: 'Reinforce sentence-role reading discipline.',
+        minutes: 20,
+        focusSkill: 'rw_text_structure_and_purpose',
+        mode: 'review',
+      }),
+    });
+    assert.equal(response.status, 200);
+
+    const saved = await response.json();
+    assert.equal(saved.saved, true);
+    assert.equal(saved.assignment.title, 'Scope mismatch recovery');
+  });
+});
+
 test('api requires demo auth, enforces request size guard, and validates reflection payloads', async () => {
   await withServer(async (baseUrl) => {
     const unauthorized = await fetch(`${baseUrl}/api/me`);

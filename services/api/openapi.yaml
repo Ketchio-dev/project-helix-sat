@@ -64,6 +64,23 @@ paths:
       responses:
         '200':
           description: Parent summary payload
+  /api/teacher/brief:
+    get:
+      summary: Fetch a teacher-facing learner intervention brief
+      responses:
+        '200':
+          description: Teacher brief payload
+  /api/teacher/assignments:
+    get:
+      summary: Fetch teacher assignment recommendations and saved drafts
+      responses:
+        '200':
+          description: Teacher assignments payload
+    post:
+      summary: Save a teacher assignment draft
+      responses:
+        '200':
+          description: Teacher assignment saved payload
   /api/reflection/submit:
     post:
       summary: Save a learner reflection tied to the current session or review loop

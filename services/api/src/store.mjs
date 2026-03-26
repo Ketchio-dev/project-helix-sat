@@ -50,10 +50,25 @@ function average(numbers = []) {
   return numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
 }
 
+function toAssignmentDraft({ id, title, objective, minutes, focusSkill, mode, rationale, source = 'recommended', savedAt = null }) {
+  return {
+    id,
+    title,
+    objective,
+    minutes,
+    focusSkill,
+    mode,
+    rationale,
+    source,
+    savedAt,
+  };
+}
+
 export function createStore(seed = createDemoData()) {
   const state = structuredClone(seed);
   state.sessionItems ??= {};
   state.reflections ??= {};
+  state.teacherAssignments ??= {};
 
   const api = {
     getUser(userId = DEMO_USER_ID) {
@@ -239,6 +254,79 @@ export function createStore(seed = createDemoData()) {
       };
     },
 
+    getTeacherAssignments(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const review = api.getReviewRecommendations(userId);
+      const plan = api.getPlan(userId);
+      const recommended = [];
+
+      const topReview = review.recommendations?.slice(0, 2) ?? [];
+      for (const recommendation of topReview) {
+        recommended.push(toAssignmentDraft({
+          id: `recommended_${recommendation.itemId}`,
+          title: `Repair ${recommendation.skill}`,
+          objective: recommendation.reason,
+          minutes: 12,
+          focusSkill: recommendation.skill,
+          mode: 'review',
+          rationale: recommendation.recommendedAction,
+        }));
+      }
+
+      const topPlanBlock = plan.blocks?.find((block) => block.block_type !== 'reflection') ?? null;
+      if (topPlanBlock) {
+        recommended.push(toAssignmentDraft({
+          id: `plan_${topPlanBlock.block_type}`,
+          title: `Carry today's ${topPlanBlock.block_type} into homework`,
+          objective: topPlanBlock.objective,
+          minutes: topPlanBlock.minutes,
+          focusSkill: topPlanBlock.primary_skill ?? topReview[0]?.skill ?? 'mixed_review',
+          mode: topPlanBlock.block_type === 'review' ? 'review' : 'drill',
+          rationale: topPlanBlock.expected_benefit,
+        }));
+      }
+
+      return {
+        generatedAt: new Date().toISOString(),
+        recommended,
+        saved: state.teacherAssignments[userId] ?? [],
+      };
+    },
+
+    getTeacherBrief(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const profile = api.getProfile(userId);
+      const projection = api.getProjection(userId);
+      const sessionHistory = api.getSessionHistory(userId, 3);
+      const review = api.getReviewRecommendations(userId);
+      const assignments = api.getTeacherAssignments(userId);
+      const skillStates = [...api.getSkillStates(userId)];
+      const topStrengths = skillStates
+        .sort((left, right) => (right.mastery + right.timed_mastery) - (left.mastery + left.timed_mastery))
+        .slice(0, 2)
+        .map((skillState) => skillState.skill_id);
+      const interventionPriorities = review.recommendations.slice(0, 3).map((recommendation) => recommendation.skill);
+
+      return {
+        learnerName: profile.name,
+        targetScore: profile.targetScore,
+        targetTestDate: profile.targetTestDate,
+        readiness: projection.readiness_indicator,
+        projectedScoreBand: `${projection.predicted_total_low}-${projection.predicted_total_high}`,
+        topStrengths,
+        interventionPriorities,
+        recentSessionSignal: sessionHistory[0]
+          ? `${sessionHistory[0].type} ${sessionHistory[0].status} with ${sessionHistory[0].answered}/${sessionHistory[0].totalItems} items answered`
+          : 'No recent session data yet.',
+        recommendedWarmup: assignments.recommended[0] ?? null,
+        recommendedHomework: assignments.recommended[1] ?? assignments.recommended[0] ?? null,
+        latestReflection: api.getReflections(userId).at(-1)?.response ?? null,
+        teacherActionNote: interventionPriorities[0]
+          ? `Open the next session by repairing ${interventionPriorities[0]}, then assign one timed follow-up rep.`
+          : `Start with a short mixed warm-up and collect more learner attempts before narrowing the focus.`,
+      };
+    },
+
     getDashboard(userId = DEMO_USER_ID) {
       return {
         profile: api.getProfile(userId),
@@ -249,6 +337,8 @@ export function createStore(seed = createDemoData()) {
         review: api.getReviewRecommendations(userId),
         sessionHistory: api.getSessionHistory(userId, 5),
         parentSummary: api.getParentSummary(userId),
+        teacherBrief: api.getTeacherBrief(userId),
+        teacherAssignments: api.getTeacherAssignments(userId),
       };
     },
 
@@ -401,6 +491,52 @@ export function createStore(seed = createDemoData()) {
         reflection,
         totalReflections: state.reflections[userId].length,
         nextAction: 'Use this rule in your next timed or review block.',
+      };
+    },
+
+    saveTeacherAssignment({
+      userId = DEMO_USER_ID,
+      title,
+      objective,
+      minutes,
+      focusSkill,
+      mode = 'review',
+      rationale = '',
+    }) {
+      api.getUser(userId);
+      if (!title || !`${title}`.trim()) throw new HttpError(400, 'title is required');
+      if (!objective || !`${objective}`.trim()) throw new HttpError(400, 'objective is required');
+      if (!focusSkill || !`${focusSkill}`.trim()) throw new HttpError(400, 'focusSkill is required');
+      const normalizedMinutes = Number(minutes);
+      if (!Number.isFinite(normalizedMinutes) || normalizedMinutes <= 0) {
+        throw new HttpError(400, 'minutes must be a positive number');
+      }
+
+      const assignment = toAssignmentDraft({
+        id: createId('teacher_assignment'),
+        title: `${title}`.trim(),
+        objective: `${objective}`.trim(),
+        minutes: Math.round(normalizedMinutes),
+        focusSkill: `${focusSkill}`.trim(),
+        mode,
+        rationale: `${rationale}`.trim(),
+        source: 'saved',
+        savedAt: new Date().toISOString(),
+      });
+
+      state.teacherAssignments[userId] ??= [];
+      state.teacherAssignments[userId].push(assignment);
+      state.events.push(createEvent({
+        userId,
+        eventName: 'teacher_assignment_saved',
+        payload: { assignmentId: assignment.id, focusSkill: assignment.focusSkill, minutes: assignment.minutes },
+      }));
+
+      return {
+        saved: true,
+        assignment,
+        teacherAssignments: api.getTeacherAssignments(userId),
+        teacherBrief: api.getTeacherBrief(userId),
       };
     },
   };

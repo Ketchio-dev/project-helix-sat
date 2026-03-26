@@ -17,7 +17,7 @@ body {
   background: var(--bg);
   color: var(--text);
 }
-button, select, textarea {
+button, select, textarea, input {
   font: inherit;
 }
 button {
@@ -44,6 +44,13 @@ textarea {
   border-radius: 12px;
   padding: 0.85rem 1rem;
   resize: vertical;
+  background: #fbfcff;
+}
+input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
   background: #fbfcff;
 }
 .shell {
@@ -119,7 +126,8 @@ textarea {
 }
 .choice,
 .review-item,
-.history-item {
+.history-item,
+.teacher-assignment-item {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -139,6 +147,9 @@ textarea {
 .history-item .kv {
   width: 100%;
 }
+.teacher-assignment-item p {
+  margin: 0;
+}
 .review-rationale {
   color: var(--text);
   font-size: 0.95rem;
@@ -150,7 +161,8 @@ textarea {
   margin-bottom: 0.25rem;
 }
 .attempt-form,
-.reflection-form {
+.reflection-form,
+.teacher-assignment-form {
   margin-top: 1rem;
   display: grid;
   gap: 1rem;
@@ -158,6 +170,12 @@ textarea {
 }
 .reflection-form {
   grid-template-columns: 1fr;
+}
+.teacher-assignment-form {
+  grid-template-columns: 1fr;
+}
+.compact-grid {
+  margin-top: 0;
 }
 .row.gap {
   display: flex;

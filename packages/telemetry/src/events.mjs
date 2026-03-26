@@ -15,6 +15,7 @@ export const EVENT_NAMES = [
   'plan_accepted',
   'plan_skipped',
   'reflection_submitted',
+  'teacher_assignment_saved',
   'streak_kept',
   'streak_broken',
 ];

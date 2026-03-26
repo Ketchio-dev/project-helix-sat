@@ -1,3 +1,5 @@
+import { normalizeTeacherAssignments, normalizeTeacherBrief } from './teacher-view-model.js';
+
 const state = {
   userId: 'demo-student',
   currentItem: null,
@@ -218,6 +220,113 @@ function renderParentSummary(summary) {
   }
 }
 
+function renderTeacherBrief(summary) {
+  const container = $('#teacherBrief');
+  clear(container);
+
+  const normalized = normalizeTeacherBrief(summary);
+
+  if (!normalized) {
+    container.append(node('p', { className: 'muted', text: 'Teacher brief unavailable.' }));
+    return;
+  }
+
+  const rows = [
+    ['Learner', normalized.learnerName],
+    ['Projected score', normalized.projectedScoreBand],
+    ['Readiness', normalized.readiness],
+    ['Primary issue', normalized.primaryIssue],
+  ];
+  container.append(kvRows(rows));
+
+  if (normalized.strengths.length) {
+    const list = node('ul', { className: 'list compact' });
+    for (const strength of normalized.strengths) {
+      list.append(node('li', { text: typeof strength === 'string' ? strength : strength.skill ?? strength.label ?? JSON.stringify(strength) }));
+    }
+    container.append(node('p', { className: 'muted', text: 'Top strengths' }));
+    container.append(list);
+  }
+
+  if (normalized.priorities.length) {
+    const list = node('ul', { className: 'list compact' });
+    for (const priority of normalized.priorities) {
+      list.append(node('li', { text: typeof priority === 'string' ? priority : priority.skill ?? priority.label ?? JSON.stringify(priority) }));
+    }
+    container.append(node('p', { className: 'muted', text: 'Intervention priorities' }));
+    container.append(list);
+  }
+
+  const warmup = normalized.recommendedWarmup;
+  if (warmup) {
+    container.append(node('p', { className: 'notice', text: `Warm-up: ${typeof warmup === 'string' ? warmup : warmup.title ?? warmup.objective ?? JSON.stringify(warmup)}` }));
+  }
+
+  const homework = normalized.recommendedHomework;
+  if (homework) {
+    container.append(node('p', { className: 'muted', text: `Homework: ${typeof homework === 'string' ? homework : homework.title ?? homework.objective ?? JSON.stringify(homework)}` }));
+  }
+
+  if (normalized.teacherAction) {
+    container.append(node('p', { className: 'muted', text: `Teacher action: ${normalized.teacherAction}` }));
+  }
+}
+
+function fillTeacherAssignmentForm(assignment) {
+  if (!assignment) return;
+  $('#teacherAssignmentTitle').value = assignment.title ?? assignment.name ?? '';
+  $('#teacherAssignmentObjective').value = assignment.objective ?? assignment.prompt ?? '';
+  $('#teacherAssignmentMinutes').value = assignment.minutes ?? assignment.durationMinutes ?? 20;
+  $('#teacherAssignmentFocusSkill').value = assignment.focusSkill ?? assignment.skill ?? '';
+  $('#teacherAssignmentMode').value = assignment.mode ?? 'review';
+}
+
+function renderTeacherAssignments(payload) {
+  const container = $('#teacherAssignments');
+  clear(container);
+
+  const normalized = normalizeTeacherAssignments(payload);
+  const { recommended, saved, all: assignments } = normalized;
+
+  if (!assignments.length) {
+    container.append(node('p', { className: 'muted', text: 'No teacher assignments available yet.' }));
+    return;
+  }
+
+  const stack = node('div', { className: 'stack' });
+  const renderGroup = (label, group) => {
+    if (!group.length) return;
+    stack.append(node('p', { className: 'muted', text: label }));
+    for (const assignment of group) {
+      const card = node('article', { className: 'teacher-assignment-item' });
+      card.append(node('strong', { text: assignment.title ?? assignment.name ?? 'Assignment' }));
+      if (assignment.objective ?? assignment.prompt) {
+        card.append(node('p', { text: assignment.objective ?? assignment.prompt }));
+      }
+      card.append(node('p', {
+        className: 'muted',
+        text: `Mode: ${assignment.mode ?? 'review'} · Minutes: ${assignment.minutes ?? assignment.durationMinutes ?? '—'} · Focus: ${assignment.focusSkill ?? assignment.skill ?? '—'}`,
+      }));
+      if (assignment.rationale ?? assignment.reason) {
+        card.append(node('p', { className: 'muted', text: assignment.rationale ?? assignment.reason }));
+      }
+      stack.append(card);
+    }
+  };
+
+  renderGroup('Recommended', recommended);
+  renderGroup('Saved', saved);
+
+  if (!stack.childElementCount) {
+    const card = node('article', { className: 'teacher-assignment-item' });
+    card.append(node('strong', { text: assignments[0].title ?? assignments[0].name ?? 'Assignment' }));
+    stack.append(card);
+  }
+
+  fillTeacherAssignmentForm(assignments[0]);
+  container.append(stack);
+}
+
 function renderReview(review) {
   const meta = $('#reviewMeta');
   const container = $('#reviewRecommendations');
@@ -315,10 +424,12 @@ async function loadReviewRecommendations() {
 
 async function loadDashboard() {
   try {
-    const [dashboard, sessionHistory, parentSummary] = await Promise.all([
+    const [dashboard, sessionHistory, parentSummary, teacherBrief, teacherAssignments] = await Promise.all([
       json('/api/dashboard/learner'),
       json('/api/sessions/history').catch(() => null),
       json('/api/parent/summary').catch(() => null),
+      json('/api/teacher/brief').catch(() => null),
+      json('/api/teacher/assignments').catch(() => null),
     ]);
 
     renderProfile(dashboard.profile);
@@ -328,6 +439,8 @@ async function loadDashboard() {
     renderReview(dashboard.review);
     renderSessionHistory(sessionHistory);
     renderParentSummary(parentSummary);
+    renderTeacherBrief(teacherBrief);
+    renderTeacherAssignments(teacherAssignments);
     if (!state.currentSessionId) renderItem(null);
     $('#diagnosticStatus').textContent = dashboard.profile.lastSessionSummary || 'No active diagnostic session.';
   } catch (error) {
@@ -434,6 +547,35 @@ $('#reflectionForm').addEventListener('submit', async (event) => {
     await loadReviewRecommendations();
   } catch (error) {
     $('#reflectionResult').textContent = error.message;
+  }
+});
+
+$('#teacherAssignmentForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const title = $('#teacherAssignmentTitle').value.trim();
+  const objective = $('#teacherAssignmentObjective').value.trim();
+
+  if (!title || !objective) {
+    $('#teacherAssignmentResult').textContent = 'Add both a title and objective before saving.';
+    return;
+  }
+
+  try {
+    const result = await json('/api/teacher/assignments', {
+      method: 'POST',
+      body: JSON.stringify({
+        title,
+        objective,
+        minutes: Number($('#teacherAssignmentMinutes').value),
+        focusSkill: $('#teacherAssignmentFocusSkill').value.trim(),
+        mode: $('#teacherAssignmentMode').value,
+      }),
+    });
+    $('#teacherAssignmentResult').textContent = JSON.stringify(result, null, 2);
+    renderTeacherAssignments(result.teacherAssignments ?? result);
+    renderTeacherBrief(result.teacherBrief ?? null);
+  } catch (error) {
+    $('#teacherAssignmentResult').textContent = error.message;
   }
 });
 
