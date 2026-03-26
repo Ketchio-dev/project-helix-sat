@@ -676,6 +676,7 @@ $('#getHint').addEventListener('click', async () => {
       body: JSON.stringify({
         userId: state.userId,
         itemId: state.currentItem.itemId,
+        sessionId: state.currentSessionId,
         mode: $('#modeSelect').value,
         requestedLevel: 1,
       }),

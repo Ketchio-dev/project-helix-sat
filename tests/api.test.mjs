@@ -134,12 +134,26 @@ test('api serves timed-set start, completion, finish, and exam-mode hint blockin
       headers: authHeaders,
       body: JSON.stringify({
         itemId: timedSet.currentItem.itemId,
+        sessionId: timedSet.session.id,
         mode: 'exam',
         requestedLevel: 1,
       }),
     }).then((res) => res.json());
     assert.equal(examHint.mode, 'exam_blocked');
     assert.equal(examHint.source_of_truth, 'exam_policy');
+
+    const bypassAttemptHint = await fetch(`${baseUrl}/api/tutor/hint`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({
+        itemId: timedSet.currentItem.itemId,
+        sessionId: timedSet.session.id,
+        mode: 'learn',
+        requestedLevel: 1,
+      }),
+    }).then((res) => res.json());
+    assert.equal(bypassAttemptHint.mode, 'exam_blocked');
+    assert.equal(bypassAttemptHint.source_of_truth, 'exam_policy');
 
     let lastAttemptResult = null;
     for (const [index, item] of timedSet.items.entries()) {

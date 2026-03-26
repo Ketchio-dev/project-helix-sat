@@ -455,6 +455,21 @@ export function createStore(seed = createDemoData()) {
       return api.getSessionItems(sessionId).find((entry) => !entry.answered_at) ?? null;
     },
 
+    isHintBlockedByExamSession(userId = DEMO_USER_ID, itemId, sessionId = null) {
+      api.getUser(userId);
+      const candidateSessions = sessionId
+        ? [api.getSession(sessionId)].filter(Boolean)
+        : Object.values(state.sessions);
+
+      return candidateSessions.some((session) => (
+        session
+        && session.user_id === userId
+        && session.exam_mode === true
+        && !session.ended_at
+        && api.getSessionItems(session.id).some((entry) => entry.item_id === itemId)
+      ));
+    },
+
     startTimedSet(userId = DEMO_USER_ID) {
       api.getUser(userId);
       const timedSetItemIds = [
@@ -462,6 +477,10 @@ export function createStore(seed = createDemoData()) {
         'math_linear_01',
         'rw_structure_01',
       ];
+      const timedSetItems = timedSetItemIds.map((itemId) => api.getItem(itemId));
+      if (timedSetItems.some((item) => !item)) {
+        throw new HttpError(500, 'Timed-set configuration is missing one or more items');
+      }
       const session = {
         id: createId('sess'),
         user_id: userId,
@@ -472,9 +491,9 @@ export function createStore(seed = createDemoData()) {
         started_at: new Date().toISOString(),
       };
       state.sessions[session.id] = session;
-      const assignedItems = timedSetItemIds.map((itemId, index) => ({
+      const assignedItems = timedSetItems.map((item, index) => ({
         session_item_id: createId('session_item'),
-        item_id: itemId,
+        item_id: item.itemId,
         ordinal: index + 1,
         answered_at: null,
       }));

@@ -103,12 +103,15 @@ export function createRouter({ store, webRoot }) {
         const rationale = store.getRationale(body.itemId);
         const learnerState = store.getProfile(authenticatedUserId);
         if (!item || !rationale) return sendJson(response, 404, { error: 'Item not found' });
+        const enforcedMode = store.isHintBlockedByExamSession(authenticatedUserId, body.itemId, body.sessionId)
+          ? 'exam'
+          : body.mode;
         const hint = createHintResponse({
           item,
           rationale,
           learnerState,
           errorDna: store.getErrorDna(authenticatedUserId),
-          mode: body.mode,
+          mode: enforcedMode,
           requestedLevel: body.requestedLevel,
           priorHintCount: body.priorHintCount ?? 0,
         });
