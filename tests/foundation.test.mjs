@@ -56,6 +56,8 @@ test('openapi starter contract exposes learning core routes', () => {
   const openapi = readFileSync('services/api/openapi.yaml', 'utf8');
   for (const route of [
     '/api/diagnostic/start',
+    '/api/timed-set/start',
+    '/api/timed-set/finish',
     '/api/plan/today',
     '/api/attempt/submit',
     '/api/tutor/hint',

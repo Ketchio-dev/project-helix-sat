@@ -115,6 +115,75 @@ test('api rejects items that do not belong to the active session', async () => {
   });
 });
 
+test('api serves timed-set start, completion, finish, and exam-mode hint blocking', async () => {
+  await withServer(async (baseUrl) => {
+    const timedSet = await fetch(`${baseUrl}/api/timed-set/start`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+
+    assert.equal(timedSet.session.type, 'timed_set');
+    assert.equal(timedSet.session.exam_mode, true);
+    assert.equal(timedSet.timing.timeLimitSec, 210);
+    assert.equal(timedSet.timing.recommendedPaceSec, 70);
+    assert.ok(timedSet.currentItem);
+
+    const examHint = await fetch(`${baseUrl}/api/tutor/hint`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({
+        itemId: timedSet.currentItem.itemId,
+        mode: 'exam',
+        requestedLevel: 1,
+      }),
+    }).then((res) => res.json());
+    assert.equal(examHint.mode, 'exam_blocked');
+    assert.equal(examHint.source_of_truth, 'exam_policy');
+
+    let lastAttemptResult = null;
+    for (const [index, item] of timedSet.items.entries()) {
+      lastAttemptResult = await fetch(`${baseUrl}/api/attempt/submit`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          itemId: item.itemId,
+          selectedAnswer: index === 1 ? 'B' : 'A',
+          sessionId: timedSet.session.id,
+          mode: 'exam',
+          confidenceLevel: 3,
+          responseTimeMs: 60000,
+        }),
+      }).then((res) => res.json());
+    }
+
+    assert.equal(lastAttemptResult.sessionProgress.isComplete, true);
+    assert.equal(lastAttemptResult.sessionType, 'timed_set');
+    assert.ok(lastAttemptResult.timedSummary);
+    assert.equal(lastAttemptResult.timedSummary.completed, true);
+    assert.equal(lastAttemptResult.timedSummary.timeLimitSec, 210);
+    assert.equal(lastAttemptResult.timedSummary.paceStatus, 'on_pace');
+
+    const finished = await fetch(`${baseUrl}/api/timed-set/finish`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ sessionId: timedSet.session.id }),
+    }).then((res) => res.json());
+
+    assert.equal(finished.session.type, 'timed_set');
+    assert.equal(finished.sessionProgress.isComplete, true);
+    assert.equal(finished.timedSummary.sessionId, timedSet.session.id);
+    assert.equal(typeof finished.timedSummary.nextAction, 'string');
+
+    const dashboard = await fetch(`${baseUrl}/api/dashboard/learner`, {
+      headers: authHeaders,
+    }).then((res) => res.json());
+
+    assert.equal(dashboard.latestTimedSetSummary.sessionId, timedSet.session.id);
+    assert.equal(dashboard.latestTimedSetSummary.completed, true);
+  });
+});
+
 test('api returns session history for the authenticated learner', async () => {
   await withServer(async (baseUrl) => {
     const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {

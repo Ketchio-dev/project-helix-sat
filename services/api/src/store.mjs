@@ -24,6 +24,10 @@ function summarizeSessionProgress(sessionItems = []) {
   };
 }
 
+function isTimedSession(session) {
+  return session?.type === 'timed_set';
+}
+
 function getReflectionPrompt(errorDna = {}) {
   const dominantError = Object.entries(errorDna).sort((a, b) => b[1] - a[1])[0]?.[0];
   if (!dominantError) {
@@ -48,6 +52,10 @@ function createFallbackRecommendation(item, reason, action) {
 function average(numbers = []) {
   if (!numbers.length) return null;
   return numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+}
+
+function roundRatio(value) {
+  return Number(value.toFixed(2));
 }
 
 function toAssignmentDraft({ id, title, objective, minutes, focusSkill, mode, rationale, source = 'recommended', savedAt = null }) {
@@ -106,6 +114,10 @@ export function createStore(seed = createDemoData()) {
     getAttempts(userId = DEMO_USER_ID) {
       api.getUser(userId);
       return state.attempts.filter((attempt) => attempt.user_id === userId);
+    },
+
+    getSessionAttempts(sessionId) {
+      return state.attempts.filter((attempt) => attempt.session_id === sessionId);
     },
 
     getReflections(userId = DEMO_USER_ID) {
@@ -190,6 +202,7 @@ export function createStore(seed = createDemoData()) {
           const attempts = state.attempts.filter((attempt) => attempt.session_id === session.id);
           const correctCount = attempts.filter((attempt) => attempt.is_correct).length;
           const latestReflection = reflections.filter((reflection) => reflection.session_id === session.id).at(-1) ?? null;
+          const timedSummary = isTimedSession(session) ? api.getTimedSetSummary(session.id) : null;
 
           return {
             sessionId: session.id,
@@ -197,6 +210,9 @@ export function createStore(seed = createDemoData()) {
             status: session.ended_at ? 'complete' : 'active',
             startedAt: session.started_at,
             endedAt: session.ended_at ?? null,
+            examMode: Boolean(session.exam_mode),
+            timeLimitSec: session.time_limit_sec ?? null,
+            recommendedPaceSec: session.recommended_pace_sec ?? null,
             answered: progress.answered,
             totalItems: progress.total,
             attemptCount: attempts.length,
@@ -207,6 +223,7 @@ export function createStore(seed = createDemoData()) {
             averageResponseTimeMs: attempts.length ? Math.round(average(attempts.map((attempt) => attempt.response_time_ms))) : null,
             lastReflection: latestReflection?.response ?? null,
             latestReflection: latestReflection?.response ?? null,
+            timedSummary,
           };
         });
     },
@@ -327,6 +344,77 @@ export function createStore(seed = createDemoData()) {
       };
     },
 
+    getTimedSetSummary(sessionId) {
+      const session = api.getSession(sessionId);
+      if (!session || session.type !== 'timed_set') {
+        return null;
+      }
+
+      const sessionItems = api.getSessionItems(sessionId);
+      const progress = summarizeSessionProgress(sessionItems);
+      const attempts = api.getSessionAttempts(sessionId);
+      const correct = attempts.filter((attempt) => attempt.is_correct).length;
+      const totalResponseTimeMs = attempts.reduce((sum, attempt) => sum + attempt.response_time_ms, 0);
+      const averageResponseTimeMs = attempts.length ? Math.round(totalResponseTimeMs / attempts.length) : null;
+      const accuracy = attempts.length ? roundRatio(correct / attempts.length) : null;
+      const recommendedPaceSec = session.recommended_pace_sec ?? null;
+      const timeLimitSec = session.time_limit_sec ?? null;
+      const elapsedSec = Math.round(totalResponseTimeMs / 1000);
+      const remainingTimeSec = timeLimitSec === null ? null : Math.max(0, timeLimitSec - elapsedSec);
+
+      let paceStatus = 'not_started';
+      if (!attempts.length) {
+        paceStatus = 'not_started';
+      } else if (timeLimitSec !== null && elapsedSec > timeLimitSec) {
+        paceStatus = 'over_time';
+      } else if (recommendedPaceSec !== null && averageResponseTimeMs !== null && averageResponseTimeMs / 1000 > recommendedPaceSec + 5) {
+        paceStatus = 'behind_pace';
+      } else {
+        paceStatus = 'on_pace';
+      }
+
+      let nextAction = 'Finish this set, then review the canonical rationale before your next timed block.';
+      if (progress.isComplete && accuracy !== null) {
+        if (accuracy < 0.67) {
+          nextAction = 'Review the misses in learn mode before starting another timed block.';
+        } else if (paceStatus === 'behind_pace' || paceStatus === 'over_time') {
+          nextAction = 'Keep the same accuracy, but trim 5–10 seconds per item on the next timed set.';
+        } else {
+          nextAction = 'You are on pace. Follow with one mixed review block or another short timed set.';
+        }
+      }
+
+      return {
+        sessionId: session.id,
+        sessionType: session.type,
+        examMode: Boolean(session.exam_mode),
+        startedAt: session.started_at,
+        endedAt: session.ended_at ?? null,
+        answered: progress.answered,
+        total: progress.total,
+        correct,
+        accuracy,
+        averageResponseTimeMs,
+        totalResponseTimeMs,
+        elapsedSec,
+        timeLimitSec,
+        remainingTimeSec,
+        recommendedPaceSec,
+        paceStatus,
+        completed: progress.isComplete,
+        nextAction,
+      };
+    },
+
+    getLatestTimedSetSummary(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const latestTimedSet = Object.values(state.sessions)
+        .filter((session) => session.user_id === userId && session.type === 'timed_set')
+        .sort((left, right) => new Date(right.started_at) - new Date(left.started_at))[0] ?? null;
+
+      return latestTimedSet ? api.getTimedSetSummary(latestTimedSet.id) : null;
+    },
+
     getDashboard(userId = DEMO_USER_ID) {
       return {
         profile: api.getProfile(userId),
@@ -336,6 +424,7 @@ export function createStore(seed = createDemoData()) {
         items: api.listItems(4),
         review: api.getReviewRecommendations(userId),
         sessionHistory: api.getSessionHistory(userId, 5),
+        latestTimedSetSummary: api.getLatestTimedSetSummary(userId),
         parentSummary: api.getParentSummary(userId),
         teacherBrief: api.getTeacherBrief(userId),
         teacherAssignments: api.getTeacherAssignments(userId),
@@ -364,6 +453,49 @@ export function createStore(seed = createDemoData()) {
 
     getCurrentSessionItem(sessionId) {
       return api.getSessionItems(sessionId).find((entry) => !entry.answered_at) ?? null;
+    },
+
+    startTimedSet(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const timedSetItemIds = [
+        'rw_words_context_01',
+        'math_linear_01',
+        'rw_structure_01',
+      ];
+      const session = {
+        id: createId('sess'),
+        user_id: userId,
+        type: 'timed_set',
+        exam_mode: true,
+        time_limit_sec: 210,
+        recommended_pace_sec: 70,
+        started_at: new Date().toISOString(),
+      };
+      state.sessions[session.id] = session;
+      const assignedItems = timedSetItemIds.map((itemId, index) => ({
+        session_item_id: createId('session_item'),
+        item_id: itemId,
+        ordinal: index + 1,
+        answered_at: null,
+      }));
+      state.sessionItems[session.id] = assignedItems;
+      state.events.push(createEvent({
+        userId,
+        sessionId: session.id,
+        eventName: 'timed_set_started',
+        payload: { mode: 'exam', timeLimitSec: session.time_limit_sec },
+      }));
+      return {
+        session,
+        items: assignedItems.map((entry) => toClientItem(api.getItem(entry.item_id))),
+        currentItem: toClientItem(api.getItem(assignedItems[0].item_id)),
+        sessionProgress: summarizeSessionProgress(assignedItems),
+        timing: {
+          timeLimitSec: session.time_limit_sec,
+          recommendedPaceSec: session.recommended_pace_sec,
+          examMode: session.exam_mode,
+        },
+      };
     },
 
     startDiagnostic(userId = DEMO_USER_ID) {
@@ -401,6 +533,9 @@ export function createStore(seed = createDemoData()) {
       const session = api.getSession(sessionId);
       if (!session || session.user_id !== userId) {
         throw new HttpError(400, 'Unknown or invalid session');
+      }
+      if (session.exam_mode === true && mode !== 'exam') {
+        throw new HttpError(400, 'Timed-set sessions must be submitted in exam mode');
       }
       const sessionItem = api.getSessionItems(sessionId).find((entry) => entry.item_id === itemId);
       if (!sessionItem) {
@@ -452,7 +587,7 @@ export function createStore(seed = createDemoData()) {
       const nextSessionItem = api.getCurrentSessionItem(sessionId);
       if (sessionProgress.isComplete) {
         state.sessions[sessionId].ended_at = new Date().toISOString();
-        state.events.push(createEvent({ userId, sessionId, eventName: 'session_completed', payload: { type: 'diagnostic' } }));
+        state.events.push(createEvent({ userId, sessionId, eventName: 'session_completed', payload: { type: session.type } }));
       }
 
       return {
@@ -464,7 +599,34 @@ export function createStore(seed = createDemoData()) {
         errorDna: api.getErrorDna(userId),
         review: api.getReviewRecommendations(userId),
         sessionProgress,
+        sessionType: session.type,
+        timedSummary: session.type === 'timed_set' ? api.getTimedSetSummary(sessionId) : null,
         nextItem: nextSessionItem ? toClientItem(api.getItem(nextSessionItem.item_id)) : null,
+      };
+    },
+
+    finishTimedSet({ userId = DEMO_USER_ID, sessionId }) {
+      api.getUser(userId);
+      if (!sessionId) throw new HttpError(400, 'sessionId is required');
+      const session = api.getSession(sessionId);
+      if (!session || session.user_id !== userId) {
+        throw new HttpError(400, 'Unknown or invalid session');
+      }
+      if (session.type !== 'timed_set') {
+        throw new HttpError(400, 'Session is not a timed set');
+      }
+      if (!session.ended_at) {
+        session.ended_at = new Date().toISOString();
+        state.events.push(createEvent({ userId, sessionId, eventName: 'session_completed', payload: { type: session.type, finishedEarly: true } }));
+      }
+
+      return {
+        session,
+        sessionProgress: summarizeSessionProgress(api.getSessionItems(sessionId)),
+        timedSummary: api.getTimedSetSummary(sessionId),
+        projection: api.getProjection(userId),
+        plan: api.getPlan(userId),
+        review: api.getReviewRecommendations(userId),
       };
     },
 

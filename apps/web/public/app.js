@@ -4,7 +4,9 @@ const state = {
   userId: 'demo-student',
   currentItem: null,
   currentSessionId: null,
+  currentSessionType: null,
   reflectionPrompt: '',
+  latestTimedSetSummary: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -68,6 +70,39 @@ function formatPercent(value) {
   if (Number.isNaN(numeric)) return String(value);
   const normalized = numeric <= 1 ? numeric * 100 : numeric;
   return `${Math.round(normalized)}%`;
+}
+
+function formatMs(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) return String(value);
+  return `${(numeric / 1000).toFixed(1)}s`;
+}
+
+function formatSeconds(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) return String(value);
+  return `${numeric}s`;
+}
+
+function toDisplaySessionType(value) {
+  if (!value) return 'session';
+  return value === 'timed_set' ? 'Timed set' : value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function syncSessionControls() {
+  const finishButton = $('#finishTimedSet');
+  const modeSelect = $('#modeSelect');
+  const isTimedSet = state.currentSessionType === 'timed_set';
+
+  finishButton.classList.toggle('hidden', !isTimedSet);
+  if (isTimedSet) {
+    modeSelect.value = 'exam';
+    modeSelect.disabled = true;
+  } else {
+    modeSelect.disabled = false;
+  }
 }
 
 function renderProfile(profile) {
@@ -169,6 +204,61 @@ function renderSessionHistory(payload) {
   }
 
   container.append(stack);
+}
+
+function renderTimedSetSummary(summary) {
+  const container = $('#timedSetSummary');
+  clear(container);
+
+  const normalized = summary?.timedSummary ?? summary ?? null;
+  state.latestTimedSetSummary = normalized;
+
+  if (!normalized) {
+    container.append(node('p', { className: 'muted', text: 'No timed-set summary yet.' }));
+    return;
+  }
+
+  const paceStatus = normalized.paceStatus ?? normalized.pace_status ?? 'on_pace';
+  const paceLabelMap = {
+    not_started: 'Not started',
+    on_pace: 'On pace',
+    behind_pace: 'Behind pace',
+    over_time: 'Over time',
+    ahead: 'Ahead',
+    behind: 'Behind',
+    on_target: 'On target',
+  };
+  const statusClass = paceStatus === 'on_pace' || paceStatus === 'on_target'
+    ? 'pill success'
+    : paceStatus === 'not_started'
+      ? 'pill'
+      : 'pill warning';
+
+  const card = node('article', { className: 'timed-summary-item' });
+  card.append(node('h3', { text: `${toDisplaySessionType(normalized.sessionType ?? normalized.type)} pacing snapshot` }));
+
+  const pillRow = node('div', { className: 'session-status-row' }, [
+    node('span', { className: 'pill', text: `${normalized.answered ?? 0}/${normalized.total ?? 0} answered` }),
+    node('span', { className: statusClass, text: paceLabelMap[paceStatus] ?? paceStatus }),
+    node('span', { className: 'pill', text: normalized.examMode || normalized.exam_mode ? 'Exam mode' : 'Reviewable' }),
+  ]);
+  card.append(pillRow);
+
+  card.append(kvRows([
+    ['Accuracy', formatPercent(normalized.accuracy)],
+    ['Correct', normalized.correct ?? '—'],
+    ['Average time', formatMs(normalized.averageResponseTimeMs ?? normalized.average_response_time_ms)],
+    ['Time limit', formatSeconds(normalized.timeLimitSec ?? normalized.time_limit_sec)],
+    ['Recommended pace', formatSeconds(normalized.recommendedPaceSec ?? normalized.recommended_pace_sec)],
+    ['Remaining', formatSeconds(normalized.remainingTimeSec ?? normalized.remaining_time_sec ?? normalized.remaining)],
+  ]));
+
+  const nextAction = normalized.nextAction ?? normalized.next_action;
+  if (nextAction) {
+    card.append(node('p', { className: 'notice', text: `Next action: ${nextAction}` }));
+  }
+
+  container.append(card);
 }
 
 function renderParentSummary(summary) {
@@ -378,6 +468,7 @@ function renderItem(item) {
   if (!item) {
     container.append(node('p', { className: 'muted', text: 'Start a diagnostic to load a practice item.' }));
     $('#attemptForm').classList.add('hidden');
+    syncSessionControls();
     return;
   }
 
@@ -405,16 +496,21 @@ function renderItem(item) {
 
   container.append(choices);
   $('#attemptForm').classList.remove('hidden');
+  syncSessionControls();
 }
 
 function renderSessionProgress(progress) {
   if (!progress) return;
+  const sessionLabel = toDisplaySessionType(state.currentSessionType);
   if (progress.isComplete) {
-    $('#diagnosticStatus').textContent = `Diagnostic complete: ${progress.answered}/${progress.total} items answered.`;
+    $('#diagnosticStatus').textContent = `${sessionLabel} complete: ${progress.answered}/${progress.total} items answered.`;
     $('#attemptForm').classList.add('hidden');
     return;
   }
-  $('#diagnosticStatus').textContent = `Diagnostic progress: ${progress.answered}/${progress.total} answered.`;
+  const paceText = state.latestTimedSetSummary?.recommendedPaceSec ?? state.latestTimedSetSummary?.recommended_pace_sec;
+  $('#diagnosticStatus').textContent = state.currentSessionType === 'timed_set'
+    ? `${sessionLabel} progress: ${progress.answered}/${progress.total} answered · target pace ${paceText ?? 70}s/item`
+    : `${sessionLabel} progress: ${progress.answered}/${progress.total} answered.`;
 }
 
 async function loadReviewRecommendations() {
@@ -438,10 +534,15 @@ async function loadDashboard() {
     renderErrorDna(dashboard.errorDna);
     renderReview(dashboard.review);
     renderSessionHistory(sessionHistory);
+    renderTimedSetSummary(dashboard.latestTimedSetSummary);
     renderParentSummary(parentSummary);
     renderTeacherBrief(teacherBrief);
     renderTeacherAssignments(teacherAssignments);
-    if (!state.currentSessionId) renderItem(null);
+    if (!state.currentSessionId) {
+      state.currentSessionType = null;
+      renderItem(null);
+    }
+    syncSessionControls();
     $('#diagnosticStatus').textContent = dashboard.profile.lastSessionSummary || 'No active diagnostic session.';
   } catch (error) {
     $('#diagnosticStatus').textContent = error.message;
@@ -460,6 +561,35 @@ $('#startDiagnostic').addEventListener('click', async () => {
       body: JSON.stringify({ userId: state.userId }),
     });
     state.currentSessionId = result.session.id;
+    state.currentSessionType = result.session.type;
+    renderItem(result.currentItem);
+    renderSessionProgress(result.sessionProgress);
+  } catch (error) {
+    $('#diagnosticStatus').textContent = error.message;
+  }
+});
+
+$('#startTimedSet').addEventListener('click', async () => {
+  try {
+    const result = await json('/api/timed-set/start', {
+      method: 'POST',
+      body: JSON.stringify({ userId: state.userId }),
+    });
+    state.currentSessionId = result.session.id;
+    state.currentSessionType = result.session.type;
+    renderTimedSetSummary({
+      sessionType: result.session.type,
+      examMode: result.pacing?.exam_mode ?? result.timing?.examMode ?? true,
+      answered: result.sessionProgress?.answered ?? 0,
+      total: result.sessionProgress?.total ?? result.items?.length ?? 0,
+      accuracy: null,
+      correct: 0,
+      timeLimitSec: result.pacing?.time_limit_sec ?? result.timing?.timeLimitSec ?? result.session.time_limit_sec,
+      recommendedPaceSec: result.pacing?.recommended_pace_sec ?? result.timing?.recommendedPaceSec ?? result.session.recommended_pace_sec,
+      remainingTimeSec: result.pacing?.time_limit_sec ?? result.timing?.timeLimitSec ?? result.session.time_limit_sec,
+      paceStatus: 'not_started',
+      nextAction: 'Work through the set in exam mode, then finish to review your pacing.',
+    });
     renderItem(result.currentItem);
     renderSessionProgress(result.sessionProgress);
   } catch (error) {
@@ -491,16 +621,48 @@ $('#attemptForm').addEventListener('submit', async (event) => {
       body: JSON.stringify(payload),
     });
     $('#attemptResult').textContent = JSON.stringify(result, null, 2);
+    state.currentSessionType = result.sessionType ?? state.currentSessionType;
     renderProjection(result.projection);
     renderPlan(result.plan);
     renderErrorDna(result.errorDna);
     renderReview(result.review);
+    if (result.timedSummary) {
+      renderTimedSetSummary(result.timedSummary);
+    }
     renderSessionProgress(result.sessionProgress);
     if (result.nextItem) {
       renderItem(result.nextItem);
     } else {
+      if (state.currentSessionType === 'timed_set') {
+        state.currentItem = null;
+        state.currentSessionId = null;
+        state.currentSessionType = null;
+      }
       renderItem(null);
     }
+  } catch (error) {
+    $('#attemptResult').textContent = error.message;
+  }
+});
+
+$('#finishTimedSet').addEventListener('click', async () => {
+  if (!state.currentSessionId || state.currentSessionType !== 'timed_set') return;
+
+  try {
+    const result = await json('/api/timed-set/finish', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: state.currentSessionId,
+      }),
+    });
+    renderTimedSetSummary(result.timedSummary ?? result);
+    renderSessionProgress(result.sessionProgress);
+    $('#attemptResult').textContent = JSON.stringify(result, null, 2);
+    state.currentItem = null;
+    state.currentSessionId = null;
+    state.currentSessionType = null;
+    renderItem(null);
+    await loadDashboard();
   } catch (error) {
     $('#attemptResult').textContent = error.message;
   }

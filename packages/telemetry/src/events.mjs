@@ -1,6 +1,7 @@
 export const EVENT_NAMES = [
   'app_opened',
   'diagnostic_started',
+  'timed_set_started',
   'question_rendered',
   'answer_selected',
   'answer_changed',

@@ -28,6 +28,12 @@ paths:
       responses:
         '201':
           description: Diagnostic session created
+  /api/timed-set/start:
+    post:
+      summary: Start a short timed set in exam mode
+      responses:
+        '201':
+          description: Timed set session created
   /api/plan/today:
     get:
       summary: Fetch today's adaptive plan
@@ -46,6 +52,12 @@ paths:
       responses:
         '200':
           description: Attempt accepted and learner-state update payload returned
+  /api/timed-set/finish:
+    post:
+      summary: Finish the active timed set and return a pacing summary
+      responses:
+        '200':
+          description: Timed set summary returned
   /api/review/recommendations:
     get:
       summary: Fetch review recommendations grounded in recent mistakes

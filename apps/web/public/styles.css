@@ -29,6 +29,10 @@ button {
   cursor: pointer;
 }
 button:hover { opacity: 0.92; }
+button.secondary {
+  background: #eef2ff;
+  color: var(--accent);
+}
 pre {
   white-space: pre-wrap;
   word-break: break-word;
@@ -127,7 +131,8 @@ input {
 .choice,
 .review-item,
 .history-item,
-.teacher-assignment-item {
+.teacher-assignment-item,
+.timed-summary-item {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -149,6 +154,37 @@ input {
 }
 .teacher-assignment-item p {
   margin: 0;
+}
+.timed-summary-item p,
+.timed-summary-item h3 {
+  margin: 0;
+}
+.timed-summary-item h3 {
+  font-size: 1.05rem;
+}
+.session-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.pill.warning {
+  background: #fff3e6;
+  color: #a35a00;
+}
+.pill.success {
+  background: #e8f8ef;
+  color: var(--success);
 }
 .review-rationale {
   color: var(--text);
