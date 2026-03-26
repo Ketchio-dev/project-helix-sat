@@ -136,22 +136,21 @@ export function createStore(seed = createDemoData()) {
 
     submitAttempt({ userId = DEMO_USER_ID, itemId, sessionId, selectedAnswer, confidenceLevel = 3, mode = 'learn', responseTimeMs = 60000 }) {
       api.getUser(userId);
+      if (!sessionId) throw new HttpError(400, 'sessionId is required');
       const item = api.getItem(itemId);
       const rationale = api.getRationale(itemId);
       if (!item || !rationale) throw new HttpError(404, 'Unknown item');
       if (!selectedAnswer) throw new HttpError(400, 'selectedAnswer is required');
-      if (sessionId) {
-        const session = api.getSession(sessionId);
-        if (!session || session.user_id !== userId) {
-          throw new HttpError(400, 'Unknown or invalid session');
-        }
-        const sessionItem = api.getSessionItems(sessionId).find((entry) => entry.item_id === itemId);
-        if (!sessionItem) {
-          throw new HttpError(400, 'Item does not belong to the active session');
-        }
-        if (sessionItem.answered_at) {
-          throw new HttpError(409, 'Item was already answered in this session');
-        }
+      const session = api.getSession(sessionId);
+      if (!session || session.user_id !== userId) {
+        throw new HttpError(400, 'Unknown or invalid session');
+      }
+      const sessionItem = api.getSessionItems(sessionId).find((entry) => entry.item_id === itemId);
+      if (!sessionItem) {
+        throw new HttpError(400, 'Item does not belong to the active session');
+      }
+      if (sessionItem.answered_at) {
+        throw new HttpError(409, 'Item was already answered in this session');
       }
 
       const isCorrect = selectedAnswer === item.answerKey;
@@ -174,11 +173,7 @@ export function createStore(seed = createDemoData()) {
       state.attempts.push(attempt);
       state.events.push(createEvent({ userId, sessionId, eventName: 'answer_selected', payload: { itemId, selectedAnswer, isCorrect, mode } }));
 
-      if (sessionId) {
-        const sessionItems = api.getSessionItems(sessionId);
-        const sessionItem = sessionItems.find((entry) => entry.item_id === itemId);
-        sessionItem.answered_at = new Date().toISOString();
-      }
+      sessionItem.answered_at = new Date().toISOString();
 
       state.skillStates[userId] = api.getSkillStates(userId).map((skillState) => {
         if (skillState.skill_id !== item.skill) return skillState;
@@ -195,10 +190,10 @@ export function createStore(seed = createDemoData()) {
         confidenceLevel,
       }, distractorTag);
 
-      const sessionItems = sessionId ? api.getSessionItems(sessionId) : [];
+      const sessionItems = api.getSessionItems(sessionId);
       const sessionProgress = summarizeSessionProgress(sessionItems);
-      const nextSessionItem = sessionId ? api.getCurrentSessionItem(sessionId) : null;
-      if (sessionId && sessionProgress.isComplete) {
+      const nextSessionItem = api.getCurrentSessionItem(sessionId);
+      if (sessionProgress.isComplete) {
         state.sessions[sessionId].ended_at = new Date().toISOString();
         state.events.push(createEvent({ userId, sessionId, eventName: 'session_completed', payload: { type: 'diagnostic' } }));
       }

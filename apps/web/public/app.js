@@ -113,7 +113,7 @@ async function loadDashboard() {
     renderProjection(dashboard.projection);
     renderPlan(dashboard.plan);
     renderErrorDna(dashboard.errorDna);
-    if (!state.currentItem) renderItem(dashboard.items[0]);
+    if (!state.currentSessionId) renderItem(null);
     $('#diagnosticStatus').textContent = dashboard.profile.lastSessionSummary || 'No active diagnostic session.';
   } catch (error) {
     $('#diagnosticStatus').textContent = error.message;

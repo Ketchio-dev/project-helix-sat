@@ -4,6 +4,24 @@ info:
   version: 0.1.0
   description: Starter contract for the learning, assessment, and tutor core.
 paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: API service health status
+  /api/me:
+    get:
+      summary: Fetch the authenticated demo learner profile
+      responses:
+        '200':
+          description: Learner profile payload
+  /api/items:
+    get:
+      summary: Fetch starter practice items for the dashboard
+      responses:
+        '200':
+          description: Safe client-facing item payloads
   /api/diagnostic/start:
     post:
       summary: Start a diagnostic session
@@ -34,18 +52,24 @@ paths:
       responses:
         '200':
           description: Structured hint response
-  /api/module/start:
-    post:
-      summary: Start a timed module or exam-mode block
-      responses:
-        '201':
-          description: Module created
   /api/projection/latest:
     get:
       summary: Fetch the latest projected score band
       responses:
         '200':
           description: Projected score response
+  /api/projection:
+    get:
+      summary: Fetch the current projected score band
+      responses:
+        '200':
+          description: Projected score response
+  /api/error-dna:
+    get:
+      summary: Fetch the current Error DNA summary
+      responses:
+        '200':
+          description: Error DNA tag counts for the authenticated learner
 components:
   schemas:
     DailyPlan:
