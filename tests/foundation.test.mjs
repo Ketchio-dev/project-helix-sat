@@ -55,6 +55,7 @@ test('hint response schema is canonical-data-first', () => {
 test('openapi starter contract exposes learning core routes', () => {
   const openapi = readFileSync('services/api/openapi.yaml', 'utf8');
   for (const route of [
+    '/api/session/active',
     '/api/diagnostic/start',
     '/api/timed-set/start',
     '/api/timed-set/finish',

@@ -18,6 +18,7 @@ export const EVENT_NAMES = [
   'plan_skipped',
   'reflection_submitted',
   'teacher_assignment_saved',
+  'exam_session_resume_required',
   'streak_kept',
   'streak_broken',
 ];

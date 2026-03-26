@@ -90,6 +90,25 @@ input {
   margin-bottom: 0.35rem;
 }
 .subtitle, .muted, .notice { color: var(--muted); }
+.session-notice {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: #eef4ff;
+  color: var(--accent);
+  font-weight: 600;
+}
+.session-notice.warning {
+  background: #fff4e8;
+  border-color: #f0c38a;
+  color: #9a5b00;
+}
+.session-notice.info {
+  background: #eef4ff;
+  border-color: #cfdcff;
+  color: var(--accent);
+}
 .grid {
   display: grid;
   gap: 1rem;

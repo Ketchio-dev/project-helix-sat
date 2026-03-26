@@ -32,6 +32,17 @@ function isModuleSession(session) {
   return session?.type === 'module_simulation';
 }
 
+function isExamSession(session) {
+  return session?.exam_mode === true;
+}
+
+function toSessionLabel(session) {
+  if (!session) return 'session';
+  if (isTimedSession(session)) return 'timed set';
+  if (isModuleSession(session)) return 'module simulation';
+  return session.type;
+}
+
 function getReflectionPrompt(errorDna = {}) {
   const dominantError = Object.entries(errorDna).sort((a, b) => b[1] - a[1])[0]?.[0];
   if (!dominantError) {
@@ -125,7 +136,7 @@ export function createStore(seed = createDemoData()) {
 
     getProfile(userId = DEMO_USER_ID) {
       const user = api.getUser(userId);
-      const latestSession = Object.values(state.sessions).find((session) => session.user_id === userId && !session.ended_at);
+      const latestSession = api.getActiveSessions(userId)[0] ?? null;
       return {
         id: user.id,
         name: user.name,
@@ -133,7 +144,7 @@ export function createStore(seed = createDemoData()) {
         targetTestDate: user.targetTestDate,
         dailyMinutes: user.dailyMinutes,
         preferredExplanationLanguage: user.preferredExplanationLanguage,
-        lastSessionSummary: latestSession ? `${latestSession.type} in progress` : null,
+        lastSessionSummary: latestSession ? `${toSessionLabel(latestSession)} in progress` : null,
       };
     },
 
@@ -543,6 +554,7 @@ export function createStore(seed = createDemoData()) {
         errorDna: api.getErrorDna(userId),
         items: api.listItems(4),
         review: api.getReviewRecommendations(userId),
+        activeSession: api.getActiveSession(userId),
         sessionHistory: api.getSessionHistory(userId, 5),
         latestTimedSetSummary: api.getLatestTimedSetSummary(userId),
         latestModuleSummary: api.getLatestModuleSummary(userId),
@@ -576,6 +588,99 @@ export function createStore(seed = createDemoData()) {
       return api.getSessionItems(sessionId).find((entry) => !entry.answered_at) ?? null;
     },
 
+    getActiveSessions(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      return Object.values(state.sessions)
+        .filter((session) => session.user_id === userId && !session.ended_at)
+        .sort((left, right) => {
+          const examPriority = Number(isExamSession(right)) - Number(isExamSession(left));
+          if (examPriority !== 0) return examPriority;
+          return new Date(right.started_at) - new Date(left.started_at);
+        });
+    },
+
+    getActiveExamSession(userId = DEMO_USER_ID) {
+      return api.getActiveSessions(userId).find((session) => isExamSession(session)) ?? null;
+    },
+
+    buildSessionPayload(sessionOrId, extra = {}) {
+      const session = typeof sessionOrId === 'string' ? api.getSession(sessionOrId) : sessionOrId;
+      if (!session) return null;
+      const sessionItems = api.getSessionItems(session.id);
+      const currentSessionItem = api.getCurrentSessionItem(session.id);
+
+      return {
+        session,
+        sessionType: session.type,
+        items: sessionItems.map((entry) => toClientItem(api.getItem(entry.item_id))),
+        currentItem: currentSessionItem ? toClientItem(api.getItem(currentSessionItem.item_id)) : null,
+        sessionProgress: summarizeSessionProgress(sessionItems),
+        timing: isExamSession(session)
+          ? {
+              timeLimitSec: session.time_limit_sec ?? null,
+              recommendedPaceSec: session.recommended_pace_sec ?? null,
+              examMode: session.exam_mode,
+            }
+          : null,
+        timedSummary: isTimedSession(session) ? api.getTimedSetSummary(session.id) : null,
+        moduleSummary: isModuleSession(session) ? api.getModuleSummary(session.id) : null,
+        ...extra,
+      };
+    },
+
+    getActiveSession(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const activeSession = api.getActiveSessions(userId)[0] ?? null;
+      if (!activeSession) {
+        return {
+          hasActiveSession: false,
+          resumeAvailable: false,
+          activeSession: null,
+        };
+      }
+
+      return {
+        hasActiveSession: true,
+        resumeAvailable: true,
+        resumeReason: isExamSession(activeSession) ? 'unfinished_exam_session' : 'unfinished_session',
+        resumeMessage: `Resume your unfinished ${toSessionLabel(activeSession)}.`,
+        activeSession: api.buildSessionPayload(activeSession, {
+          started: false,
+          resumed: true,
+          conflict: false,
+        }),
+      };
+    },
+
+    createExamSessionConflict(userId = DEMO_USER_ID, requestedSessionType) {
+      const activeExamSession = api.getActiveExamSession(userId);
+      if (!activeExamSession) return null;
+
+      state.events.push(createEvent({
+        userId,
+        sessionId: activeExamSession.id,
+        eventName: 'exam_session_resume_required',
+        payload: {
+          requestedSessionType,
+          activeSessionType: activeExamSession.type,
+        },
+      }));
+
+      return {
+        started: false,
+        resumed: true,
+        conflict: true,
+        reason: 'active_exam_session_exists',
+        requestedSessionType,
+        conflictMessage: `Finish or resume the current ${toSessionLabel(activeExamSession)} before starting another exam session.`,
+        activeSession: api.buildSessionPayload(activeExamSession, {
+          started: false,
+          resumed: true,
+          conflict: true,
+        }),
+      };
+    },
+
     isHintBlockedByExamSession(userId = DEMO_USER_ID, itemId, sessionId = null) {
       api.getUser(userId);
       const candidateSessions = sessionId
@@ -593,6 +698,10 @@ export function createStore(seed = createDemoData()) {
 
     startTimedSet(userId = DEMO_USER_ID) {
       api.getUser(userId);
+      const conflict = api.createExamSessionConflict(userId, 'timed_set');
+      if (conflict) {
+        return conflict;
+      }
       const timedSetItemIds = [
         'rw_words_context_01',
         'math_linear_01',
@@ -625,21 +734,15 @@ export function createStore(seed = createDemoData()) {
         eventName: 'timed_set_started',
         payload: { mode: 'exam', timeLimitSec: session.time_limit_sec },
       }));
-      return {
-        session,
-        items: assignedItems.map((entry) => toClientItem(api.getItem(entry.item_id))),
-        currentItem: toClientItem(api.getItem(assignedItems[0].item_id)),
-        sessionProgress: summarizeSessionProgress(assignedItems),
-        timing: {
-          timeLimitSec: session.time_limit_sec,
-          recommendedPaceSec: session.recommended_pace_sec,
-          examMode: session.exam_mode,
-        },
-      };
+      return api.buildSessionPayload(session, { started: true, resumed: false, conflict: false });
     },
 
     startModuleSimulation(userId = DEMO_USER_ID) {
       api.getUser(userId);
+      const conflict = api.createExamSessionConflict(userId, 'module_simulation');
+      if (conflict) {
+        return conflict;
+      }
       const moduleItemIds = [
         'rw_words_context_01',
         'rw_structure_01',
@@ -673,18 +776,7 @@ export function createStore(seed = createDemoData()) {
         eventName: 'module_started',
         payload: { mode: 'exam', timeLimitSec: session.time_limit_sec, itemCount: assignedItems.length },
       }));
-      return {
-        session,
-        items: assignedItems.map((entry) => toClientItem(api.getItem(entry.item_id))),
-        currentItem: toClientItem(api.getItem(assignedItems[0].item_id)),
-        sessionProgress: summarizeSessionProgress(assignedItems),
-        timing: {
-          timeLimitSec: session.time_limit_sec,
-          recommendedPaceSec: session.recommended_pace_sec,
-          examMode: session.exam_mode,
-        },
-        moduleSummary: api.getModuleSummary(session.id),
-      };
+      return api.buildSessionPayload(session, { started: true, resumed: false, conflict: false });
     },
 
     startDiagnostic(userId = DEMO_USER_ID) {

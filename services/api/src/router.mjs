@@ -52,6 +52,10 @@ export function createRouter({ store, webRoot }) {
         return sendJson(response, 200, { sessions: store.getSessionHistory(authenticatedUserId, limit) });
       }
 
+      if (request.method === 'GET' && pathname === '/api/session/active') {
+        return sendJson(response, 200, store.getActiveSession(authenticatedUserId));
+      }
+
       if (request.method === 'GET' && pathname === '/api/parent/summary') {
         return sendJson(response, 200, store.getParentSummary(authenticatedUserId));
       }
@@ -84,12 +88,14 @@ export function createRouter({ store, webRoot }) {
 
       if (request.method === 'POST' && pathname === '/api/timed-set/start') {
         await readJsonBody(request);
-        return sendJson(response, 201, store.startTimedSet(authenticatedUserId));
+        const result = store.startTimedSet(authenticatedUserId);
+        return sendJson(response, result.conflict ? 409 : 201, result);
       }
 
       if (request.method === 'POST' && pathname === '/api/module/start') {
         await readJsonBody(request);
-        return sendJson(response, 201, store.startModuleSimulation(authenticatedUserId));
+        const result = store.startModuleSimulation(authenticatedUserId);
+        return sendJson(response, result.conflict ? 409 : 201, result);
       }
 
       if (request.method === 'POST' && pathname === '/api/attempt/submit') {
@@ -145,7 +151,7 @@ export function createRouter({ store, webRoot }) {
       return sendJson(response, 404, { error: 'Not found' });
     } catch (error) {
       if (error instanceof HttpError) {
-        return sendJson(response, error.statusCode, { error: error.message });
+        return sendJson(response, error.statusCode, error.payload ?? { error: error.message });
       }
       console.error(error);
       return sendJson(response, 500, { error: 'Request failed' });

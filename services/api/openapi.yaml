@@ -22,6 +22,12 @@ paths:
       responses:
         '200':
           description: Safe client-facing item payloads
+  /api/session/active:
+    get:
+      summary: Fetch the learner's current active session, if any, for restore/resume flows
+      responses:
+        '200':
+          description: Active session envelope or null-active payload
   /api/diagnostic/start:
     post:
       summary: Start a diagnostic session

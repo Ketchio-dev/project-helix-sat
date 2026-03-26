@@ -8,6 +8,7 @@ const state = {
   reflectionPrompt: '',
   latestTimedSetSummary: null,
   latestModuleSummary: null,
+  activeSessionEnvelope: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -20,9 +21,13 @@ const json = async (url, options) => {
     },
     ...options,
   });
+  if (response.status === 204) return null;
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || `HTTP ${response.status}`);
+    const payload = await response.json().catch(() => ({ error: 'Request failed' }));
+    const error = new Error(payload.error || `HTTP ${response.status}`);
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
   }
   return response.json();
 };
@@ -96,6 +101,21 @@ function toDisplaySessionType(value) {
 
 function isExamSessionType(value) {
   return value === 'timed_set' || value === 'module' || value === 'module_simulation';
+}
+
+function renderSessionNotice(message, tone = 'info') {
+  const element = $('#sessionNotice');
+  if (!message) {
+    element.textContent = '';
+    element.className = 'session-notice hidden';
+    return;
+  }
+  element.textContent = message;
+  element.className = `session-notice ${tone}`;
+}
+
+function clearSessionNotice() {
+  renderSessionNotice('', 'info');
 }
 
 function syncSessionControls() {
@@ -646,6 +666,82 @@ function renderItem(item) {
   syncSessionControls();
 }
 
+function extractSessionEnvelope(payload) {
+  if (!payload) return null;
+
+  const envelope = payload.activeSession ?? payload.resumeSession ?? payload.sessionState ?? payload;
+  const session = envelope?.session ?? payload.session ?? null;
+
+  if (!session?.id) {
+    return null;
+  }
+
+  return {
+    session,
+    currentItem: envelope.currentItem ?? payload.currentItem ?? null,
+    sessionProgress: envelope.sessionProgress ?? payload.sessionProgress ?? null,
+    timedSummary: envelope.timedSummary ?? payload.timedSummary ?? null,
+    moduleSummary: envelope.moduleSummary ?? payload.moduleSummary ?? null,
+    noticeMessage: payload.resumeMessage ?? payload.conflictMessage ?? payload.message ?? payload.error ?? null,
+    noticeTone: payload.conflictMessage || payload.reason === 'exam_session_in_progress' ? 'warning' : 'info',
+  };
+}
+
+function applySessionEnvelope(envelope, { fallbackNotice = null, tone = null } = {}) {
+  if (!envelope?.session?.id) {
+    return false;
+  }
+
+  state.activeSessionEnvelope = envelope;
+  state.currentSessionId = envelope.session.id;
+  state.currentSessionType = envelope.session.type;
+
+  if (envelope.timedSummary) {
+    renderTimedSetSummary(envelope.timedSummary);
+  }
+  if (envelope.moduleSummary) {
+    renderModuleSummary(envelope.moduleSummary);
+  }
+
+  renderItem(envelope.currentItem ?? null);
+
+  if (envelope.sessionProgress) {
+    renderSessionProgress(envelope.sessionProgress);
+  } else {
+    $('#diagnosticStatus').textContent = `${toDisplaySessionType(envelope.session.type)} restored.`;
+  }
+
+  renderSessionNotice(
+    fallbackNotice ?? envelope.noticeMessage ?? `${toDisplaySessionType(envelope.session.type)} restored.`,
+    tone ?? envelope.noticeTone ?? 'info',
+  );
+  syncSessionControls();
+  return true;
+}
+
+async function loadActiveSession() {
+  for (const path of ['/api/session/active', '/api/sessions/active']) {
+    try {
+      return await json(path);
+    } catch (error) {
+      if (error.status === 404) continue;
+      throw error;
+    }
+  }
+  return null;
+}
+
+function handleSessionConflict(error, fallbackMessage) {
+  const envelope = extractSessionEnvelope(error?.payload);
+  if (applySessionEnvelope(envelope, { fallbackNotice: fallbackMessage ?? error.message, tone: 'warning' })) {
+    return true;
+  }
+
+  renderSessionNotice(fallbackMessage ?? error.message, 'warning');
+  $('#diagnosticStatus').textContent = fallbackMessage ?? error.message;
+  return false;
+}
+
 function renderSessionProgress(progress) {
   if (!progress) return;
   const sessionLabel = toDisplaySessionType(state.currentSessionType);
@@ -668,12 +764,13 @@ async function loadReviewRecommendations() {
 
 async function loadDashboard() {
   try {
-    const [dashboard, sessionHistory, parentSummary, teacherBrief, teacherAssignments] = await Promise.all([
+    const [dashboard, sessionHistory, parentSummary, teacherBrief, teacherAssignments, activeSession] = await Promise.all([
       json('/api/dashboard/learner'),
       json('/api/sessions/history').catch(() => null),
       json('/api/parent/summary').catch(() => null),
       json('/api/teacher/brief').catch(() => null),
       json('/api/teacher/assignments').catch(() => null),
+      loadActiveSession().catch((error) => (error.status === 404 ? null : Promise.reject(error))),
     ]);
 
     renderProfile(dashboard.profile);
@@ -687,12 +784,15 @@ async function loadDashboard() {
     renderParentSummary(parentSummary);
     renderTeacherBrief(teacherBrief);
     renderTeacherAssignments(teacherAssignments);
-    if (!state.currentSessionId) {
+    if (!applySessionEnvelope(extractSessionEnvelope(activeSession))) {
+      state.activeSessionEnvelope = null;
       state.currentSessionType = null;
+      state.currentSessionId = null;
+      clearSessionNotice();
       renderItem(null);
+      $('#diagnosticStatus').textContent = dashboard.profile.lastSessionSummary || 'No active diagnostic session.';
     }
     syncSessionControls();
-    $('#diagnosticStatus').textContent = dashboard.profile.lastSessionSummary || 'No active diagnostic session.';
   } catch (error) {
     $('#diagnosticStatus').textContent = error.message;
   }
@@ -711,6 +811,7 @@ $('#startDiagnostic').addEventListener('click', async () => {
     });
     state.currentSessionId = result.session.id;
     state.currentSessionType = result.session.type;
+    clearSessionNotice();
     renderItem(result.currentItem);
     renderSessionProgress(result.sessionProgress);
   } catch (error) {
@@ -726,6 +827,7 @@ $('#startTimedSet').addEventListener('click', async () => {
     });
     state.currentSessionId = result.session.id;
     state.currentSessionType = result.session.type;
+    clearSessionNotice();
     renderTimedSetSummary({
       sessionType: result.session.type,
       examMode: result.pacing?.exam_mode ?? result.timing?.examMode ?? true,
@@ -742,7 +844,7 @@ $('#startTimedSet').addEventListener('click', async () => {
     renderItem(result.currentItem);
     renderSessionProgress(result.sessionProgress);
   } catch (error) {
-    $('#diagnosticStatus').textContent = error.message;
+    handleSessionConflict(error, 'Finish or resume the current exam session before starting another timed set.');
   }
 });
 
@@ -754,6 +856,7 @@ $('#startModule').addEventListener('click', async () => {
     });
     state.currentSessionId = result.session.id;
     state.currentSessionType = result.session.type;
+    clearSessionNotice();
     renderModuleSummary({
       sessionType: result.session.type,
       examMode: result.moduleSummary?.examMode ?? result.moduleSummary?.exam_mode ?? result.pacing?.exam_mode ?? true,
@@ -775,7 +878,7 @@ $('#startModule').addEventListener('click', async () => {
     renderItem(result.currentItem);
     renderSessionProgress(result.sessionProgress);
   } catch (error) {
-    $('#diagnosticStatus').textContent = error.message;
+    handleSessionConflict(error, 'Finish or resume the current exam session before starting another module simulation.');
   }
 });
 
@@ -822,6 +925,7 @@ $('#attemptForm').addEventListener('submit', async (event) => {
         state.currentItem = null;
         state.currentSessionId = null;
         state.currentSessionType = null;
+        clearSessionNotice();
       }
       renderItem(null);
     }
@@ -846,6 +950,7 @@ $('#finishModule').addEventListener('click', async () => {
     state.currentItem = null;
     state.currentSessionId = null;
     state.currentSessionType = null;
+    clearSessionNotice();
     renderItem(null);
     await loadDashboard();
   } catch (error) {
@@ -869,6 +974,7 @@ $('#finishTimedSet').addEventListener('click', async () => {
     state.currentItem = null;
     state.currentSessionId = null;
     state.currentSessionType = null;
+    clearSessionNotice();
     renderItem(null);
     await loadDashboard();
   } catch (error) {

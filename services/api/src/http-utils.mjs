@@ -34,10 +34,11 @@ export function sendJson(response, statusCode, payload) {
 }
 
 export class HttpError extends Error {
-  constructor(statusCode, message) {
+  constructor(statusCode, message, payload = null) {
     super(message);
     this.name = 'HttpError';
     this.statusCode = statusCode;
+    this.payload = payload;
   }
 }
 

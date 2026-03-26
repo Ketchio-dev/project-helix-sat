@@ -79,7 +79,7 @@ create table if not exists item_rationales (
 create table if not exists sessions (
   id text primary key,
   user_id text not null references users(id) on delete cascade,
-  type text not null check (type in ('diagnostic', 'learn', 'drill', 'review', 'timed_set', 'module', 'mock')),
+  type text not null check (type in ('diagnostic', 'learn', 'drill', 'review', 'timed_set', 'module_simulation', 'mock')),
   started_at timestamptz not null,
   ended_at timestamptz,
   energy_self_report integer check (energy_self_report between 1 and 5),

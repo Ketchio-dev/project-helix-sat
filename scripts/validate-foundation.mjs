@@ -77,7 +77,7 @@ for (const table of requiredTables) {
 }
 
 const openapi = readFileSync(join(root, 'services/api/openapi.yaml'), 'utf8');
-for (const fragment of ['openapi: 3.1.0', '/diagnostic/start', '/timed-set/start', '/module/start', '/module/finish', '/plan/today', '/attempt/submit', '/tutor/hint']) {
+for (const fragment of ['openapi: 3.1.0', '/session/active', '/diagnostic/start', '/timed-set/start', '/module/start', '/module/finish', '/plan/today', '/attempt/submit', '/tutor/hint']) {
   if (!openapi.includes(fragment)) errors.push(`OpenAPI contract missing fragment: ${fragment}`);
 }
 

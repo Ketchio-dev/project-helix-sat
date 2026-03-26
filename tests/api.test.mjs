@@ -115,6 +115,65 @@ test('api rejects items that do not belong to the active session', async () => {
   });
 });
 
+test('api exposes the active session for restore and returns null when nothing is active', async () => {
+  await withServer(async (baseUrl) => {
+    const initial = await fetch(`${baseUrl}/api/session/active`, {
+      headers: authHeaders,
+    }).then((res) => res.json());
+
+    assert.equal(initial.hasActiveSession, false);
+    assert.equal(initial.activeSession, null);
+
+    const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+
+    const active = await fetch(`${baseUrl}/api/session/active`, {
+      headers: authHeaders,
+    }).then((res) => res.json());
+
+    assert.equal(active.hasActiveSession, true);
+    assert.equal(active.resumeAvailable, true);
+    assert.equal(active.resumeReason, 'unfinished_session');
+    assert.equal(active.activeSession.session.id, diagnostic.session.id);
+    assert.equal(active.activeSession.currentItem.itemId, diagnostic.currentItem.itemId);
+    assert.equal(active.activeSession.sessionProgress.answered, 0);
+  });
+});
+
+test('api arbitrates overlapping exam sessions and returns the active session for resume', async () => {
+  await withServer(async (baseUrl) => {
+    const timedSet = await fetch(`${baseUrl}/api/timed-set/start`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+
+    const conflictingStart = await fetch(`${baseUrl}/api/module/start`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({}),
+    });
+    assert.equal(conflictingStart.status, 409);
+
+    const conflict = await conflictingStart.json();
+    assert.equal(conflict.conflict, true);
+    assert.equal(conflict.reason, 'active_exam_session_exists');
+    assert.equal(conflict.requestedSessionType, 'module_simulation');
+    assert.equal(conflict.activeSession.session.id, timedSet.session.id);
+    assert.equal(conflict.activeSession.session.type, 'timed_set');
+    assert.equal(conflict.activeSession.currentItem.itemId, timedSet.currentItem.itemId);
+
+    const active = await fetch(`${baseUrl}/api/session/active`, {
+      headers: authHeaders,
+    }).then((res) => res.json());
+    assert.equal(active.activeSession.session.id, timedSet.session.id);
+    assert.equal(active.resumeReason, 'unfinished_exam_session');
+  });
+});
+
 test('api serves timed-set start, completion, finish, and exam-mode hint blocking', async () => {
   await withServer(async (baseUrl) => {
     const timedSet = await fetch(`${baseUrl}/api/timed-set/start`, {
@@ -195,6 +254,58 @@ test('api serves timed-set start, completion, finish, and exam-mode hint blockin
 
     assert.equal(dashboard.latestTimedSetSummary.sessionId, timedSet.session.id);
     assert.equal(dashboard.latestTimedSetSummary.completed, true);
+  });
+});
+
+test('api restores the active session and prevents parallel exam-mode starts', async () => {
+  await withServer(async (baseUrl) => {
+    const noActiveSession = await fetch(`${baseUrl}/api/session/active`, {
+      headers: authHeaders,
+    }).then((res) => res.json());
+    assert.equal(noActiveSession.hasActiveSession, false);
+    assert.equal(noActiveSession.activeSession, null);
+
+    const timedSet = await fetch(`${baseUrl}/api/timed-set/start`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+    assert.equal(timedSet.started, true);
+    assert.equal(timedSet.resumed, false);
+
+    const activeSession = await fetch(`${baseUrl}/api/session/active`, {
+      headers: authHeaders,
+    }).then((res) => res.json());
+    assert.equal(activeSession.hasActiveSession, true);
+    assert.equal(activeSession.activeSession.session.id, timedSet.session.id);
+    assert.equal(activeSession.activeSession.currentItem.itemId, timedSet.currentItem.itemId);
+    assert.equal(activeSession.resumeReason, 'unfinished_exam_session');
+
+    const conflictResponse = await fetch(`${baseUrl}/api/module/start`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({}),
+    });
+    assert.equal(conflictResponse.status, 409);
+    const conflict = await conflictResponse.json();
+    assert.equal(conflict.conflict, true);
+    assert.equal(conflict.reason, 'active_exam_session_exists');
+    assert.equal(conflict.requestedSessionType, 'module_simulation');
+    assert.equal(conflict.activeSession.session.id, timedSet.session.id);
+    assert.equal(typeof conflict.conflictMessage, 'string');
+
+    const finished = await fetch(`${baseUrl}/api/timed-set/finish`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ sessionId: timedSet.session.id }),
+    }).then((res) => res.json());
+    assert.equal(finished.session.id, timedSet.session.id);
+
+    const clearedActiveSession = await fetch(`${baseUrl}/api/session/active`, {
+      headers: authHeaders,
+    }).then((res) => res.json());
+    assert.equal(clearedActiveSession.hasActiveSession, false);
+    assert.equal(clearedActiveSession.activeSession, null);
   });
 });
 
