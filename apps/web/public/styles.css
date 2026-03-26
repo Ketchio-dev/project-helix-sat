@@ -118,7 +118,8 @@ textarea {
   margin-top: 1rem;
 }
 .choice,
-.review-item {
+.review-item,
+.history-item {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -135,9 +136,18 @@ textarea {
 .review-item p {
   margin: 0;
 }
+.history-item .kv {
+  width: 100%;
+}
 .review-rationale {
   color: var(--text);
   font-size: 0.95rem;
+}
+.list.compact {
+  margin-top: 0.25rem;
+}
+.list.compact li {
+  margin-bottom: 0.25rem;
 }
 .attempt-form,
 .reflection-form {

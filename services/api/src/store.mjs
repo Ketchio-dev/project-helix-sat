@@ -45,6 +45,11 @@ function createFallbackRecommendation(item, reason, action) {
   };
 }
 
+function average(numbers = []) {
+  if (!numbers.length) return null;
+  return numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+}
+
 export function createStore(seed = createDemoData()) {
   const state = structuredClone(seed);
   state.sessionItems ??= {};
@@ -157,6 +162,83 @@ export function createStore(seed = createDemoData()) {
       };
     },
 
+    getSessionHistory(userId = DEMO_USER_ID, limit = 5) {
+      api.getUser(userId);
+      const reflections = api.getReflections(userId);
+      return Object.values(state.sessions)
+        .filter((session) => session.user_id === userId)
+        .sort((left, right) => new Date(right.started_at) - new Date(left.started_at))
+        .slice(0, limit)
+        .map((session) => {
+          const sessionItems = api.getSessionItems(session.id);
+          const progress = summarizeSessionProgress(sessionItems);
+          const attempts = state.attempts.filter((attempt) => attempt.session_id === session.id);
+          const correctCount = attempts.filter((attempt) => attempt.is_correct).length;
+          const latestReflection = reflections.filter((reflection) => reflection.session_id === session.id).at(-1) ?? null;
+
+          return {
+            sessionId: session.id,
+            type: session.type,
+            status: session.ended_at ? 'complete' : 'active',
+            startedAt: session.started_at,
+            endedAt: session.ended_at ?? null,
+            answered: progress.answered,
+            totalItems: progress.total,
+            attemptCount: attempts.length,
+            attemptsCount: attempts.length,
+            correctCount,
+            accuracy: attempts.length ? Number((correctCount / attempts.length).toFixed(2)) : null,
+            accuracyRate: attempts.length ? Number((correctCount / attempts.length).toFixed(2)) : null,
+            averageResponseTimeMs: attempts.length ? Math.round(average(attempts.map((attempt) => attempt.response_time_ms))) : null,
+            lastReflection: latestReflection?.response ?? null,
+            latestReflection: latestReflection?.response ?? null,
+          };
+        });
+    },
+
+    getParentSummary(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const profile = api.getProfile(userId);
+      const projection = api.getProjection(userId);
+      const skillStates = [...api.getSkillStates(userId)];
+      const sessionHistory = api.getSessionHistory(userId, 5);
+      const attempts = api.getAttempts(userId);
+      const totalStudyMinutes = Math.round(attempts.reduce((sum, attempt) => sum + attempt.response_time_ms, 0) / 60000);
+      const strongestSkills = [...skillStates]
+        .sort((left, right) => (right.mastery + right.timed_mastery) - (left.mastery + left.timed_mastery))
+        .slice(0, 2)
+        .map((skillState) => skillState.skill_id);
+      const attentionSkills = [...skillStates]
+        .sort((left, right) => (left.mastery + left.timed_mastery + left.retention_risk) - (right.mastery + right.timed_mastery + right.retention_risk))
+        .slice(0, 2)
+        .map((skillState) => skillState.skill_id);
+      const topErrorPattern = Object.entries(api.getErrorDna(userId)).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      const latestReflection = api.getReflections(userId).at(-1) ?? null;
+      const completedSessions = sessionHistory.filter((session) => session.status === 'complete').length;
+
+      return {
+        learnerName: profile.name,
+        targetScore: profile.targetScore,
+        targetTestDate: profile.targetTestDate,
+        readiness: projection.readiness_indicator,
+        currentProjection: projection,
+        projectedScoreBand: `${projection.predicted_total_low}-${projection.predicted_total_high}`,
+        totalStudyMinutes,
+        completedSessions,
+        activeSessions: sessionHistory.filter((session) => session.status === 'active').length,
+        consistency: sessionHistory.length ? `${completedSessions}/${sessionHistory.length} recent sessions completed` : 'No completed sessions yet',
+        topFocus: topErrorPattern ?? attentionSkills[0] ?? 'consistency',
+        strengths: strongestSkills,
+        topStrengths: strongestSkills,
+        needsAttention: attentionSkills,
+        topErrorPattern,
+        latestReflection: latestReflection?.response ?? null,
+        recommendedParentAction: topErrorPattern
+          ? `Ask ${profile.name.split(' ')[0]} how they plan to catch ${topErrorPattern} earlier on the next block.`
+          : `Review this week's plan with ${profile.name.split(' ')[0]} and confirm the next study block is scheduled.`,
+      };
+    },
+
     getDashboard(userId = DEMO_USER_ID) {
       return {
         profile: api.getProfile(userId),
@@ -165,6 +247,8 @@ export function createStore(seed = createDemoData()) {
         errorDna: api.getErrorDna(userId),
         items: api.listItems(4),
         review: api.getReviewRecommendations(userId),
+        sessionHistory: api.getSessionHistory(userId, 5),
+        parentSummary: api.getParentSummary(userId),
       };
     },
 

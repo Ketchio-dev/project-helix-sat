@@ -61,6 +61,8 @@ test('openapi starter contract exposes learning core routes', () => {
     '/api/tutor/hint',
     '/api/review/recommendations',
     '/api/reflection/submit',
+    '/api/sessions/history',
+    '/api/parent/summary',
   ]) {
     assert.ok(openapi.includes(route), `${route} should exist in OpenAPI starter contract`);
   }

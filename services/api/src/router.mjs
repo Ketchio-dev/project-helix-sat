@@ -47,6 +47,15 @@ export function createRouter({ store, webRoot }) {
         return sendJson(response, 200, { errorDna: store.getErrorDna(authenticatedUserId) });
       }
 
+      if (request.method === 'GET' && pathname === '/api/sessions/history') {
+        const limit = Number(url.searchParams.get('limit') ?? 5);
+        return sendJson(response, 200, { sessions: store.getSessionHistory(authenticatedUserId, limit) });
+      }
+
+      if (request.method === 'GET' && pathname === '/api/parent/summary') {
+        return sendJson(response, 200, store.getParentSummary(authenticatedUserId));
+      }
+
       if (request.method === 'GET' && pathname === '/api/review/recommendations') {
         const limit = Number(url.searchParams.get('limit') ?? 3);
         return sendJson(response, 200, store.getReviewRecommendations(authenticatedUserId, limit));

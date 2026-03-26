@@ -53,6 +53,21 @@ function kvRows(entries) {
   return wrapper;
 }
 
+function formatDateTime(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString();
+}
+
+function formatPercent(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) return String(value);
+  const normalized = numeric <= 1 ? numeric * 100 : numeric;
+  return `${Math.round(normalized)}%`;
+}
+
 function renderProfile(profile) {
   const container = $('#profile');
   clear(container);
@@ -116,6 +131,90 @@ function renderErrorDna(errorDna) {
 
   for (const [tag, score] of entries) {
     container.append(node('span', { className: 'badge', text: `${tag}: ${score}` }));
+  }
+}
+
+function renderSessionHistory(payload) {
+  const container = $('#sessionHistory');
+  clear(container);
+
+  const sessions = payload?.sessions ?? payload?.history ?? [];
+  if (!sessions.length) {
+    container.append(node('p', { className: 'muted', text: 'No completed sessions yet.' }));
+    return;
+  }
+
+  const stack = node('div', { className: 'stack' });
+  for (const session of sessions) {
+    const card = node('article', { className: 'history-item' });
+    const title = session.type ?? session.sessionType ?? 'session';
+    const status = session.status ?? (session.endedAt || session.ended_at ? 'completed' : 'in progress');
+    card.append(node('strong', { text: `${title} — ${status}` }));
+
+    const details = [
+      ['Started', formatDateTime(session.startedAt ?? session.started_at)],
+      ['Ended', formatDateTime(session.endedAt ?? session.ended_at)],
+      ['Attempts', session.attemptCount ?? session.answeredCount ?? session.answered ?? '—'],
+      ['Accuracy', formatPercent(session.accuracy ?? session.accuracyRate)],
+    ];
+    card.append(kvRows(details));
+
+    const reflection = session.lastReflection ?? session.reflection ?? session.summary;
+    if (reflection) {
+      card.append(node('p', { className: 'muted', text: `Reflection: ${typeof reflection === 'string' ? reflection : reflection.response ?? reflection.note ?? JSON.stringify(reflection)}` }));
+    }
+    stack.append(card);
+  }
+
+  container.append(stack);
+}
+
+function renderParentSummary(summary) {
+  const container = $('#parentSummary');
+  clear(container);
+
+  if (!summary) {
+    container.append(node('p', { className: 'muted', text: 'Parent snapshot unavailable.' }));
+    return;
+  }
+
+  const projectedScore = summary.projectedScoreBand
+    ?? summary.projected_score_band
+    ?? (summary.projection
+      ? `${summary.projection.predicted_total_low} - ${summary.projection.predicted_total_high}`
+      : '—');
+  const learnerName = summary.learnerName ?? summary.learner_name ?? summary.name ?? 'Learner';
+  const summaryRows = [
+    ['Learner', learnerName],
+    ['Projected score', projectedScore],
+    ['Consistency', summary.consistency ?? summary.weeklyConsistency ?? summary.attendanceTrend ?? '—'],
+    ['Top focus', summary.topFocus ?? summary.focusArea ?? summary.prioritySkill ?? '—'],
+  ];
+  container.append(kvRows(summaryRows));
+
+  const strengths = summary.strengths ?? summary.highlights ?? [];
+  if (strengths.length) {
+    const strengthList = node('ul', { className: 'list compact' });
+    for (const strength of strengths) {
+      strengthList.append(node('li', { text: typeof strength === 'string' ? strength : strength.label ?? strength.skill ?? JSON.stringify(strength) }));
+    }
+    container.append(node('p', { className: 'muted', text: 'Strengths' }));
+    container.append(strengthList);
+  }
+
+  const attention = summary.needsAttention ?? summary.needs_attention ?? summary.watchItems ?? [];
+  if (attention.length) {
+    const attentionList = node('ul', { className: 'list compact' });
+    for (const item of attention) {
+      attentionList.append(node('li', { text: typeof item === 'string' ? item : item.label ?? item.skill ?? JSON.stringify(item) }));
+    }
+    container.append(node('p', { className: 'muted', text: 'Needs attention' }));
+    container.append(attentionList);
+  }
+
+  const parentAction = summary.recommendedParentAction ?? summary.parentAction ?? summary.nextAction;
+  if (parentAction) {
+    container.append(node('p', { className: 'notice', text: `Parent action: ${parentAction}` }));
   }
 }
 
@@ -216,13 +315,19 @@ async function loadReviewRecommendations() {
 
 async function loadDashboard() {
   try {
-    const dashboard = await json('/api/dashboard/learner');
+    const [dashboard, sessionHistory, parentSummary] = await Promise.all([
+      json('/api/dashboard/learner'),
+      json('/api/sessions/history').catch(() => null),
+      json('/api/parent/summary').catch(() => null),
+    ]);
 
     renderProfile(dashboard.profile);
     renderProjection(dashboard.projection);
     renderPlan(dashboard.plan);
     renderErrorDna(dashboard.errorDna);
     renderReview(dashboard.review);
+    renderSessionHistory(sessionHistory);
+    renderParentSummary(parentSummary);
     if (!state.currentSessionId) renderItem(null);
     $('#diagnosticStatus').textContent = dashboard.profile.lastSessionSummary || 'No active diagnostic session.';
   } catch (error) {

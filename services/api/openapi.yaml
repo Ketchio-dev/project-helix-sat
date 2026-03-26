@@ -52,6 +52,18 @@ paths:
       responses:
         '200':
           description: Review recommendations and a reflection prompt
+  /api/sessions/history:
+    get:
+      summary: Fetch recent learner session history
+      responses:
+        '200':
+          description: Session history payload
+  /api/parent/summary:
+    get:
+      summary: Fetch a parent-facing learner summary
+      responses:
+        '200':
+          description: Parent summary payload
   /api/reflection/submit:
     post:
       summary: Save a learner reflection tied to the current session or review loop

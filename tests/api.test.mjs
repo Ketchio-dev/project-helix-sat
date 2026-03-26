@@ -115,6 +115,53 @@ test('api rejects items that do not belong to the active session', async () => {
   });
 });
 
+test('api returns session history for the authenticated learner', async () => {
+  await withServer(async (baseUrl) => {
+    const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+
+    await fetch(`${baseUrl}/api/attempt/submit`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({
+        itemId: diagnostic.items[0].itemId,
+        selectedAnswer: 'A',
+        sessionId: diagnostic.session.id,
+        mode: 'learn',
+        confidenceLevel: 3,
+        responseTimeMs: 42000,
+      }),
+    });
+
+    const historyResponse = await fetch(`${baseUrl}/api/sessions/history`, {
+      headers: authHeaders,
+    });
+    assert.equal(historyResponse.status, 200);
+
+    const history = await historyResponse.json();
+    assert.ok(Array.isArray(history.sessions));
+    assert.ok(history.sessions.length >= 1);
+    assert.equal(history.sessions[0].sessionId, diagnostic.session.id);
+  });
+});
+
+test('api returns a parent-facing learner summary', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/parent/summary`, {
+      headers: authHeaders,
+    });
+    assert.equal(response.status, 200);
+
+    const summary = await response.json();
+    assert.equal(typeof summary.learnerName, 'string');
+    assert.ok(summary.currentProjection);
+    assert.equal(typeof summary.recommendedParentAction, 'string');
+  });
+});
+
 test('api requires demo auth, enforces request size guard, and validates reflection payloads', async () => {
   await withServer(async (baseUrl) => {
     const unauthorized = await fetch(`${baseUrl}/api/me`);
