@@ -44,7 +44,12 @@ test('hint response schema is canonical-data-first', () => {
 
 test('openapi starter contract exposes learning core routes', () => {
   const openapi = readFileSync('services/api/openapi.yaml', 'utf8');
-  for (const route of ['/diagnostic/start', '/plan/today', '/attempt/submit', '/tutor/hint']) {
+  for (const route of ['/api/diagnostic/start', '/api/plan/today', '/api/attempt/submit', '/api/tutor/hint']) {
     assert.ok(openapi.includes(route), `${route} should exist in OpenAPI starter contract`);
   }
+});
+
+test('starter DB schema includes session_items for session-owned assessment flow', () => {
+  const sql = readFileSync('packages/db/schema.sql', 'utf8');
+  assert.ok(sql.includes('create table if not exists session_items'));
 });

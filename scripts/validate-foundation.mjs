@@ -28,6 +28,7 @@ const requiredTables = [
   'content_items',
   'item_rationales',
   'sessions',
+  'session_items',
   'attempts',
   'daily_plans',
   'score_predictions',

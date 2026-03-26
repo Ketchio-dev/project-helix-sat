@@ -54,11 +54,11 @@ Owns deterministic projection math, readiness state mapping, and confidence band
 ### `services/tutor`
 Owns hint orchestration only. It reads attempt context plus canonical rationale data and returns structured JSON matching the existing tutor schemas.
 
-## Minimal data model gaps to close first
-The current schema is close, but one small addition is needed for reliable session delivery.
+## Minimal data model gap now closed
+The starter schema now includes `session_items`, which gives the MVP a durable place to pin ordered diagnostic items to a session.
 
-### Add `session_items`
-Current tables store sessions and attempts, but not the ordered item assignment for a session. Add a join table before building `/diagnostic/start`.
+### `session_items`
+Current runtime logic already depends on ordered per-session item ownership, and the SQL starter schema now reflects that contract.
 
 Suggested shape:
 

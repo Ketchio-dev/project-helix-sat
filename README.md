@@ -66,3 +66,19 @@ Run:
 ```bash
 npm run check
 ```
+
+## Run the prototype
+Start the local API + web shell:
+```bash
+npm start
+```
+
+Demo API requests require the auth header:
+```bash
+X-Demo-User-Id: demo-student
+```
+
+Example:
+```bash
+curl -H 'X-Demo-User-Id: demo-student' http://localhost:4321/api/dashboard/learner
+```

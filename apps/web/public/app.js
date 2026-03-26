@@ -5,6 +5,7 @@ const state = {
 };
 
 const $ = (selector) => document.querySelector(selector);
+
 const json = async (url, options) => {
   const response = await fetch(url, {
     headers: {
@@ -20,78 +21,135 @@ const json = async (url, options) => {
   return response.json();
 };
 
+function clear(element) {
+  element.replaceChildren();
+}
+
+function node(tag, { className, text, htmlFor, value, type, name, checked, id } = {}, children = []) {
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  if (text !== undefined) element.textContent = text;
+  if (htmlFor) element.htmlFor = htmlFor;
+  if (value !== undefined) element.value = value;
+  if (type) element.type = type;
+  if (name) element.name = name;
+  if (checked !== undefined) element.checked = checked;
+  if (id) element.id = id;
+  for (const child of children) {
+    if (child) element.append(child);
+  }
+  return element;
+}
+
+function kvRows(entries) {
+  const wrapper = node('div', { className: 'kv' });
+  for (const [label, value] of entries) {
+    wrapper.append(node('strong', { text: label }));
+    wrapper.append(node('span', { text: String(value) }));
+  }
+  return wrapper;
+}
+
 function renderProfile(profile) {
-  $('#profile').innerHTML = `
-    <div class="kv">
-      <strong>Name</strong><span>${profile.name}</span>
-      <strong>Target score</strong><span>${profile.targetScore}</span>
-      <strong>Test date</strong><span>${profile.targetTestDate}</span>
-      <strong>Daily minutes</strong><span>${profile.dailyMinutes}</span>
-      <strong>Language</strong><span>${profile.preferredExplanationLanguage}</span>
-    </div>
-  `;
+  const container = $('#profile');
+  clear(container);
+  container.append(
+    kvRows([
+      ['Name', profile.name],
+      ['Target score', profile.targetScore],
+      ['Test date', profile.targetTestDate],
+      ['Daily minutes', profile.dailyMinutes],
+      ['Language', profile.preferredExplanationLanguage],
+    ]),
+  );
 }
 
 function renderProjection(projection) {
-  $('#projection').innerHTML = `
-    <div class="kv">
-      <strong>Total</strong><span>${projection.predicted_total_low} - ${projection.predicted_total_high}</span>
-      <strong>Reading & Writing</strong><span>${projection.rw_low} - ${projection.rw_high}</span>
-      <strong>Math</strong><span>${projection.math_low} - ${projection.math_high}</span>
-      <strong>Readiness</strong><span>${projection.readiness_indicator}</span>
-      <strong>Confidence</strong><span>${Math.round(projection.confidence * 100)}%</span>
-      <strong>Momentum</strong><span>${Math.round((projection.momentum_score ?? 0) * 100)}%</span>
-    </div>
-  `;
+  const container = $('#projection');
+  clear(container);
+  container.append(
+    kvRows([
+      ['Total', `${projection.predicted_total_low} - ${projection.predicted_total_high}`],
+      ['Reading & Writing', `${projection.rw_low} - ${projection.rw_high}`],
+      ['Math', `${projection.math_low} - ${projection.math_high}`],
+      ['Readiness', projection.readiness_indicator],
+      ['Confidence', `${Math.round(projection.confidence * 100)}%`],
+      ['Momentum', `${Math.round((projection.momentum_score ?? 0) * 100)}%`],
+    ]),
+  );
 }
 
 function renderPlan(plan) {
-  const blocks = plan.blocks.map((block) => `
-    <li>
-      <strong>${block.block_type}</strong> — ${block.minutes} min<br />
-      ${block.objective}<br />
-      <span class="muted">Expected benefit: ${block.expected_benefit}</span>
-    </li>
-  `).join('');
+  const container = $('#plan');
+  clear(container);
+  container.append(node('p', { text: plan.rationale_summary ?? 'Adaptive plan generated from learner state.' }));
 
-  $('#plan').innerHTML = `
-    <p>${plan.rationale_summary ?? 'Adaptive plan generated from learner state.'}</p>
-    <ul class="list">${blocks}</ul>
-    <p class="muted">Fallback: ${plan.fallback_plan.trigger}</p>
-    <p class="muted">Stop condition: ${plan.stop_condition}</p>
-  `;
+  const list = node('ul', { className: 'list' });
+  for (const block of plan.blocks) {
+    const item = node('li');
+    item.append(node('strong', { text: `${block.block_type} — ${block.minutes} min` }));
+    item.append(document.createElement('br'));
+    item.append(document.createTextNode(block.objective));
+    item.append(document.createElement('br'));
+    item.append(node('span', { className: 'muted', text: `Expected benefit: ${block.expected_benefit}` }));
+    list.append(item);
+  }
+  container.append(list);
+  container.append(node('p', { className: 'muted', text: `Fallback: ${plan.fallback_plan.trigger}` }));
+  container.append(node('p', { className: 'muted', text: `Stop condition: ${plan.stop_condition}` }));
 }
 
 function renderErrorDna(errorDna) {
-  const tags = Object.entries(errorDna)
+  const container = $('#errorDna');
+  clear(container);
+  const entries = Object.entries(errorDna)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-    .map(([tag, score]) => `<span class="badge">${tag}: ${score}</span>`)
-    .join('');
-  $('#errorDna').innerHTML = tags || '<p class="muted">No dominant error signals yet.</p>';
+    .slice(0, 8);
+
+  if (!entries.length) {
+    container.append(node('p', { className: 'muted', text: 'No dominant error signals yet.' }));
+    return;
+  }
+
+  for (const [tag, score] of entries) {
+    container.append(node('span', { className: 'badge', text: `${tag}: ${score}` }));
+  }
 }
 
 function renderItem(item) {
   state.currentItem = item;
+  const container = $('#itemArea');
+  clear(container);
+
   if (!item) {
-    $('#itemArea').innerHTML = '<p class="muted">Start a diagnostic to load a practice item.</p>';
+    container.append(node('p', { className: 'muted', text: 'Start a diagnostic to load a practice item.' }));
     $('#attemptForm').classList.add('hidden');
     return;
   }
 
-  const choices = item.choices.map((choice) => `
-    <label class="choice">
-      <input type="radio" name="selectedAnswer" value="${choice.key}" />
-      <span><strong>${choice.key}.</strong> ${choice.text}</span>
-    </label>
-  `).join('');
+  container.append(node('p', { className: 'muted', text: `${item.section} / ${item.domain} / ${item.skill}` }));
+  container.append(node('h3', { text: item.prompt }));
+  if (item.passage) {
+    container.append(node('p', { text: item.passage }));
+  }
 
-  $('#itemArea').innerHTML = `
-    <p class="muted">${item.section} / ${item.domain} / ${item.skill}</p>
-    <h3>${item.prompt}</h3>
-    ${item.passage ? `<p>${item.passage}</p>` : ''}
-    <div class="choice-list">${choices}</div>
-  `;
+  const choices = node('div', { className: 'choice-list' });
+  for (const choice of item.choices) {
+    const input = node('input', {
+      type: 'radio',
+      name: 'selectedAnswer',
+      value: choice.key,
+      id: `choice-${choice.key}`,
+    });
+    const label = node('label', { className: 'choice', htmlFor: `choice-${choice.key}` });
+    const textWrapper = node('span');
+    textWrapper.append(node('strong', { text: `${choice.key}. ` }));
+    textWrapper.append(document.createTextNode(choice.text));
+    label.append(input, textWrapper);
+    choices.append(label);
+  }
+
+  container.append(choices);
   $('#attemptForm').classList.remove('hidden');
 }
 
@@ -166,9 +224,6 @@ $('#attemptForm').addEventListener('submit', async (event) => {
     renderSessionProgress(result.sessionProgress);
     if (result.nextItem) {
       renderItem(result.nextItem);
-      document.querySelectorAll('input[name="selectedAnswer"]').forEach((input) => {
-        input.checked = false;
-      });
     } else {
       renderItem(null);
     }

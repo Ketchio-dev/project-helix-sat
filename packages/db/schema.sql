@@ -87,6 +87,18 @@ create table if not exists sessions (
   notes text
 );
 
+create table if not exists session_items (
+  id text primary key,
+  session_id text not null references sessions(id) on delete cascade,
+  item_id text not null references content_items(item_id),
+  ordinal integer not null,
+  section text not null check (section in ('reading_writing', 'math')),
+  module_label text,
+  delivered_at timestamptz,
+  answered_at timestamptz,
+  unique (session_id, ordinal)
+);
+
 create table if not exists attempts (
   id text primary key,
   user_id text not null references users(id) on delete cascade,
