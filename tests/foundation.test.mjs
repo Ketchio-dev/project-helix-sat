@@ -58,6 +58,8 @@ test('openapi starter contract exposes learning core routes', () => {
     '/api/diagnostic/start',
     '/api/timed-set/start',
     '/api/timed-set/finish',
+    '/api/module/start',
+    '/api/module/finish',
     '/api/plan/today',
     '/api/attempt/submit',
     '/api/tutor/hint',

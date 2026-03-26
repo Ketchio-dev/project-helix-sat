@@ -87,6 +87,11 @@ export function createRouter({ store, webRoot }) {
         return sendJson(response, 201, store.startTimedSet(authenticatedUserId));
       }
 
+      if (request.method === 'POST' && pathname === '/api/module/start') {
+        await readJsonBody(request);
+        return sendJson(response, 201, store.startModuleSimulation(authenticatedUserId));
+      }
+
       if (request.method === 'POST' && pathname === '/api/attempt/submit') {
         const body = await readJsonBody(request);
         return sendJson(response, 200, store.submitAttempt({ ...body, userId: authenticatedUserId }));
@@ -95,6 +100,11 @@ export function createRouter({ store, webRoot }) {
       if (request.method === 'POST' && pathname === '/api/timed-set/finish') {
         const body = await readJsonBody(request);
         return sendJson(response, 200, store.finishTimedSet({ ...body, userId: authenticatedUserId }));
+      }
+
+      if (request.method === 'POST' && pathname === '/api/module/finish') {
+        const body = await readJsonBody(request);
+        return sendJson(response, 200, store.finishModuleSimulation({ ...body, userId: authenticatedUserId }));
       }
 
       if (request.method === 'POST' && pathname === '/api/tutor/hint') {

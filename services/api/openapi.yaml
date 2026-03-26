@@ -34,6 +34,12 @@ paths:
       responses:
         '201':
           description: Timed set session created
+  /api/module/start:
+    post:
+      summary: Start a single-module simulation in exam mode
+      responses:
+        '201':
+          description: Module simulation session created
   /api/plan/today:
     get:
       summary: Fetch today's adaptive plan
@@ -58,6 +64,12 @@ paths:
       responses:
         '200':
           description: Timed set summary returned
+  /api/module/finish:
+    post:
+      summary: Finish the active module simulation and return module results
+      responses:
+        '200':
+          description: Module simulation summary returned
   /api/review/recommendations:
     get:
       summary: Fetch review recommendations grounded in recent mistakes

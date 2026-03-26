@@ -28,6 +28,10 @@ function isTimedSession(session) {
   return session?.type === 'timed_set';
 }
 
+function isModuleSession(session) {
+  return session?.type === 'module_simulation';
+}
+
 function getReflectionPrompt(errorDna = {}) {
   const dominantError = Object.entries(errorDna).sort((a, b) => b[1] - a[1])[0]?.[0];
   if (!dominantError) {
@@ -56,6 +60,38 @@ function average(numbers = []) {
 
 function roundRatio(value) {
   return Number(value.toFixed(2));
+}
+
+function toBreakdownRows(sessionItems = [], attempts = [], resolveItem, keySelector) {
+  const attemptsByItemId = new Map(attempts.map((attempt) => [attempt.item_id, attempt]));
+  const buckets = new Map();
+
+  for (const sessionItem of sessionItems) {
+    const item = resolveItem(sessionItem.item_id);
+    if (!item) continue;
+    const key = keySelector(item);
+    const bucket = buckets.get(key) ?? {
+      key,
+      totalItems: 0,
+      answered: 0,
+      correct: 0,
+      accuracy: null,
+    };
+
+    bucket.totalItems += 1;
+    const attempt = attemptsByItemId.get(sessionItem.item_id);
+    if (attempt) {
+      bucket.answered += 1;
+      if (attempt.is_correct) bucket.correct += 1;
+    }
+
+    buckets.set(key, bucket);
+  }
+
+  return [...buckets.values()].map((bucket) => ({
+    ...bucket,
+    accuracy: bucket.answered ? roundRatio(bucket.correct / bucket.answered) : null,
+  }));
 }
 
 function toAssignmentDraft({ id, title, objective, minutes, focusSkill, mode, rationale, source = 'recommended', savedAt = null }) {
@@ -203,6 +239,7 @@ export function createStore(seed = createDemoData()) {
           const correctCount = attempts.filter((attempt) => attempt.is_correct).length;
           const latestReflection = reflections.filter((reflection) => reflection.session_id === session.id).at(-1) ?? null;
           const timedSummary = isTimedSession(session) ? api.getTimedSetSummary(session.id) : null;
+          const moduleSummary = isModuleSession(session) ? api.getModuleSummary(session.id) : null;
 
           return {
             sessionId: session.id,
@@ -224,6 +261,7 @@ export function createStore(seed = createDemoData()) {
             lastReflection: latestReflection?.response ?? null,
             latestReflection: latestReflection?.response ?? null,
             timedSummary,
+            moduleSummary,
           };
         });
     },
@@ -415,6 +453,88 @@ export function createStore(seed = createDemoData()) {
       return latestTimedSet ? api.getTimedSetSummary(latestTimedSet.id) : null;
     },
 
+    getModuleSummary(sessionId) {
+      const session = api.getSession(sessionId);
+      if (!session || !isModuleSession(session)) {
+        return null;
+      }
+
+      const sessionItems = api.getSessionItems(sessionId);
+      const progress = summarizeSessionProgress(sessionItems);
+      const attempts = api.getSessionAttempts(sessionId);
+      const correct = attempts.filter((attempt) => attempt.is_correct).length;
+      const totalResponseTimeMs = attempts.reduce((sum, attempt) => sum + attempt.response_time_ms, 0);
+      const averageResponseTimeMs = attempts.length ? Math.round(totalResponseTimeMs / attempts.length) : null;
+      const accuracy = attempts.length ? roundRatio(correct / attempts.length) : null;
+      const recommendedPaceSec = session.recommended_pace_sec ?? null;
+      const timeLimitSec = session.time_limit_sec ?? null;
+      const elapsedSec = Math.round(totalResponseTimeMs / 1000);
+      const remainingTimeSec = timeLimitSec === null ? null : Math.max(0, timeLimitSec - elapsedSec);
+      const sectionBreakdown = toBreakdownRows(sessionItems, attempts, api.getItem, (item) => item.section);
+      const domainBreakdown = toBreakdownRows(sessionItems, attempts, api.getItem, (item) => item.domain);
+
+      let paceStatus = 'not_started';
+      if (!attempts.length) {
+        paceStatus = 'not_started';
+      } else if (timeLimitSec !== null && elapsedSec > timeLimitSec) {
+        paceStatus = 'over_time';
+      } else if (recommendedPaceSec !== null && averageResponseTimeMs !== null && averageResponseTimeMs / 1000 > recommendedPaceSec + 8) {
+        paceStatus = 'behind_pace';
+      } else {
+        paceStatus = 'on_pace';
+      }
+
+      let readinessSignal = 'needs_evidence';
+      let nextAction = 'Finish the module, then inspect which section lost the most accuracy under time pressure.';
+      if (progress.isComplete && accuracy !== null) {
+        if (accuracy >= 0.75 && paceStatus === 'on_pace') {
+          readinessSignal = 'ready_to_extend';
+          nextAction = 'Lock in this pacing with one follow-up timed set, then escalate to a harder mixed module.';
+        } else if (accuracy >= 0.5) {
+          readinessSignal = 'stabilize_then_repeat';
+          nextAction = 'Review the misses by section, then repeat one shorter exam-mode block before extending difficulty.';
+        } else {
+          readinessSignal = 'repair_before_next_module';
+          nextAction = 'Shift back to learn mode for the weakest section before attempting another module simulation.';
+        }
+      } else if (attempts.length) {
+        readinessSignal = 'in_progress';
+      }
+
+      return {
+        sessionId: session.id,
+        sessionType: session.type,
+        examMode: Boolean(session.exam_mode),
+        startedAt: session.started_at,
+        endedAt: session.ended_at ?? null,
+        answered: progress.answered,
+        total: progress.total,
+        correct,
+        accuracy,
+        averageResponseTimeMs,
+        totalResponseTimeMs,
+        elapsedSec,
+        timeLimitSec,
+        remainingTimeSec,
+        recommendedPaceSec,
+        paceStatus,
+        completed: progress.isComplete,
+        readinessSignal,
+        sectionBreakdown,
+        domainBreakdown,
+        nextAction,
+      };
+    },
+
+    getLatestModuleSummary(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const latestModule = Object.values(state.sessions)
+        .filter((session) => session.user_id === userId && isModuleSession(session))
+        .sort((left, right) => new Date(right.started_at) - new Date(left.started_at))[0] ?? null;
+
+      return latestModule ? api.getModuleSummary(latestModule.id) : null;
+    },
+
     getDashboard(userId = DEMO_USER_ID) {
       return {
         profile: api.getProfile(userId),
@@ -425,6 +545,7 @@ export function createStore(seed = createDemoData()) {
         review: api.getReviewRecommendations(userId),
         sessionHistory: api.getSessionHistory(userId, 5),
         latestTimedSetSummary: api.getLatestTimedSetSummary(userId),
+        latestModuleSummary: api.getLatestModuleSummary(userId),
         parentSummary: api.getParentSummary(userId),
         teacherBrief: api.getTeacherBrief(userId),
         teacherAssignments: api.getTeacherAssignments(userId),
@@ -517,6 +638,55 @@ export function createStore(seed = createDemoData()) {
       };
     },
 
+    startModuleSimulation(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const moduleItemIds = [
+        'rw_words_context_01',
+        'rw_structure_01',
+        'math_linear_01',
+        'math_stats_01',
+      ];
+      const moduleItems = moduleItemIds.map((itemId) => api.getItem(itemId));
+      if (moduleItems.some((item) => !item)) {
+        throw new HttpError(500, 'Module configuration is missing one or more items');
+      }
+      const session = {
+        id: createId('sess'),
+        user_id: userId,
+        type: 'module_simulation',
+        exam_mode: true,
+        time_limit_sec: 420,
+        recommended_pace_sec: 105,
+        started_at: new Date().toISOString(),
+      };
+      state.sessions[session.id] = session;
+      const assignedItems = moduleItems.map((item, index) => ({
+        session_item_id: createId('session_item'),
+        item_id: item.itemId,
+        ordinal: index + 1,
+        answered_at: null,
+      }));
+      state.sessionItems[session.id] = assignedItems;
+      state.events.push(createEvent({
+        userId,
+        sessionId: session.id,
+        eventName: 'module_started',
+        payload: { mode: 'exam', timeLimitSec: session.time_limit_sec, itemCount: assignedItems.length },
+      }));
+      return {
+        session,
+        items: assignedItems.map((entry) => toClientItem(api.getItem(entry.item_id))),
+        currentItem: toClientItem(api.getItem(assignedItems[0].item_id)),
+        sessionProgress: summarizeSessionProgress(assignedItems),
+        timing: {
+          timeLimitSec: session.time_limit_sec,
+          recommendedPaceSec: session.recommended_pace_sec,
+          examMode: session.exam_mode,
+        },
+        moduleSummary: api.getModuleSummary(session.id),
+      };
+    },
+
     startDiagnostic(userId = DEMO_USER_ID) {
       api.getUser(userId);
       const session = {
@@ -554,7 +724,7 @@ export function createStore(seed = createDemoData()) {
         throw new HttpError(400, 'Unknown or invalid session');
       }
       if (session.exam_mode === true && mode !== 'exam') {
-        throw new HttpError(400, 'Timed-set sessions must be submitted in exam mode');
+        throw new HttpError(400, 'Exam-mode sessions must be submitted in exam mode');
       }
       const sessionItem = api.getSessionItems(sessionId).find((entry) => entry.item_id === itemId);
       if (!sessionItem) {
@@ -620,6 +790,7 @@ export function createStore(seed = createDemoData()) {
         sessionProgress,
         sessionType: session.type,
         timedSummary: session.type === 'timed_set' ? api.getTimedSetSummary(sessionId) : null,
+        moduleSummary: isModuleSession(session) ? api.getModuleSummary(sessionId) : null,
         nextItem: nextSessionItem ? toClientItem(api.getItem(nextSessionItem.item_id)) : null,
       };
     },
@@ -643,6 +814,36 @@ export function createStore(seed = createDemoData()) {
         session,
         sessionProgress: summarizeSessionProgress(api.getSessionItems(sessionId)),
         timedSummary: api.getTimedSetSummary(sessionId),
+        projection: api.getProjection(userId),
+        plan: api.getPlan(userId),
+        review: api.getReviewRecommendations(userId),
+      };
+    },
+
+    finishModuleSimulation({ userId = DEMO_USER_ID, sessionId }) {
+      api.getUser(userId);
+      if (!sessionId) throw new HttpError(400, 'sessionId is required');
+      const session = api.getSession(sessionId);
+      if (!session || session.user_id !== userId) {
+        throw new HttpError(400, 'Unknown or invalid session');
+      }
+      if (!isModuleSession(session)) {
+        throw new HttpError(400, 'Session is not a module simulation');
+      }
+      if (!session.ended_at) {
+        session.ended_at = new Date().toISOString();
+        state.events.push(createEvent({
+          userId,
+          sessionId,
+          eventName: 'session_completed',
+          payload: { type: session.type, finishedEarly: true },
+        }));
+      }
+
+      return {
+        session,
+        sessionProgress: summarizeSessionProgress(api.getSessionItems(sessionId)),
+        moduleSummary: api.getModuleSummary(sessionId),
         projection: api.getProjection(userId),
         plan: api.getPlan(userId),
         review: api.getReviewRecommendations(userId),

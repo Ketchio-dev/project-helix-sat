@@ -162,6 +162,28 @@ input {
 .timed-summary-item h3 {
   font-size: 1.05rem;
 }
+.module-summary-item .notice {
+  margin: 0;
+}
+.summary-breakdown-grid {
+  display: grid;
+  gap: 0.65rem;
+  width: 100%;
+}
+.summary-breakdown-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  background: #f8faff;
+}
+.summary-breakdown-item strong,
+.summary-breakdown-item p {
+  margin: 0;
+}
+.summary-breakdown-item .kv {
+  margin-top: 0.45rem;
+  width: 100%;
+}
 .session-status-row {
   display: flex;
   flex-wrap: wrap;

@@ -7,6 +7,7 @@ const state = {
   currentSessionType: null,
   reflectionPrompt: '',
   latestTimedSetSummary: null,
+  latestModuleSummary: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -88,16 +89,26 @@ function formatSeconds(value) {
 
 function toDisplaySessionType(value) {
   if (!value) return 'session';
-  return value === 'timed_set' ? 'Timed set' : value.charAt(0).toUpperCase() + value.slice(1);
+  if (value === 'timed_set') return 'Timed set';
+  if (value === 'module' || value === 'module_simulation') return 'Module simulation';
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function isExamSessionType(value) {
+  return value === 'timed_set' || value === 'module' || value === 'module_simulation';
 }
 
 function syncSessionControls() {
-  const finishButton = $('#finishTimedSet');
+  const finishTimedSetButton = $('#finishTimedSet');
+  const finishModuleButton = $('#finishModule');
   const modeSelect = $('#modeSelect');
   const isTimedSet = state.currentSessionType === 'timed_set';
+  const isModule = state.currentSessionType === 'module_simulation';
+  const isExamSession = isExamSessionType(state.currentSessionType);
 
-  finishButton.classList.toggle('hidden', !isTimedSet);
-  if (isTimedSet) {
+  finishTimedSetButton.classList.toggle('hidden', !isTimedSet);
+  finishModuleButton.classList.toggle('hidden', !isModule);
+  if (isExamSession) {
     modeSelect.value = 'exam';
     modeSelect.disabled = true;
   } else {
@@ -184,7 +195,7 @@ function renderSessionHistory(payload) {
   const stack = node('div', { className: 'stack' });
   for (const session of sessions) {
     const card = node('article', { className: 'history-item' });
-    const title = session.type ?? session.sessionType ?? 'session';
+    const title = toDisplaySessionType(session.type ?? session.sessionType ?? 'session');
     const status = session.status ?? (session.endedAt || session.ended_at ? 'completed' : 'in progress');
     card.append(node('strong', { text: `${title} — ${status}` }));
 
@@ -252,6 +263,142 @@ function renderTimedSetSummary(summary) {
     ['Recommended pace', formatSeconds(normalized.recommendedPaceSec ?? normalized.recommended_pace_sec)],
     ['Remaining', formatSeconds(normalized.remainingTimeSec ?? normalized.remaining_time_sec ?? normalized.remaining)],
   ]));
+
+  const nextAction = normalized.nextAction ?? normalized.next_action;
+  if (nextAction) {
+    card.append(node('p', { className: 'notice', text: `Next action: ${nextAction}` }));
+  }
+
+  container.append(card);
+}
+
+function normalizeBreakdownEntries(value) {
+  if (!value) return [];
+
+  const fromObjectEntry = (label, detail) => {
+    if (detail === null || detail === undefined) {
+      return { label, details: [] };
+    }
+
+    if (typeof detail !== 'object') {
+      return { label, details: [['Value', detail]] };
+    }
+
+    return {
+      label,
+      details: [
+        ['Accuracy', formatPercent(detail.accuracy ?? detail.accuracyRate)],
+        ['Correct', detail.correct ?? detail.correctCount],
+        ['Answered', detail.answered ?? detail.attemptCount],
+        ['Total', detail.total ?? detail.totalItems ?? detail.itemCount],
+        ['Average time', formatMs(detail.averageResponseTimeMs ?? detail.average_response_time_ms)],
+        ['Pace', detail.paceStatus ?? detail.pace_status],
+        ['Readiness', detail.readinessIndicator ?? detail.readiness_signal ?? detail.readinessSignal ?? detail.readiness],
+      ].filter(([, itemValue]) => itemValue !== null && itemValue !== undefined && itemValue !== ''),
+    };
+  };
+
+  if (Array.isArray(value)) {
+    return value.map((entry, index) => {
+      if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+        const label = entry.label ?? entry.key ?? entry.domain ?? entry.section ?? entry.skill ?? `Breakdown ${index + 1}`;
+        return fromObjectEntry(label, entry);
+      }
+      return fromObjectEntry(`Breakdown ${index + 1}`, entry);
+    });
+  }
+
+  if (typeof value === 'object') {
+    return Object.entries(value).map(([label, detail]) => fromObjectEntry(label, detail));
+  }
+
+  return [];
+}
+
+function renderBreakdownGroup(container, label, breakdown) {
+  const entries = normalizeBreakdownEntries(breakdown);
+  if (!entries.length) return;
+
+  container.append(node('p', { className: 'muted', text: label }));
+  const list = node('div', { className: 'summary-breakdown-grid' });
+
+  for (const entry of entries) {
+    const card = node('article', { className: 'summary-breakdown-item' });
+    card.append(node('strong', { text: entry.label }));
+    if (!entry.details.length) {
+      card.append(node('p', { className: 'muted', text: 'No details yet.' }));
+    } else {
+      card.append(kvRows(entry.details));
+    }
+    list.append(card);
+  }
+
+  container.append(list);
+}
+
+function renderModuleSummary(summary) {
+  const container = $('#moduleSummary');
+  clear(container);
+
+  const normalized = summary?.moduleSummary ?? summary ?? null;
+  state.latestModuleSummary = normalized;
+
+  if (!normalized) {
+    container.append(node('p', { className: 'muted', text: 'No module summary yet.' }));
+    return;
+  }
+
+  const paceStatus = normalized.paceStatus ?? normalized.pace_status ?? 'on_target';
+  const paceLabelMap = {
+    not_started: 'Not started',
+    on_pace: 'On pace',
+    on_target: 'On target',
+    behind_pace: 'Behind pace',
+    behind: 'Behind',
+    over_time: 'Over time',
+    ahead: 'Ahead',
+  };
+  const statusClass = paceStatus === 'on_pace' || paceStatus === 'on_target'
+    ? 'pill success'
+    : paceStatus === 'not_started'
+      ? 'pill'
+      : 'pill warning';
+
+  const card = node('article', { className: 'timed-summary-item module-summary-item' });
+  card.append(node('h3', { text: `${toDisplaySessionType(normalized.sessionType ?? normalized.type ?? 'module_simulation')} results` }));
+
+  const pillRow = node('div', { className: 'session-status-row' }, [
+    node('span', { className: 'pill', text: `${normalized.answered ?? 0}/${normalized.total ?? 0} answered` }),
+    node('span', { className: statusClass, text: paceLabelMap[paceStatus] ?? paceStatus }),
+    node('span', { className: 'pill', text: normalized.examMode || normalized.exam_mode ? 'Exam mode' : 'Reviewable' }),
+  ]);
+
+  const readiness = normalized.readinessIndicator ?? normalized.readiness_indicator ?? normalized.readinessSignal ?? normalized.readiness_signal ?? normalized.readiness;
+  if (readiness) {
+    pillRow.append(node('span', { className: 'pill', text: readiness }));
+  }
+  card.append(pillRow);
+
+  card.append(kvRows([
+    ['Accuracy', formatPercent(normalized.accuracy)],
+    ['Correct', normalized.correct ?? '—'],
+    ['Average time', formatMs(normalized.averageResponseTimeMs ?? normalized.average_response_time_ms)],
+    ['Time limit', formatSeconds(normalized.timeLimitSec ?? normalized.time_limit_sec)],
+    ['Recommended pace', formatSeconds(normalized.recommendedPaceSec ?? normalized.recommended_pace_sec)],
+    ['Remaining', formatSeconds(normalized.remainingTimeSec ?? normalized.remaining_time_sec ?? normalized.remaining)],
+  ]));
+
+  const section = normalized.section ?? normalized.moduleSection;
+  const focusDomain = normalized.focusDomain ?? normalized.focus_domain ?? normalized.domain;
+  if (section || focusDomain) {
+    card.append(node('p', {
+      className: 'notice',
+      text: `Blueprint: ${section ?? '—'}${focusDomain ? ` · ${focusDomain}` : ''}`,
+    }));
+  }
+
+  renderBreakdownGroup(card, 'Section breakdown', normalized.sectionBreakdown ?? normalized.section_breakdown);
+  renderBreakdownGroup(card, 'Domain breakdown', normalized.domainBreakdown ?? normalized.domain_breakdown ?? normalized.breakdown);
 
   const nextAction = normalized.nextAction ?? normalized.next_action;
   if (nextAction) {
@@ -466,7 +613,7 @@ function renderItem(item) {
   clear(container);
 
   if (!item) {
-    container.append(node('p', { className: 'muted', text: 'Start a diagnostic to load a practice item.' }));
+    container.append(node('p', { className: 'muted', text: 'Start a diagnostic, timed set, or module simulation to load a practice item.' }));
     $('#attemptForm').classList.add('hidden');
     syncSessionControls();
     return;
@@ -507,8 +654,9 @@ function renderSessionProgress(progress) {
     $('#attemptForm').classList.add('hidden');
     return;
   }
-  const paceText = state.latestTimedSetSummary?.recommendedPaceSec ?? state.latestTimedSetSummary?.recommended_pace_sec;
-  $('#diagnosticStatus').textContent = state.currentSessionType === 'timed_set'
+  const activeSummary = state.currentSessionType === 'module_simulation' ? state.latestModuleSummary : state.latestTimedSetSummary;
+  const paceText = activeSummary?.recommendedPaceSec ?? activeSummary?.recommended_pace_sec;
+  $('#diagnosticStatus').textContent = isExamSessionType(state.currentSessionType)
     ? `${sessionLabel} progress: ${progress.answered}/${progress.total} answered · target pace ${paceText ?? 70}s/item`
     : `${sessionLabel} progress: ${progress.answered}/${progress.total} answered.`;
 }
@@ -535,6 +683,7 @@ async function loadDashboard() {
     renderReview(dashboard.review);
     renderSessionHistory(sessionHistory);
     renderTimedSetSummary(dashboard.latestTimedSetSummary);
+    renderModuleSummary(dashboard.latestModuleSummary);
     renderParentSummary(parentSummary);
     renderTeacherBrief(teacherBrief);
     renderTeacherAssignments(teacherAssignments);
@@ -597,6 +746,39 @@ $('#startTimedSet').addEventListener('click', async () => {
   }
 });
 
+$('#startModule').addEventListener('click', async () => {
+  try {
+    const result = await json('/api/module/start', {
+      method: 'POST',
+      body: JSON.stringify({ userId: state.userId }),
+    });
+    state.currentSessionId = result.session.id;
+    state.currentSessionType = result.session.type;
+    renderModuleSummary({
+      sessionType: result.session.type,
+      examMode: result.moduleSummary?.examMode ?? result.moduleSummary?.exam_mode ?? result.pacing?.exam_mode ?? true,
+      answered: result.sessionProgress?.answered ?? 0,
+      total: result.sessionProgress?.total ?? result.items?.length ?? 0,
+      accuracy: null,
+      correct: 0,
+      section: result.moduleSummary?.section ?? result.moduleBlueprint?.section ?? result.session.section,
+      focusDomain: result.moduleSummary?.focusDomain ?? result.moduleSummary?.focus_domain ?? result.moduleBlueprint?.focusDomain,
+      timeLimitSec: result.moduleSummary?.timeLimitSec ?? result.moduleSummary?.time_limit_sec ?? result.pacing?.time_limit_sec ?? result.session.time_limit_sec,
+      recommendedPaceSec: result.moduleSummary?.recommendedPaceSec ?? result.moduleSummary?.recommended_pace_sec ?? result.pacing?.recommended_pace_sec ?? result.session.recommended_pace_sec,
+      remainingTimeSec: result.moduleSummary?.remainingTimeSec ?? result.moduleSummary?.remaining_time_sec ?? result.pacing?.time_limit_sec ?? result.session.time_limit_sec,
+      paceStatus: result.moduleSummary?.paceStatus ?? result.moduleSummary?.pace_status ?? 'not_started',
+      sectionBreakdown: result.moduleSummary?.sectionBreakdown ?? result.moduleSummary?.section_breakdown ?? result.moduleBlueprint?.sectionBreakdown,
+      domainBreakdown: result.moduleSummary?.domainBreakdown ?? result.moduleSummary?.domain_breakdown ?? result.moduleBlueprint?.domainBreakdown ?? result.breakdown,
+      readinessIndicator: result.moduleSummary?.readinessIndicator ?? result.moduleSummary?.readiness_indicator ?? result.moduleSummary?.readinessSignal ?? result.moduleSummary?.readiness_signal ?? result.readinessIndicator ?? 'Module started',
+      nextAction: result.moduleSummary?.nextAction ?? result.moduleSummary?.next_action ?? 'Complete the module in exam mode, then finish to review your pacing and breakdown.',
+    });
+    renderItem(result.currentItem);
+    renderSessionProgress(result.sessionProgress);
+  } catch (error) {
+    $('#diagnosticStatus').textContent = error.message;
+  }
+});
+
 $('#attemptForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   const selected = document.querySelector('input[name="selectedAnswer"]:checked');
@@ -629,17 +811,43 @@ $('#attemptForm').addEventListener('submit', async (event) => {
     if (result.timedSummary) {
       renderTimedSetSummary(result.timedSummary);
     }
+    if (result.moduleSummary) {
+      renderModuleSummary(result.moduleSummary);
+    }
     renderSessionProgress(result.sessionProgress);
     if (result.nextItem) {
       renderItem(result.nextItem);
     } else {
-      if (state.currentSessionType === 'timed_set') {
+      if (isExamSessionType(state.currentSessionType)) {
         state.currentItem = null;
         state.currentSessionId = null;
         state.currentSessionType = null;
       }
       renderItem(null);
     }
+  } catch (error) {
+    $('#attemptResult').textContent = error.message;
+  }
+});
+
+$('#finishModule').addEventListener('click', async () => {
+  if (!state.currentSessionId || state.currentSessionType !== 'module_simulation') return;
+
+  try {
+    const result = await json('/api/module/finish', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: state.currentSessionId,
+      }),
+    });
+    renderModuleSummary(result.moduleSummary ?? result);
+    renderSessionProgress(result.sessionProgress);
+    $('#attemptResult').textContent = JSON.stringify(result, null, 2);
+    state.currentItem = null;
+    state.currentSessionId = null;
+    state.currentSessionType = null;
+    renderItem(null);
+    await loadDashboard();
   } catch (error) {
     $('#attemptResult').textContent = error.message;
   }

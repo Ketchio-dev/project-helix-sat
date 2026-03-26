@@ -198,6 +198,87 @@ test('api serves timed-set start, completion, finish, and exam-mode hint blockin
   });
 });
 
+test('api serves module simulation start, completion, finish, and dashboard/history summaries', async () => {
+  await withServer(async (baseUrl) => {
+    const moduleSimulation = await fetch(`${baseUrl}/api/module/start`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+
+    assert.equal(moduleSimulation.session.type, 'module_simulation');
+    assert.equal(moduleSimulation.session.exam_mode, true);
+    assert.equal(moduleSimulation.timing.timeLimitSec, 420);
+    assert.equal(moduleSimulation.timing.recommendedPaceSec, 105);
+    assert.equal(moduleSimulation.items.length, 4);
+    assert.ok(moduleSimulation.currentItem);
+    assert.equal(moduleSimulation.moduleSummary.sessionId, moduleSimulation.session.id);
+
+    const examHint = await fetch(`${baseUrl}/api/tutor/hint`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({
+        itemId: moduleSimulation.currentItem.itemId,
+        sessionId: moduleSimulation.session.id,
+        mode: 'learn',
+        requestedLevel: 1,
+      }),
+    }).then((res) => res.json());
+    assert.equal(examHint.mode, 'exam_blocked');
+    assert.equal(examHint.source_of_truth, 'exam_policy');
+
+    let lastAttemptResult = null;
+    const answers = ['B', 'B', 'C', 'C'];
+    for (const [index, item] of moduleSimulation.items.entries()) {
+      lastAttemptResult = await fetch(`${baseUrl}/api/attempt/submit`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          itemId: item.itemId,
+          selectedAnswer: answers[index],
+          sessionId: moduleSimulation.session.id,
+          mode: 'exam',
+          confidenceLevel: 3,
+          responseTimeMs: 90000,
+        }),
+      }).then((res) => res.json());
+    }
+
+    assert.equal(lastAttemptResult.sessionType, 'module_simulation');
+    assert.equal(lastAttemptResult.sessionProgress.isComplete, true);
+    assert.ok(lastAttemptResult.moduleSummary);
+    assert.equal(lastAttemptResult.moduleSummary.completed, true);
+    assert.equal(lastAttemptResult.moduleSummary.paceStatus, 'on_pace');
+    assert.equal(lastAttemptResult.moduleSummary.readinessSignal, 'ready_to_extend');
+    assert.equal(lastAttemptResult.moduleSummary.sectionBreakdown.length, 2);
+    assert.equal(lastAttemptResult.moduleSummary.domainBreakdown.length, 3);
+
+    const finished = await fetch(`${baseUrl}/api/module/finish`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ sessionId: moduleSimulation.session.id }),
+    }).then((res) => res.json());
+
+    assert.equal(finished.session.type, 'module_simulation');
+    assert.equal(finished.moduleSummary.sessionId, moduleSimulation.session.id);
+    assert.equal(finished.moduleSummary.completed, true);
+
+    const dashboard = await fetch(`${baseUrl}/api/dashboard/learner`, {
+      headers: authHeaders,
+    }).then((res) => res.json());
+    assert.equal(dashboard.latestModuleSummary.sessionId, moduleSimulation.session.id);
+    assert.equal(dashboard.latestModuleSummary.completed, true);
+
+    const history = await fetch(`${baseUrl}/api/sessions/history`, {
+      headers: authHeaders,
+    }).then((res) => res.json());
+    const moduleHistory = history.sessions.find((session) => session.sessionId === moduleSimulation.session.id);
+    assert.ok(moduleHistory);
+    assert.equal(moduleHistory.type, 'module_simulation');
+    assert.equal(moduleHistory.moduleSummary.sessionId, moduleSimulation.session.id);
+  });
+});
+
 test('api returns session history for the authenticated learner', async () => {
   await withServer(async (baseUrl) => {
     const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {

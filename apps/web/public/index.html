@@ -20,6 +20,7 @@
           <button id="refreshDashboard">Refresh Dashboard</button>
           <button id="startDiagnostic">Start Diagnostic</button>
           <button id="startTimedSet">Start Timed Set</button>
+          <button id="startModule">Start Module Simulation</button>
         </div>
       </header>
 
@@ -62,12 +63,16 @@
           <div id="timedSetSummary"></div>
         </article>
         <article class="card">
-          <h2>Teacher Brief</h2>
-          <div id="teacherBrief"></div>
+          <h2>Module Simulation Summary</h2>
+          <div id="moduleSummary"></div>
         </article>
       </section>
 
       <section class="grid two">
+        <article class="card">
+          <h2>Teacher Brief</h2>
+          <div id="teacherBrief"></div>
+        </article>
         <article class="card">
           <h2>Teacher Assignments</h2>
           <div id="teacherAssignments"></div>
@@ -133,6 +138,7 @@
             <button type="submit">Submit Attempt</button>
             <button type="button" id="getHint">Get Tutor Hint</button>
             <button type="button" id="finishTimedSet" class="hidden secondary">Finish Timed Set</button>
+            <button type="button" id="finishModule" class="hidden secondary">Finish Module</button>
           </div>
         </form>
       </section>
