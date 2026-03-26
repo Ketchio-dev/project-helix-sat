@@ -43,6 +43,32 @@ function toSessionLabel(session) {
   return session.type;
 }
 
+function getSessionElapsedSec(session) {
+  if (!session?.started_at) return 0;
+  const startedAtMs = new Date(session.started_at).getTime();
+  if (Number.isNaN(startedAtMs)) return 0;
+  const endSource = session.ended_at ? new Date(session.ended_at).getTime() : Date.now();
+  const endedAtMs = Number.isNaN(endSource) ? Date.now() : endSource;
+  return Math.max(0, Math.floor((endedAtMs - startedAtMs) / 1000));
+}
+
+function getExamTiming(session) {
+  const timeLimitSec = session?.time_limit_sec ?? null;
+  const elapsedSec = getSessionElapsedSec(session);
+  const remainingTimeSec = timeLimitSec === null ? null : Math.max(0, timeLimitSec - elapsedSec);
+  const expiresAt = timeLimitSec === null || !session?.started_at
+    ? null
+    : new Date(new Date(session.started_at).getTime() + (timeLimitSec * 1000)).toISOString();
+  const expired = timeLimitSec !== null && elapsedSec >= timeLimitSec;
+  return {
+    timeLimitSec,
+    elapsedSec,
+    remainingTimeSec,
+    expiresAt,
+    expired,
+  };
+}
+
 function getReflectionPrompt(errorDna = {}) {
   const dominantError = Object.entries(errorDna).sort((a, b) => b[1] - a[1])[0]?.[0];
   if (!dominantError) {
@@ -407,15 +433,19 @@ export function createStore(seed = createDemoData()) {
       const averageResponseTimeMs = attempts.length ? Math.round(totalResponseTimeMs / attempts.length) : null;
       const accuracy = attempts.length ? roundRatio(correct / attempts.length) : null;
       const recommendedPaceSec = session.recommended_pace_sec ?? null;
-      const timeLimitSec = session.time_limit_sec ?? null;
-      const elapsedSec = Math.round(totalResponseTimeMs / 1000);
-      const remainingTimeSec = timeLimitSec === null ? null : Math.max(0, timeLimitSec - elapsedSec);
+      const {
+        timeLimitSec,
+        elapsedSec,
+        remainingTimeSec,
+        expiresAt,
+        expired,
+      } = getExamTiming(session);
 
       let paceStatus = 'not_started';
-      if (!attempts.length) {
-        paceStatus = 'not_started';
-      } else if (timeLimitSec !== null && elapsedSec > timeLimitSec) {
+      if (expired) {
         paceStatus = 'over_time';
+      } else if (!attempts.length) {
+        paceStatus = 'not_started';
       } else if (recommendedPaceSec !== null && averageResponseTimeMs !== null && averageResponseTimeMs / 1000 > recommendedPaceSec + 5) {
         paceStatus = 'behind_pace';
       } else {
@@ -423,7 +453,9 @@ export function createStore(seed = createDemoData()) {
       }
 
       let nextAction = 'Finish this set, then review the canonical rationale before your next timed block.';
-      if (progress.isComplete && accuracy !== null) {
+      if (expired && !progress.isComplete) {
+        nextAction = 'Time expired. Finish the set now, then review the unresolved items before restarting exam practice.';
+      } else if (progress.isComplete && accuracy !== null) {
         if (accuracy < 0.67) {
           nextAction = 'Review the misses in learn mode before starting another timed block.';
         } else if (paceStatus === 'behind_pace' || paceStatus === 'over_time') {
@@ -448,9 +480,11 @@ export function createStore(seed = createDemoData()) {
         elapsedSec,
         timeLimitSec,
         remainingTimeSec,
+        expiresAt,
         recommendedPaceSec,
         paceStatus,
-        completed: progress.isComplete,
+        expired,
+        completed: progress.isComplete || expired,
         nextAction,
       };
     },
@@ -478,17 +512,21 @@ export function createStore(seed = createDemoData()) {
       const averageResponseTimeMs = attempts.length ? Math.round(totalResponseTimeMs / attempts.length) : null;
       const accuracy = attempts.length ? roundRatio(correct / attempts.length) : null;
       const recommendedPaceSec = session.recommended_pace_sec ?? null;
-      const timeLimitSec = session.time_limit_sec ?? null;
-      const elapsedSec = Math.round(totalResponseTimeMs / 1000);
-      const remainingTimeSec = timeLimitSec === null ? null : Math.max(0, timeLimitSec - elapsedSec);
+      const {
+        timeLimitSec,
+        elapsedSec,
+        remainingTimeSec,
+        expiresAt,
+        expired,
+      } = getExamTiming(session);
       const sectionBreakdown = toBreakdownRows(sessionItems, attempts, api.getItem, (item) => item.section);
       const domainBreakdown = toBreakdownRows(sessionItems, attempts, api.getItem, (item) => item.domain);
 
       let paceStatus = 'not_started';
-      if (!attempts.length) {
-        paceStatus = 'not_started';
-      } else if (timeLimitSec !== null && elapsedSec > timeLimitSec) {
+      if (expired) {
         paceStatus = 'over_time';
+      } else if (!attempts.length) {
+        paceStatus = 'not_started';
       } else if (recommendedPaceSec !== null && averageResponseTimeMs !== null && averageResponseTimeMs / 1000 > recommendedPaceSec + 8) {
         paceStatus = 'behind_pace';
       } else {
@@ -497,7 +535,10 @@ export function createStore(seed = createDemoData()) {
 
       let readinessSignal = 'needs_evidence';
       let nextAction = 'Finish the module, then inspect which section lost the most accuracy under time pressure.';
-      if (progress.isComplete && accuracy !== null) {
+      if (expired && !progress.isComplete) {
+        readinessSignal = 'expired_unfinished';
+        nextAction = 'Time expired. Finish the module now, then repair the weakest section before attempting another module.';
+      } else if (progress.isComplete && accuracy !== null) {
         if (accuracy >= 0.75 && paceStatus === 'on_pace') {
           readinessSignal = 'ready_to_extend';
           nextAction = 'Lock in this pacing with one follow-up timed set, then escalate to a harder mixed module.';
@@ -527,9 +568,11 @@ export function createStore(seed = createDemoData()) {
         elapsedSec,
         timeLimitSec,
         remainingTimeSec,
+        expiresAt,
         recommendedPaceSec,
         paceStatus,
-        completed: progress.isComplete,
+        expired,
+        completed: progress.isComplete || expired,
         readinessSignal,
         sectionBreakdown,
         domainBreakdown,
@@ -620,6 +663,7 @@ export function createStore(seed = createDemoData()) {
               timeLimitSec: session.time_limit_sec ?? null,
               recommendedPaceSec: session.recommended_pace_sec ?? null,
               examMode: session.exam_mode,
+              ...getExamTiming(session),
             }
           : null,
         timedSummary: isTimedSession(session) ? api.getTimedSetSummary(session.id) : null,
@@ -817,6 +861,28 @@ export function createStore(seed = createDemoData()) {
       }
       if (session.exam_mode === true && mode !== 'exam') {
         throw new HttpError(400, 'Exam-mode sessions must be submitted in exam mode');
+      }
+      if (isExamSession(session) && getExamTiming(session).expired) {
+        if (!session.ended_at) {
+          session.ended_at = new Date().toISOString();
+          state.events.push(createEvent({
+            userId,
+            sessionId,
+            eventName: 'session_completed',
+            payload: { type: session.type, expired: true },
+          }));
+        }
+        throw new HttpError(409, 'Exam session expired', {
+          error: 'Exam session expired',
+          reason: 'exam_session_expired',
+          session: api.buildSessionPayload(session, {
+            started: false,
+            resumed: true,
+            conflict: false,
+          }),
+          timedSummary: isTimedSession(session) ? api.getTimedSetSummary(sessionId) : null,
+          moduleSummary: isModuleSession(session) ? api.getModuleSummary(sessionId) : null,
+        });
       }
       const sessionItem = api.getSessionItems(sessionId).find((entry) => entry.item_id === itemId);
       if (!sessionItem) {

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createAppServer } from '../services/api/server.mjs';
+import { createStore } from '../services/api/src/store.mjs';
 
 const authHeaders = {
   'Content-Type': 'application/json',
@@ -504,4 +505,58 @@ test('api requires demo auth, enforces request size guard, and validates reflect
     });
     assert.equal(invalidReflection.status, 400);
   });
+});
+
+
+test('store restores exam timing from wall-clock time and marks expired sessions in the active payload', () => {
+  const store = createStore();
+  const timedSet = store.startTimedSet('demo-student');
+  const session = store.getSession(timedSet.session.id);
+  session.started_at = new Date(Date.now() - ((session.time_limit_sec + 15) * 1000)).toISOString();
+
+  const active = store.getActiveSession('demo-student');
+  assert.equal(active.hasActiveSession, true);
+  assert.equal(active.activeSession.session.id, timedSet.session.id);
+  assert.equal(active.activeSession.timing.timeLimitSec, 210);
+  assert.equal(active.activeSession.timing.remainingTimeSec, 0);
+  assert.equal(active.activeSession.timing.expired, true);
+  assert.ok(active.activeSession.timing.expiresAt);
+
+  const summary = store.getTimedSetSummary(timedSet.session.id);
+  assert.equal(summary.expired, true);
+  assert.equal(summary.completed, true);
+  assert.equal(summary.paceStatus, 'over_time');
+  assert.match(summary.nextAction, /Time expired/i);
+});
+
+test('store rejects attempts after exam time expires and returns a resumable summary payload', () => {
+  const store = createStore();
+  const moduleSimulation = store.startModuleSimulation('demo-student');
+  const session = store.getSession(moduleSimulation.session.id);
+  session.started_at = new Date(Date.now() - ((session.time_limit_sec + 30) * 1000)).toISOString();
+
+  let thrown = null;
+  try {
+    store.submitAttempt({
+      userId: 'demo-student',
+      itemId: moduleSimulation.items[0].itemId,
+      selectedAnswer: 'B',
+      sessionId: moduleSimulation.session.id,
+      mode: 'exam',
+      confidenceLevel: 3,
+      responseTimeMs: 90000,
+    });
+  } catch (error) {
+    thrown = error;
+  }
+
+  assert.ok(thrown);
+  assert.equal(thrown.statusCode, 409);
+  assert.equal(thrown.payload.reason, 'exam_session_expired');
+  assert.equal(thrown.payload.session.session.id, moduleSimulation.session.id);
+  assert.equal(thrown.payload.session.timing.expired, true);
+  assert.equal(thrown.payload.moduleSummary.expired, true);
+  assert.equal(thrown.payload.moduleSummary.readinessSignal, 'expired_unfinished');
+  assert.match(thrown.payload.moduleSummary.nextAction, /Time expired/i);
+  assert.ok(store.getSession(moduleSimulation.session.id).ended_at);
 });

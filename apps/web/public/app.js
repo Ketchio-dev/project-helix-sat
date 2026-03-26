@@ -5,10 +5,12 @@ const state = {
   currentItem: null,
   currentSessionId: null,
   currentSessionType: null,
+  currentSessionProgress: null,
   reflectionPrompt: '',
   latestTimedSetSummary: null,
   latestModuleSummary: null,
   activeSessionEnvelope: null,
+  sessionTimerHandle: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -92,6 +94,15 @@ function formatSeconds(value) {
   return `${numeric}s`;
 }
 
+function formatCountdown(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  const numeric = Math.max(0, Number(value));
+  if (Number.isNaN(numeric)) return String(value);
+  const minutes = Math.floor(numeric / 60);
+  const seconds = numeric % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 function toDisplaySessionType(value) {
   if (!value) return 'session';
   if (value === 'timed_set') return 'Timed set';
@@ -118,6 +129,110 @@ function clearSessionNotice() {
   renderSessionNotice('', 'info');
 }
 
+function clearSessionTimer() {
+  if (state.sessionTimerHandle) {
+    clearInterval(state.sessionTimerHandle);
+    state.sessionTimerHandle = null;
+  }
+  const element = $('#sessionTimer');
+  element.textContent = '';
+  element.className = 'session-timer hidden';
+  syncExamInteractionState(false);
+}
+
+function renderSessionTimer({ label, remainingTimeSec, expired = false }) {
+  const element = $('#sessionTimer');
+  if (remainingTimeSec === null || remainingTimeSec === undefined || !state.currentSessionType || !isExamSessionType(state.currentSessionType)) {
+    clearSessionTimer();
+    return;
+  }
+  element.textContent = expired
+    ? `${label} expired — finish now to review results.`
+    : `${label} countdown: ${formatCountdown(remainingTimeSec)} remaining`;
+  element.className = `session-timer ${expired ? 'expired' : remainingTimeSec <= 30 ? 'warning' : ''}`.trim();
+  syncExamInteractionState(expired);
+}
+
+function syncExamInteractionState(expired) {
+  const attemptSubmit = $('#attemptForm button[type="submit"]');
+  const hintButton = $('#getHint');
+  const shouldLock = Boolean(expired && isExamSessionType(state.currentSessionType));
+
+  for (const input of document.querySelectorAll('input[name="selectedAnswer"]')) {
+    input.disabled = shouldLock;
+  }
+
+  if (attemptSubmit) {
+    attemptSubmit.disabled = shouldLock;
+  }
+
+  if (hintButton) {
+    hintButton.disabled = shouldLock;
+  }
+}
+
+function getCurrentCountdownState() {
+  if (!isExamSessionType(state.currentSessionType)) return null;
+  const summary = getCurrentExamSummary();
+  const session = state.activeSessionEnvelope?.session ?? null;
+  const timing = state.activeSessionEnvelope?.timing ?? null;
+  const startedAt = summary?.startedAt ?? summary?.started_at ?? session?.started_at ?? session?.startedAt ?? null;
+  const timeLimitSec = summary?.timeLimitSec
+    ?? summary?.time_limit_sec
+    ?? timing?.timeLimitSec
+    ?? timing?.time_limit_sec
+    ?? session?.time_limit_sec
+    ?? session?.timeLimitSec
+    ?? null;
+
+  if (!startedAt || timeLimitSec === null || timeLimitSec === undefined) {
+    return null;
+  }
+
+  const startedMs = new Date(startedAt).getTime();
+  if (Number.isNaN(startedMs)) return null;
+
+  const elapsedSec = Math.max(0, Math.floor((Date.now() - startedMs) / 1000));
+  const remainingTimeSec = Math.max(0, Number(timeLimitSec) - elapsedSec);
+  return {
+    startedAt,
+    timeLimitSec: Number(timeLimitSec),
+    elapsedSec,
+    remainingTimeSec,
+    expired: elapsedSec >= Number(timeLimitSec),
+  };
+}
+
+function getCurrentExamSummary() {
+  if (state.currentSessionType === 'module_simulation') return state.latestModuleSummary;
+  if (state.currentSessionType === 'timed_set') return state.latestTimedSetSummary;
+  return null;
+}
+
+function startSessionTimer() {
+  clearSessionTimer();
+  if (!isExamSessionType(state.currentSessionType)) return;
+  const label = toDisplaySessionType(state.currentSessionType);
+  const update = () => {
+    const countdown = getCurrentCountdownState();
+    if (!countdown) {
+      clearSessionTimer();
+      return;
+    }
+    renderSessionTimer({ label, remainingTimeSec: countdown.remainingTimeSec, expired: countdown.expired });
+    if (state.currentSessionProgress && !state.currentSessionProgress.isComplete) {
+      const activeSummary = getCurrentExamSummary();
+      const paceText = activeSummary?.recommendedPaceSec ?? activeSummary?.recommended_pace_sec;
+      $('#diagnosticStatus').textContent = countdown.expired
+        ? `${label} expired: ${state.currentSessionProgress.answered}/${state.currentSessionProgress.total} answered. Finish now to review results.`
+        : `${label} progress: ${state.currentSessionProgress.answered}/${state.currentSessionProgress.total} answered · ${formatCountdown(countdown.remainingTimeSec)} remaining · target pace ${paceText ?? 70}s/item`;
+    }
+  };
+
+  update();
+  state.sessionTimerHandle = setInterval(update, 1000);
+}
+
 function syncSessionControls() {
   const finishTimedSetButton = $('#finishTimedSet');
   const finishModuleButton = $('#finishModule');
@@ -133,6 +248,7 @@ function syncSessionControls() {
     modeSelect.disabled = true;
   } else {
     modeSelect.disabled = false;
+    clearSessionTimer();
   }
 }
 
@@ -290,6 +406,7 @@ function renderTimedSetSummary(summary) {
   }
 
   container.append(card);
+  startSessionTimer();
 }
 
 function normalizeBreakdownEntries(value) {
@@ -426,6 +543,7 @@ function renderModuleSummary(summary) {
   }
 
   container.append(card);
+  startSessionTimer();
 }
 
 function renderParentSummary(summary) {
@@ -678,6 +796,7 @@ function extractSessionEnvelope(payload) {
 
   return {
     session,
+    timing: envelope.timing ?? payload.timing ?? null,
     currentItem: envelope.currentItem ?? payload.currentItem ?? null,
     sessionProgress: envelope.sessionProgress ?? payload.sessionProgress ?? null,
     timedSummary: envelope.timedSummary ?? payload.timedSummary ?? null,
@@ -695,6 +814,7 @@ function applySessionEnvelope(envelope, { fallbackNotice = null, tone = null } =
   state.activeSessionEnvelope = envelope;
   state.currentSessionId = envelope.session.id;
   state.currentSessionType = envelope.session.type;
+  state.currentSessionProgress = envelope.sessionProgress ?? null;
 
   if (envelope.timedSummary) {
     renderTimedSetSummary(envelope.timedSummary);
@@ -716,6 +836,7 @@ function applySessionEnvelope(envelope, { fallbackNotice = null, tone = null } =
     tone ?? envelope.noticeTone ?? 'info',
   );
   syncSessionControls();
+  startSessionTimer();
   return true;
 }
 
@@ -744,16 +865,22 @@ function handleSessionConflict(error, fallbackMessage) {
 
 function renderSessionProgress(progress) {
   if (!progress) return;
+  state.currentSessionProgress = progress;
   const sessionLabel = toDisplaySessionType(state.currentSessionType);
+  const activeSummary = getCurrentExamSummary();
   if (progress.isComplete) {
     $('#diagnosticStatus').textContent = `${sessionLabel} complete: ${progress.answered}/${progress.total} items answered.`;
     $('#attemptForm').classList.add('hidden');
     return;
   }
-  const activeSummary = state.currentSessionType === 'module_simulation' ? state.latestModuleSummary : state.latestTimedSetSummary;
+  const countdown = getCurrentCountdownState();
+  if (countdown?.expired) {
+    $('#diagnosticStatus').textContent = `${sessionLabel} expired: ${progress.answered}/${progress.total} answered. Finish now to review results and preserve the summary.`;
+    return;
+  }
   const paceText = activeSummary?.recommendedPaceSec ?? activeSummary?.recommended_pace_sec;
   $('#diagnosticStatus').textContent = isExamSessionType(state.currentSessionType)
-    ? `${sessionLabel} progress: ${progress.answered}/${progress.total} answered · target pace ${paceText ?? 70}s/item`
+    ? `${sessionLabel} progress: ${progress.answered}/${progress.total} answered · ${countdown ? `${formatCountdown(countdown.remainingTimeSec)} remaining · ` : ''}target pace ${paceText ?? 70}s/item`
     : `${sessionLabel} progress: ${progress.answered}/${progress.total} answered.`;
 }
 
@@ -788,7 +915,9 @@ async function loadDashboard() {
       state.activeSessionEnvelope = null;
       state.currentSessionType = null;
       state.currentSessionId = null;
+      state.currentSessionProgress = null;
       clearSessionNotice();
+      clearSessionTimer();
       renderItem(null);
       $('#diagnosticStatus').textContent = dashboard.profile.lastSessionSummary || 'No active diagnostic session.';
     }
@@ -811,7 +940,9 @@ $('#startDiagnostic').addEventListener('click', async () => {
     });
     state.currentSessionId = result.session.id;
     state.currentSessionType = result.session.type;
+    state.currentSessionProgress = result.sessionProgress ?? null;
     clearSessionNotice();
+    state.activeSessionEnvelope = { session: result.session, sessionProgress: result.sessionProgress ?? null };
     renderItem(result.currentItem);
     renderSessionProgress(result.sessionProgress);
   } catch (error) {
@@ -827,9 +958,17 @@ $('#startTimedSet').addEventListener('click', async () => {
     });
     state.currentSessionId = result.session.id;
     state.currentSessionType = result.session.type;
+    state.currentSessionProgress = result.sessionProgress ?? null;
     clearSessionNotice();
+    state.activeSessionEnvelope = {
+      session: result.session,
+      timing: result.timing ?? result.pacing ?? null,
+      sessionProgress: result.sessionProgress ?? null,
+      currentItem: result.currentItem ?? null,
+    };
     renderTimedSetSummary({
       sessionType: result.session.type,
+      startedAt: result.session.started_at ?? result.session.startedAt,
       examMode: result.pacing?.exam_mode ?? result.timing?.examMode ?? true,
       answered: result.sessionProgress?.answered ?? 0,
       total: result.sessionProgress?.total ?? result.items?.length ?? 0,
@@ -856,9 +995,17 @@ $('#startModule').addEventListener('click', async () => {
     });
     state.currentSessionId = result.session.id;
     state.currentSessionType = result.session.type;
+    state.currentSessionProgress = result.sessionProgress ?? null;
     clearSessionNotice();
+    state.activeSessionEnvelope = {
+      session: result.session,
+      timing: result.timing ?? result.pacing ?? null,
+      sessionProgress: result.sessionProgress ?? null,
+      currentItem: result.currentItem ?? null,
+    };
     renderModuleSummary({
       sessionType: result.session.type,
+      startedAt: result.session.started_at ?? result.session.startedAt,
       examMode: result.moduleSummary?.examMode ?? result.moduleSummary?.exam_mode ?? result.pacing?.exam_mode ?? true,
       answered: result.sessionProgress?.answered ?? 0,
       total: result.sessionProgress?.total ?? result.items?.length ?? 0,
@@ -907,6 +1054,7 @@ $('#attemptForm').addEventListener('submit', async (event) => {
     });
     $('#attemptResult').textContent = JSON.stringify(result, null, 2);
     state.currentSessionType = result.sessionType ?? state.currentSessionType;
+    state.currentSessionProgress = result.sessionProgress ?? state.currentSessionProgress;
     renderProjection(result.projection);
     renderPlan(result.plan);
     renderErrorDna(result.errorDna);
@@ -917,6 +1065,20 @@ $('#attemptForm').addEventListener('submit', async (event) => {
     if (result.moduleSummary) {
       renderModuleSummary(result.moduleSummary);
     }
+    state.activeSessionEnvelope = state.currentSessionId
+      ? {
+          ...(state.activeSessionEnvelope ?? {}),
+          session: {
+            ...(state.activeSessionEnvelope?.session ?? {}),
+            id: state.currentSessionId,
+            type: state.currentSessionType,
+          },
+          sessionProgress: result.sessionProgress ?? state.activeSessionEnvelope?.sessionProgress ?? null,
+          currentItem: result.nextItem ?? null,
+          timedSummary: result.timedSummary ?? state.activeSessionEnvelope?.timedSummary ?? null,
+          moduleSummary: result.moduleSummary ?? state.activeSessionEnvelope?.moduleSummary ?? null,
+        }
+      : null;
     renderSessionProgress(result.sessionProgress);
     if (result.nextItem) {
       renderItem(result.nextItem);
@@ -925,11 +1087,19 @@ $('#attemptForm').addEventListener('submit', async (event) => {
         state.currentItem = null;
         state.currentSessionId = null;
         state.currentSessionType = null;
+        state.currentSessionProgress = null;
+        state.activeSessionEnvelope = null;
         clearSessionNotice();
       }
       renderItem(null);
     }
   } catch (error) {
+    if (error?.payload?.reason === 'exam_session_expired') {
+      const envelope = extractSessionEnvelope(error.payload.session);
+      applySessionEnvelope(envelope, { fallbackNotice: 'Time expired. Finish the session to review results.', tone: 'warning' });
+      if (error.payload.timedSummary) renderTimedSetSummary(error.payload.timedSummary);
+      if (error.payload.moduleSummary) renderModuleSummary(error.payload.moduleSummary);
+    }
     $('#attemptResult').textContent = error.message;
   }
 });
@@ -950,6 +1120,9 @@ $('#finishModule').addEventListener('click', async () => {
     state.currentItem = null;
     state.currentSessionId = null;
     state.currentSessionType = null;
+    state.currentSessionProgress = null;
+    state.activeSessionEnvelope = null;
+    clearSessionTimer();
     clearSessionNotice();
     renderItem(null);
     await loadDashboard();
@@ -974,6 +1147,9 @@ $('#finishTimedSet').addEventListener('click', async () => {
     state.currentItem = null;
     state.currentSessionId = null;
     state.currentSessionType = null;
+    state.currentSessionProgress = null;
+    state.activeSessionEnvelope = null;
+    clearSessionTimer();
     clearSessionNotice();
     renderItem(null);
     await loadDashboard();

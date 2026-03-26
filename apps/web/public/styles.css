@@ -29,6 +29,10 @@ button {
   cursor: pointer;
 }
 button:hover { opacity: 0.92; }
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 button.secondary {
   background: #eef2ff;
   color: var(--accent);
@@ -108,6 +112,31 @@ input {
   background: #eef4ff;
   border-color: #cfdcff;
   color: var(--accent);
+}
+.session-timer {
+  margin: 0 0 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 16px;
+  border: 1px solid #d7e2f5;
+  background: #f8fbff;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: -0.01em;
+  box-shadow: 0 10px 24px rgba(31, 45, 77, 0.06);
+}
+.session-timer.warning {
+  border-color: #f0c38a;
+  background: #fff8ef;
+  color: #9a5b00;
+}
+.session-timer.expired {
+  border-color: #efb3b3;
+  background: #fff3f3;
+  color: var(--danger);
+}
+input:disabled + span {
+  opacity: 0.55;
 }
 .grid {
   display: grid;
