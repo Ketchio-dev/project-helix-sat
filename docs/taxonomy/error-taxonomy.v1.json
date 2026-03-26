@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "cross_domain": [
+    "premature_commitment",
+    "low_confidence_guessing",
+    "high_confidence_misfire",
+    "time_pressure_collapse",
+    "careless_execution",
+    "early_give_up"
+  ],
+  "reading_writing": [
+    "literal_misread",
+    "unsupported_inference",
+    "scope_mismatch",
+    "tone_purpose_confusion",
+    "vocabulary_overfit",
+    "grammar_rule_misapplication",
+    "transition_logic_mismatch",
+    "synthesis_target_miss"
+  ],
+  "math": [
+    "arithmetic_slip",
+    "sign_error",
+    "variable_isolation_error",
+    "unit_conversion_error",
+    "graph_misread",
+    "constraint_ignore",
+    "overcomplication",
+    "wrong_formula_recall",
+    "spr_format_error"
+  ]
+}

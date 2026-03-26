@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helixsat.dev/schemas/planning/daily-plan.schema.json",
+  "title": "Daily Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "date",
+    "total_minutes",
+    "blocks",
+    "fallback_plan",
+    "stop_condition",
+    "planner_version"
+  ],
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "total_minutes": {
+      "type": "integer",
+      "minimum": 10
+    },
+    "planner_version": {
+      "type": "string"
+    },
+    "rationale_summary": {
+      "type": "string"
+    },
+    "blocks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "block_type",
+          "minutes",
+          "objective",
+          "expected_benefit"
+        ],
+        "properties": {
+          "block_type": {
+            "type": "string",
+            "enum": [
+              "warmup",
+              "drill",
+              "review",
+              "timed_set",
+              "mini_module",
+              "recovery",
+              "reflection"
+            ]
+          },
+          "minutes": {
+            "type": "integer",
+            "minimum": 5
+          },
+          "objective": {
+            "type": "string"
+          },
+          "target_skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expected_benefit": {
+            "type": "string"
+          },
+          "frustration_risk": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          }
+        }
+      }
+    },
+    "fallback_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trigger",
+        "blocks"
+      ],
+      "properties": {
+        "trigger": {
+          "type": "string"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "stop_condition": {
+      "type": "string"
+    }
+  }
+}

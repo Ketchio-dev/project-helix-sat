@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helixsat.dev/schemas/content/item-spec.schema.json",
+  "title": "Helix SAT Item Spec",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "item_type",
+    "section",
+    "domain",
+    "skill",
+    "difficulty",
+    "target_behavior",
+    "correct_option_design"
+  ],
+  "properties": {
+    "item_type": {
+      "type": "string"
+    },
+    "section": {
+      "type": "string",
+      "enum": [
+        "reading_writing",
+        "math"
+      ]
+    },
+    "domain": {
+      "type": "string"
+    },
+    "skill": {
+      "type": "string"
+    },
+    "subskill": {
+      "type": "string"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "medium",
+        "hard"
+      ]
+    },
+    "passage_length": {
+      "type": "string",
+      "enum": [
+        "short",
+        "medium",
+        "long"
+      ]
+    },
+    "genre": {
+      "type": "string"
+    },
+    "target_behavior": {
+      "type": "string"
+    },
+    "correct_option_design": {
+      "type": "string"
+    },
+    "distractor_patterns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "forbidden": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "estimated_time_sec": {
+          "type": "integer",
+          "minimum": 15
+        },
+        "cognitive_load": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "calculator_helpfulness": {
+          "type": "string",
+          "enum": [
+            "none",
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "language_support": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

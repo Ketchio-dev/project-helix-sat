@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helixsat.dev/schemas/scoring/score-prediction.schema.json",
+  "title": "Projected Score Response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "predicted_total_low",
+    "predicted_total_high",
+    "rw_low",
+    "rw_high",
+    "math_low",
+    "math_high",
+    "confidence",
+    "readiness_indicator",
+    "model_version"
+  ],
+  "properties": {
+    "predicted_total_low": {
+      "type": "integer",
+      "minimum": 400,
+      "maximum": 1600
+    },
+    "predicted_total_high": {
+      "type": "integer",
+      "minimum": 400,
+      "maximum": 1600
+    },
+    "rw_low": {
+      "type": "integer",
+      "minimum": 200,
+      "maximum": 800
+    },
+    "rw_high": {
+      "type": "integer",
+      "minimum": 200,
+      "maximum": 800
+    },
+    "math_low": {
+      "type": "integer",
+      "minimum": 200,
+      "maximum": 800
+    },
+    "math_high": {
+      "type": "integer",
+      "minimum": 200,
+      "maximum": 800
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "readiness_indicator": {
+      "type": "string",
+      "enum": [
+        "needs_foundation",
+        "building",
+        "approaching_goal",
+        "test_ready"
+      ]
+    },
+    "momentum_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "model_version": {
+      "type": "string"
+    }
+  }
+}

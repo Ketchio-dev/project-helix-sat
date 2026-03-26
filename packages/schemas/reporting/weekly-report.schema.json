@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helixsat.dev/schemas/reporting/weekly-report.schema.json",
+  "title": "Weekly Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "period_start",
+    "period_end",
+    "strengths",
+    "risks",
+    "recommended_focus"
+  ],
+  "properties": {
+    "period_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date"
+    },
+    "strengths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommended_focus": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "projected_momentum": {
+      "type": "string",
+      "enum": [
+        "declining",
+        "flat",
+        "improving",
+        "strong"
+      ]
+    },
+    "parent_summary": {
+      "type": "string"
+    },
+    "teacher_brief": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helixsat.dev/schemas/tutor/hint-response.schema.json",
+  "title": "Tutor Hint Response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "mode",
+    "detected_issue",
+    "confidence",
+    "hint_level",
+    "student_facing_message",
+    "next_action",
+    "should_reveal_answer",
+    "followup_skill",
+    "source_of_truth"
+  ],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "socratic",
+        "hint_ladder",
+        "fast_review",
+        "deep_mastery",
+        "exam_blocked"
+      ]
+    },
+    "detected_issue": {
+      "type": "string"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "hint_level": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4
+    },
+    "student_facing_message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "next_action": {
+      "type": "string"
+    },
+    "should_reveal_answer": {
+      "type": "boolean"
+    },
+    "followup_skill": {
+      "type": "string"
+    },
+    "source_of_truth": {
+      "type": "string",
+      "enum": [
+        "canonical_rationale",
+        "hint_ladder",
+        "exam_policy"
+      ]
+    },
+    "localized_language": {
+      "type": "string"
+    },
+    "tool_calls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

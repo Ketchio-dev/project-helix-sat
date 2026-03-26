@@ -1,0 +1,11 @@
+.DS_Store
+.omx/
+node_modules/
+coverage/
+.env
+.env.*
+.next/
+dist/
+build/
+.tmp/
+*.log

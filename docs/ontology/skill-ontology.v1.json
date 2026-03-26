@@ -1,0 +1,208 @@
+{
+  "version": "1.0.0",
+  "sections": [
+    {
+      "section": "reading_writing",
+      "domains": [
+        {
+          "domain": "information_and_ideas",
+          "skills": [
+            {
+              "skill": "central_ideas_and_details",
+              "subskills": [
+                "main_idea",
+                "supporting_detail",
+                "evidence_selection"
+              ]
+            },
+            {
+              "skill": "inferences",
+              "subskills": [
+                "text_bound_inference",
+                "best_support",
+                "logical_implication"
+              ]
+            },
+            {
+              "skill": "command_of_evidence",
+              "subskills": [
+                "evidence_pairing",
+                "quantitative_evidence",
+                "claim_support"
+              ]
+            }
+          ]
+        },
+        {
+          "domain": "craft_and_structure",
+          "skills": [
+            {
+              "skill": "words_in_context",
+              "subskills": [
+                "contextual_meaning",
+                "tone_sensitive_meaning",
+                "precision_choice"
+              ]
+            },
+            {
+              "skill": "text_structure_and_purpose",
+              "subskills": [
+                "sentence_role",
+                "paragraph_function",
+                "author_purpose"
+              ]
+            },
+            {
+              "skill": "cross_text_connections",
+              "subskills": [
+                "agreement_disagreement",
+                "comparison",
+                "synthesis"
+              ]
+            }
+          ]
+        },
+        {
+          "domain": "expression_of_ideas",
+          "skills": [
+            {
+              "skill": "rhetorical_synthesis",
+              "subskills": [
+                "goal_matching",
+                "relevance_filtering",
+                "note_synthesis"
+              ]
+            },
+            {
+              "skill": "organization",
+              "subskills": [
+                "logical_order",
+                "transition_choice",
+                "paragraph_cohesion"
+              ]
+            }
+          ]
+        },
+        {
+          "domain": "standard_english_conventions",
+          "skills": [
+            {
+              "skill": "sentence_boundaries",
+              "subskills": [
+                "run_on",
+                "comma_splice",
+                "fragment"
+              ]
+            },
+            {
+              "skill": "form_structure_and_sense",
+              "subskills": [
+                "agreement",
+                "verb_form",
+                "pronoun_clarity",
+                "modifier_placement"
+              ]
+            },
+            {
+              "skill": "punctuation",
+              "subskills": [
+                "comma_usage",
+                "colon_semicolon",
+                "dash_parenthetical"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "section": "math",
+      "domains": [
+        {
+          "domain": "algebra",
+          "skills": [
+            {
+              "skill": "linear_equations_and_inequalities",
+              "subskills": [
+                "solve_single_variable",
+                "multi_step_rearrangement",
+                "inequality_reasoning"
+              ]
+            },
+            {
+              "skill": "linear_functions",
+              "subskills": [
+                "slope_intercept",
+                "interpretation",
+                "systems_of_linear_equations"
+              ]
+            }
+          ]
+        },
+        {
+          "domain": "advanced_math",
+          "skills": [
+            {
+              "skill": "nonlinear_equations",
+              "subskills": [
+                "quadratics",
+                "polynomials",
+                "radicals"
+              ]
+            },
+            {
+              "skill": "nonlinear_functions",
+              "subskills": [
+                "function_notation",
+                "transformations",
+                "composition_and_inverse"
+              ]
+            }
+          ]
+        },
+        {
+          "domain": "problem_solving_and_data_analysis",
+          "skills": [
+            {
+              "skill": "ratios_rates_and_proportions",
+              "subskills": [
+                "unit_rate",
+                "percent_change",
+                "proportional_reasoning"
+              ]
+            },
+            {
+              "skill": "statistics_and_probability",
+              "subskills": [
+                "one_variable_data",
+                "two_variable_data",
+                "probability_models"
+              ]
+            }
+          ]
+        },
+        {
+          "domain": "geometry_and_trigonometry",
+          "skills": [
+            {
+              "skill": "area_volume_and_lines",
+              "subskills": [
+                "triangles",
+                "circles",
+                "coordinate_geometry"
+              ]
+            },
+            {
+              "skill": "right_triangle_trigonometry",
+              "subskills": [
+                "sin_cos_tan",
+                "special_triangles",
+                "radian_and_arc_context"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+openapi: 3.1.0
+info:
+  title: Project Helix SAT API
+  version: 0.1.0
+  description: Starter contract for the learning, assessment, and tutor core.
+paths:
+  /diagnostic/start:
+    post:
+      summary: Start a diagnostic session
+      responses:
+        '201':
+          description: Diagnostic session created
+  /plan/today:
+    get:
+      summary: Fetch today's adaptive plan
+      responses:
+        '200':
+          description: Daily plan response
+  /attempt/submit:
+    post:
+      summary: Submit a learner attempt
+      responses:
+        '200':
+          description: Attempt accepted and learner-state update queued
+  /tutor/hint:
+    post:
+      summary: Request a tutor hint grounded in canonical rationale
+      responses:
+        '200':
+          description: Structured hint response
+  /module/start:
+    post:
+      summary: Start a timed module or exam-mode block
+      responses:
+        '201':
+          description: Module created
+components:
+  schemas:
+    DailyPlan:
+      $ref: ../../packages/schemas/planning/daily-plan.schema.json
+    TutorHintResponse:
+      $ref: ../../packages/schemas/tutor/hint-response.schema.json
+    EventEnvelope:
+      $ref: ../../packages/schemas/events/event-envelope.schema.json

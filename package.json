@@ -1,0 +1,19 @@
+{
+  "name": "project-helix-sat",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Foundation workspace for Project Helix SAT",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "check": "node scripts/validate-foundation.mjs && node --test",
+    "check:schemas": "node scripts/validate-foundation.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=25"
+  }
+}

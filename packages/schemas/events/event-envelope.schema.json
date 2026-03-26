@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helixsat.dev/schemas/events/event-envelope.schema.json",
+  "title": "Event Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "user_id",
+    "event_name",
+    "ts",
+    "payload"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "session_id": {
+      "type": "string"
+    },
+    "event_name": {
+      "type": "string",
+      "enum": [
+        "app_opened",
+        "diagnostic_started",
+        "question_rendered",
+        "answer_selected",
+        "answer_changed",
+        "hint_requested",
+        "explanation_opened",
+        "timer_hidden",
+        "calculator_opened",
+        "review_flagged",
+        "tab_blur",
+        "tab_focus",
+        "session_completed",
+        "plan_accepted",
+        "plan_skipped",
+        "streak_kept",
+        "streak_broken"
+      ]
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "payload": {
+      "type": "object"
+    }
+  }
+}
