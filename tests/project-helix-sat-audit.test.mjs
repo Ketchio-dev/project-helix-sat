@@ -41,7 +41,11 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   assert.equal(audit.formatRealism.hasMathGridIn, true);
   assert.equal(audit.formatRealism.mathGridInCount, 7);
 
-  assert.equal(audit.sessions.diagnostic.itemCount, 3);
+  assert.equal(audit.sessions.diagnostic.itemCount, 13);
+  assert.deepEqual(audit.sessions.diagnostic.sectionCounts, {
+    math: 8,
+    reading_writing: 5,
+  });
   assert.equal(audit.sessions.timedSet.itemCount, 3);
   assert.equal(audit.sessions.timedSet.timeLimitSec, 210);
   assert.equal(audit.sessions.moduleSimulation.itemCount, 10);

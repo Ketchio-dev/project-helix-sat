@@ -148,6 +148,166 @@ function isStudentProducedResponseItem(item) {
   return STUDENT_RESPONSE_FORMATS.has(item?.item_format);
 }
 
+function includesWeakArea(item, weakArea = '') {
+  const needle = `${weakArea}`.trim().toLowerCase();
+  if (!needle) return false;
+  const haystack = [item?.skill, item?.domain, item?.section, ...(item?.tags ?? [])]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return haystack.includes(needle);
+}
+
+function sortDiagnosticCandidates(items, skillOrder, exposureCounts = {}) {
+  return [...items].sort((left, right) => compareDiagnostic(left, right, skillOrder, exposureCounts));
+}
+
+function fillSelection(selection, candidates, targetCount, usedIds, usedSkills) {
+  for (const candidate of candidates) {
+    if (selection.length >= targetCount) break;
+    if (usedIds.has(candidate.itemId)) continue;
+    if (usedSkills.has(candidate.skill)) continue;
+    selection.push(candidate);
+    usedIds.add(candidate.itemId);
+    usedSkills.add(candidate.skill);
+  }
+
+  for (const candidate of candidates) {
+    if (selection.length >= targetCount) break;
+    if (usedIds.has(candidate.itemId)) continue;
+    selection.push(candidate);
+    usedIds.add(candidate.itemId);
+    usedSkills.add(candidate.skill);
+  }
+}
+
+function selectByQuotas(candidates, quotas, skillOrder, exposureCounts = {}, usedIds = new Set(), usedSkills = new Set()) {
+  const selected = [];
+  const ordered = sortDiagnosticCandidates(candidates, skillOrder, exposureCounts);
+
+  for (const [difficulty, targetCount] of Object.entries(quotas)) {
+    const pool = ordered.filter((item) => item.difficulty_band === difficulty);
+    fillSelection(selected, pool, selected.length + targetCount, usedIds, usedSkills);
+  }
+
+  fillSelection(selected, ordered, Object.values(quotas).reduce((sum, value) => sum + value, 0), usedIds, usedSkills);
+  return selected;
+}
+
+function rebalanceDifficulty(items, quotas, candidates, usedIds, usedSkills, skillOrder, exposureCounts = {}) {
+  const desired = { ...quotas };
+  const current = {
+    easy: items.filter((item) => item.difficulty_band === 'easy').length,
+    medium: items.filter((item) => item.difficulty_band === 'medium').length,
+    hard: items.filter((item) => item.difficulty_band === 'hard').length,
+  };
+  const rankedCandidates = sortDiagnosticCandidates(candidates, skillOrder, exposureCounts);
+
+  for (const [difficulty, required] of Object.entries(desired)) {
+    if (current[difficulty] >= required) continue;
+    const missing = required - current[difficulty];
+    const additions = [];
+    fillSelection(additions, rankedCandidates.filter((item) => item.difficulty_band === difficulty), missing, usedIds, usedSkills);
+    items.push(...additions);
+    current[difficulty] += additions.length;
+  }
+
+  return items;
+}
+
+function orderBaselineBlocks(items) {
+  const difficultyWeight = { easy: 0, medium: 1, hard: 2 };
+  const rw = items
+    .filter((item) => item.section === 'reading_writing')
+    .sort((left, right) => (difficultyWeight[left.difficulty_band] ?? 1) - (difficultyWeight[right.difficulty_band] ?? 1) || compareByItemId(left, right));
+
+  const math = items.filter((item) => item.section === 'math');
+  const grid = math.filter((item) => isStudentProducedResponseItem(item));
+  const nonGrid = math.filter((item) => !isStudentProducedResponseItem(item))
+    .sort((left, right) => (difficultyWeight[left.difficulty_band] ?? 1) - (difficultyWeight[right.difficulty_band] ?? 1) || compareByItemId(left, right));
+
+  const blockB = nonGrid.slice(0, 4);
+  const remainingMath = nonGrid.slice(4);
+  const blockC = [...remainingMath.slice(0, 3), ...grid.slice(0, 1)]
+    .sort((left, right) => (difficultyWeight[left.difficulty_band] ?? 1) - (difficultyWeight[right.difficulty_band] ?? 1) || compareByItemId(left, right));
+
+  const orderedMath = [...blockB, ...blockC];
+  const orderedIds = new Set(orderedMath.map((item) => item.itemId));
+  for (const item of math) {
+    if (!orderedIds.has(item.itemId)) {
+      orderedMath.push(item);
+      orderedIds.add(item.itemId);
+    }
+  }
+
+  return [...rw, ...orderedMath];
+}
+
+function selectBaselineDiagnosticItems(items, count, skillOrder, exposureCounts = {}, options = {}) {
+  const weakArea = options.selfReportedWeakArea ?? '';
+  const rwCandidates = items.filter((item) => item.section === 'reading_writing');
+  const mathCandidates = items.filter((item) => item.section === 'math');
+  const usedIds = new Set();
+  const usedSkills = new Set();
+
+  const selectedRw = selectByQuotas(
+    rwCandidates,
+    { easy: 1, medium: 3, hard: 1 },
+    skillOrder,
+    exposureCounts,
+    usedIds,
+    usedSkills,
+  );
+
+  let selectedMath = selectByQuotas(
+    mathCandidates.filter((item) => !isStudentProducedResponseItem(item)),
+    { easy: 1, medium: 5, hard: 1 },
+    skillOrder,
+    exposureCounts,
+    usedIds,
+    usedSkills,
+  );
+
+  const gridCandidates = sortDiagnosticCandidates(
+    mathCandidates.filter((item) => isStudentProducedResponseItem(item)),
+    skillOrder,
+    exposureCounts,
+  );
+  const emphasizedGrid = gridCandidates.find((item) => includesWeakArea(item, weakArea) && !usedIds.has(item.itemId))
+    ?? gridCandidates.find((item) => !usedIds.has(item.itemId))
+    ?? null;
+  if (emphasizedGrid) {
+    selectedMath.push(emphasizedGrid);
+    usedIds.add(emphasizedGrid.itemId);
+    usedSkills.add(emphasizedGrid.skill);
+  }
+
+  const emphasizedCandidates = sortDiagnosticCandidates(
+    items.filter((item) => includesWeakArea(item, weakArea)),
+    skillOrder,
+    exposureCounts,
+  );
+  const emphasized = emphasizedCandidates.find((item) => !usedIds.has(item.itemId));
+  if (emphasized && selectedRw.length + selectedMath.length < count) {
+    if (emphasized.section === 'reading_writing' && selectedRw.length < 6) {
+      selectedRw.push(emphasized);
+      usedIds.add(emphasized.itemId);
+      usedSkills.add(emphasized.skill);
+    } else if (emphasized.section === 'math' && selectedMath.length < 8) {
+      selectedMath.push(emphasized);
+      usedIds.add(emphasized.itemId);
+      usedSkills.add(emphasized.skill);
+    }
+  }
+
+  rebalanceDifficulty(selectedRw, { easy: 1, medium: 3, hard: 1 }, rwCandidates, usedIds, usedSkills, skillOrder, exposureCounts);
+  selectedMath = rebalanceDifficulty(selectedMath, { easy: 1, medium: 5, hard: 2 }, mathCandidates, usedIds, usedSkills, skillOrder, exposureCounts);
+
+  const combined = [...selectedRw.slice(0, 5), ...selectedMath.slice(0, 8)];
+  fillSelection(combined, sortDiagnosticCandidates(items, skillOrder, exposureCounts), count, usedIds, usedSkills);
+  return orderBaselineBlocks(combined.slice(0, count));
+}
+
 function selectDiagnosticItems(items, count, skillOrder, exposureCounts = {}) {
   const skills = uniqueSkills([], items).sort((left, right) => {
     const leftRank = skillOrder.get(left) ?? Number.MAX_SAFE_INTEGER;
@@ -308,7 +468,7 @@ export function selectSessionItems(items, skillStates = [], sessionType = 'diagn
   const skillMetadata = getSkillMetadata(skillStates);
   const shuffledCandidates = stableShuffle(
     candidateItems,
-    `${sessionType}:${count}:${[...recentIds].sort().join('|')}`,
+    `${sessionType}:${count}:${options.seed ?? ''}:${[...recentIds].sort().join('|')}`,
   );
 
   if (sessionType === 'module_simulation') {
@@ -317,6 +477,10 @@ export function selectSessionItems(items, skillStates = [], sessionType = 'diagn
 
   if (sessionType === 'timed_set') {
     return selectTimedSetItems(shuffledCandidates, count, skillMetadata.weakness, skillMetadata.order, exposureCounts);
+  }
+
+  if (sessionType === 'diagnostic' && count >= 13) {
+    return selectBaselineDiagnosticItems(shuffledCandidates, count, skillMetadata.order, exposureCounts, options);
   }
 
   return selectDiagnosticItems(shuffledCandidates, count, skillMetadata.order, exposureCounts);

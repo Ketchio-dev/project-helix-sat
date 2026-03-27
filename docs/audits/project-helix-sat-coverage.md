@@ -42,7 +42,7 @@
 - Exposed but unused endpoints: none
 
 ## Session shapes
-- Diagnostic: 3 items (math=1, reading_writing=2)
+- Diagnostic: 13 items (math=8, reading_writing=5)
 - Timed set: 3 items, examMode=true, timeLimitSec=210
 - Module simulation: 10 items, examMode=true, timeLimitSec=1050, sections=math=10
 - Session review gated until completion: true

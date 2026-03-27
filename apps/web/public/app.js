@@ -626,6 +626,7 @@ async function startRetryLoop(itemId = null) {
     };
     $('#modeSelect').value = 'review';
     clearSessionNotice();
+    renderNextBestAction(null);
     renderItem(result.currentItem);
     renderSessionProgress(result.sessionProgress);
     $('#itemArea')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1709,6 +1710,7 @@ async function startDiagnosticSession() {
     state.currentSessionProgress = result.sessionProgress ?? null;
     clearSessionNotice();
     renderDiagnosticReveal(null);
+    renderNextBestAction(null);
     state.activeSessionEnvelope = { session: result.session, sessionProgress: result.sessionProgress ?? null };
     renderItem(result.currentItem);
     renderSessionProgress(result.sessionProgress);
@@ -1728,6 +1730,7 @@ async function startTimedSetSession() {
     state.currentSessionProgress = result.sessionProgress ?? null;
     clearSessionNotice();
     renderDiagnosticReveal(null);
+    renderNextBestAction(null);
     state.activeSessionEnvelope = {
       session: result.session,
       timing: result.timing ?? result.pacing ?? null,
@@ -1767,6 +1770,7 @@ async function startModuleSession(sectionOverride = null) {
     state.currentSessionProgress = result.sessionProgress ?? null;
     clearSessionNotice();
     renderDiagnosticReveal(null);
+    renderNextBestAction(null);
     state.activeSessionEnvelope = {
       session: result.session,
       timing: result.timing ?? result.pacing ?? null,

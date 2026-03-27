@@ -1340,7 +1340,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           title: 'Build your first baseline',
           reason: 'A short diagnostic lets Helix find the fastest score-moving starting point for you.',
           ctaLabel: 'Start diagnostic',
-          estimatedMinutes: 6,
+          estimatedMinutes: 10,
           sessionType: 'diagnostic',
           section: null,
         };
@@ -1788,10 +1788,12 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
 
     startDiagnostic(userId = DEMO_USER_ID) {
       api.getUser(userId);
+      const learnerProfile = state.learnerProfiles[userId] ?? {};
       const session = {
         id: createId('sess'),
         user_id: userId,
         type: 'diagnostic',
+        diagnostic_variant: 'baseline_v1',
         started_at: new Date().toISOString(),
       };
       state.sessions[session.id] = session;
@@ -1803,11 +1805,15 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         Object.values(state.items),
         api.getSkillStates(userId),
         'diagnostic',
-        3,
+        13,
         recentItemIds,
         state.itemExposure,
+        {
+          seed: `${userId}:${learnerProfile.target_score ?? ''}:${learnerProfile.self_reported_weak_area ?? ''}`,
+          selfReportedWeakArea: learnerProfile.self_reported_weak_area ?? '',
+        },
       );
-      if (diagnosticItems.length !== 3 || diagnosticItems.some((item) => !item)) {
+      if (diagnosticItems.length !== 13 || diagnosticItems.some((item) => !item)) {
         throw new HttpError(500, 'Diagnostic configuration is missing one or more items');
       }
       const assignedItems = diagnosticItems.map((item, index) => ({
@@ -1818,7 +1824,12 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         delivered_at: null,
       }));
       state.sessionItems[session.id] = assignedItems;
-      state.events.push(createEvent({ userId, sessionId: session.id, eventName: 'diagnostic_started', payload: { mode: 'diagnostic' } }));
+      state.events.push(createEvent({
+        userId,
+        sessionId: session.id,
+        eventName: 'diagnostic_started',
+        payload: { mode: 'diagnostic', itemCount: assignedItems.length, variant: session.diagnostic_variant },
+      }));
       persistState();
       return {
         session,

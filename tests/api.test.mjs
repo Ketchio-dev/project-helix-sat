@@ -184,6 +184,10 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
     assert.ok(diagnostic.session.id);
     assert.equal(diagnostic.sessionProgress.answered, 0);
     assert.ok(diagnostic.currentItem);
+    assert.equal(diagnostic.items.length, 13);
+    assert.equal(diagnostic.items.filter((item) => item.section === 'reading_writing').length, 5);
+    assert.equal(diagnostic.items.filter((item) => item.section === 'math').length, 8);
+    assert.equal(diagnostic.items.filter((item) => item.item_format === 'grid_in').length, 1);
 
     const attemptOne = await fetch(`${baseUrl}/api/attempt/submit`, {
       method: 'POST',

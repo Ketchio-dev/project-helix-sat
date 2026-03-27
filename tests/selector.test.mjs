@@ -21,6 +21,18 @@ describe('selectSessionItems', () => {
     assert.ok(skills.size >= 4, `Expected at least 4 unique skills, got ${skills.size}`);
   });
 
+  it('baseline diagnostic builds a 13-item cross-section form with one math grid-in', () => {
+    const result = selectSessionItems(demoItems, [], 'diagnostic', 13, [], {}, {
+      seed: 'baseline-form-a',
+      selfReportedWeakArea: 'algebra',
+    });
+    assert.equal(result.length, 13);
+    assert.equal(result.filter((item) => item.section === 'reading_writing').length, 5);
+    assert.equal(result.filter((item) => item.section === 'math').length, 8);
+    assert.equal(result.filter((item) => item.item_format === 'grid_in').length, 1);
+    assert.ok(result.some((item) => item.difficulty_band === 'hard'));
+  });
+
   it('timed_set returns requested count', () => {
     const result = selectSessionItems(demoItems, [], 'timed_set', 4);
     assert.equal(result.length, 4);
