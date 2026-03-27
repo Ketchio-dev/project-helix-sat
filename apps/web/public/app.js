@@ -2,6 +2,8 @@ import { normalizeTeacherAssignments, normalizeTeacherBrief } from './teacher-vi
 
 const state = {
   userId: 'demo-student',
+  authToken: localStorage.getItem('helix_token') || null,
+  userRole: null,
   currentItem: null,
   currentSessionId: null,
   currentSessionType: null,
@@ -16,13 +18,23 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 
 const json = async (url, options) => {
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Demo-User-Id': state.userId,
-    },
-    ...options,
-  });
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Demo-User-Id': state.userId,
+  };
+  if (state.authToken) headers['Authorization'] = 'Bearer ' + state.authToken;
+  const response = await fetch(url, { headers, ...options });
+  if (response.status === 401) {
+    state.authToken = null;
+    state.userRole = null;
+    localStorage.removeItem('helix_token');
+    showLogin();
+    const payload = await response.json().catch(() => ({ error: 'Unauthorized' }));
+    const error = new Error(payload.error || 'Unauthorized');
+    error.status = 401;
+    error.payload = payload;
+    throw error;
+  }
   if (response.status === 204) return null;
   if (!response.ok) {
     const payload = await response.json().catch(() => ({ error: 'Request failed' }));
@@ -890,6 +902,50 @@ async function loadReviewRecommendations() {
   renderReview(review);
 }
 
+function showLogin() {
+  const loginSection = document.getElementById('loginSection');
+  const appSection = document.getElementById('appSection');
+  if (loginSection) loginSection.style.display = 'block';
+  if (appSection) appSection.style.display = 'none';
+}
+
+function showApp() {
+  const loginSection = document.getElementById('loginSection');
+  const appSection = document.getElementById('appSection');
+  if (loginSection) loginSection.style.display = 'none';
+  if (appSection) appSection.style.display = 'block';
+}
+
+function handleLogout() {
+  state.authToken = null;
+  state.userRole = null;
+  localStorage.removeItem('helix_token');
+  showLogin();
+}
+
+async function handleLogin(email, password) {
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login failed');
+    state.authToken = data.token;
+    state.userRole = data.user.role;
+    state.userId = data.user.id;
+    localStorage.setItem('helix_token', data.token);
+    const badge = document.getElementById('userRoleBadge');
+    if (badge) badge.textContent = data.user.role;
+    showApp();
+    await loadDashboard();
+  } catch (err) {
+    const loginError = document.getElementById('loginError');
+    if (loginError) loginError.textContent = err.message;
+  }
+}
+
 async function loadDashboard() {
   try {
     const [dashboard, sessionHistory, parentSummary, teacherBrief, teacherAssignments, activeSession] = await Promise.all([
@@ -1236,6 +1292,27 @@ $('#teacherAssignmentForm').addEventListener('submit', async (event) => {
   }
 });
 
-loadDashboard().then(loadReviewRecommendations).catch((error) => {
-  $('#diagnosticStatus').textContent = error.message;
+document.getElementById('loginButton').addEventListener('click', () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  handleLogin(email, password);
 });
+
+document.getElementById('loginPassword').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('loginButton').click();
+});
+
+document.getElementById('logoutButton').addEventListener('click', handleLogout);
+
+if (state.authToken) {
+  showApp();
+  loadDashboard().then(loadReviewRecommendations).catch((error) => {
+    if (error.status === 401) {
+      showLogin();
+    } else {
+      $('#diagnosticStatus').textContent = error.message;
+    }
+  });
+} else {
+  showLogin();
+}

@@ -7,6 +7,18 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <div id="loginSection" style="display:none; max-width:360px; margin:80px auto; padding:24px; border:1px solid #ddd; border-radius:8px;">
+      <h2 style="margin-top:0;">Project Helix SAT</h2>
+      <p style="color:#666; margin-bottom:20px;">Sign in to continue</p>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <input id="loginEmail" type="email" placeholder="Email" style="padding:8px; border:1px solid #ccc; border-radius:4px; font-size:14px;" />
+        <input id="loginPassword" type="password" placeholder="Password" style="padding:8px; border:1px solid #ccc; border-radius:4px; font-size:14px;" />
+        <button id="loginButton" style="padding:10px; background:#1a73e8; color:#fff; border:none; border-radius:4px; font-size:14px; cursor:pointer;">Sign In</button>
+        <span id="loginError" style="color:#d93025; font-size:13px;"></span>
+      </div>
+    </div>
+
+    <div id="appSection" style="display:none;">
     <main class="shell">
       <header class="hero">
         <div>
@@ -17,10 +29,12 @@
           </p>
         </div>
         <div class="hero-actions">
+          <span id="userRoleBadge" style="padding:4px 10px; border-radius:12px; font-size:12px; font-weight:600; background:#e8f0fe; color:#1a73e8; align-self:center;"></span>
           <button id="refreshDashboard">Refresh Dashboard</button>
           <button id="startDiagnostic">Start Diagnostic</button>
           <button id="startTimedSet">Start Timed Set</button>
           <button id="startModule">Start Module Simulation</button>
+          <button id="logoutButton" style="background:#f1f3f4; color:#5f6368;">Logout</button>
         </div>
       </header>
 
@@ -177,6 +191,7 @@
         </article>
       </section>
     </main>
+    </div>
 
     <script type="module" src="/app.js"></script>
   </body>

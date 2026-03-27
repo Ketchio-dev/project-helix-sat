@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createDemoData, DEMO_USER_ID } from './demo-data.mjs';
+import { hashPassword, verifyPassword, createToken } from './auth.mjs';
 import { HttpError } from './http-utils.mjs';
 import { generateDailyPlan } from '../../../packages/assessment/src/daily-plan-generator.mjs';
 import { selectSessionItems } from '../../../packages/assessment/src/item-selector.mjs';
@@ -154,6 +155,9 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
   state.reflections ??= {};
   state.teacherAssignments ??= {};
   state.events ??= [];
+
+  state.users[DEMO_USER_ID].password ??= hashPassword('demo123');
+  state.users[DEMO_USER_ID].role ??= 'student';
 
   function persistState() {
     storage.save(state);
@@ -1185,6 +1189,52 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         teacherAssignments: api.getTeacherAssignments(userId),
         teacherBrief: api.getTeacherBrief(userId),
       };
+    },
+
+    registerUser({ name, email, password, role = 'student' }) {
+      if (!name || !email || !password) throw new HttpError(400, 'name, email, and password are required');
+      const trimmedEmail = email.trim().toLowerCase();
+      const existingUser = Object.values(state.users).find((u) => u.email?.toLowerCase() === trimmedEmail);
+      if (existingUser) throw new HttpError(409, 'Email already registered');
+      const validRoles = ['student', 'teacher', 'parent', 'admin'];
+      if (!validRoles.includes(role)) throw new HttpError(400, 'Invalid role');
+      const userId = createId('user');
+      const user = {
+        id: userId,
+        name: name.trim(),
+        email: trimmedEmail,
+        password: hashPassword(password),
+        role,
+        createdAt: new Date().toISOString(),
+      };
+      state.users[userId] = user;
+      if (role === 'student') {
+        state.learnerProfiles[userId] = {
+          user_id: userId,
+          target_score: 1400,
+          target_test_date: null,
+          daily_minutes: 30,
+          preferred_explanation_language: 'en',
+        };
+        state.skillStates[userId] = [];
+        state.errorDna[userId] = {};
+        state.reflections[userId] = [];
+      }
+      persistState();
+      const token = createToken(userId, role);
+      const { password: _, ...safeUser } = user;
+      return { user: safeUser, token };
+    },
+
+    loginUser({ email, password }) {
+      if (!email || !password) throw new HttpError(400, 'email and password are required');
+      const trimmedEmail = email.trim().toLowerCase();
+      const user = Object.values(state.users).find((u) => u.email?.toLowerCase() === trimmedEmail);
+      if (!user) throw new HttpError(401, 'Invalid credentials');
+      if (!verifyPassword(password, user.password)) throw new HttpError(401, 'Invalid credentials');
+      const token = createToken(user.id, user.role);
+      const { password: _, ...safeUser } = user;
+      return { user: safeUser, token };
     },
   };
 

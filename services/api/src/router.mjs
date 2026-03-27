@@ -2,16 +2,31 @@ import { createHintResponse } from '../../tutor/src/hint-engine.mjs';
 import { DEMO_USER_ID } from './demo-data.mjs';
 import { HttpError, readJsonBody, sendJson, serveStaticFile } from './http-utils.mjs';
 import { validateRequest } from './validation.mjs';
+import { verifyToken } from './auth.mjs';
 
 function getAuthenticatedUserId(request) {
-  const userId = request.headers['x-demo-user-id'];
-  if (!userId) {
-    throw new HttpError(401, 'Missing demo auth header');
+  // Dev fallback: demo header — grant admin so all routes work in dev/test
+  const demoHeader = request.headers['x-demo-user-id'];
+  if (demoHeader) {
+    return { userId: demoHeader, role: 'admin' };
   }
-  if (userId !== DEMO_USER_ID) {
-    throw new HttpError(403, 'Unknown demo user');
+  // Real auth: Bearer token
+  const authHeader = request.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new HttpError(401, 'Authentication required');
   }
-  return userId;
+  const token = authHeader.slice(7);
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    throw new HttpError(401, 'Invalid or expired token');
+  }
+  return decoded;
+}
+
+function requireRole(auth, ...allowedRoles) {
+  if (!allowedRoles.includes(auth.role) && auth.role !== 'admin') {
+    throw new HttpError(403, 'Insufficient permissions');
+  }
 }
 
 export function createRouter({ store, webRoot }) {
@@ -24,8 +39,19 @@ export function createRouter({ store, webRoot }) {
         return sendJson(response, 200, { status: 'ok', service: 'project-helix-sat-api' });
       }
 
+      if (request.method === 'POST' && pathname === '/api/auth/login') {
+        const body = await readJsonBody(request);
+        return sendJson(response, 200, store.loginUser(body));
+      }
+
+      if (request.method === 'POST' && pathname === '/api/auth/register') {
+        const body = await readJsonBody(request);
+        return sendJson(response, 201, store.registerUser(body));
+      }
+
       const isApiRoute = pathname.startsWith('/api/');
-      const authenticatedUserId = isApiRoute ? getAuthenticatedUserId(request) : null;
+      const auth = isApiRoute ? getAuthenticatedUserId(request) : null;
+      const authenticatedUserId = auth?.userId;
 
       if (request.method === 'GET' && pathname === '/api/me') {
         return sendJson(response, 200, store.getProfile(authenticatedUserId));
@@ -58,14 +84,17 @@ export function createRouter({ store, webRoot }) {
       }
 
       if (request.method === 'GET' && pathname === '/api/parent/summary') {
+        requireRole(auth, 'parent');
         return sendJson(response, 200, store.getParentSummary(authenticatedUserId));
       }
 
       if (request.method === 'GET' && pathname === '/api/teacher/brief') {
+        requireRole(auth, 'teacher');
         return sendJson(response, 200, store.getTeacherBrief(authenticatedUserId));
       }
 
       if (request.method === 'GET' && pathname === '/api/teacher/assignments') {
+        requireRole(auth, 'teacher');
         return sendJson(response, 200, store.getTeacherAssignments(authenticatedUserId));
       }
 
@@ -147,6 +176,7 @@ export function createRouter({ store, webRoot }) {
       }
 
       if (request.method === 'POST' && pathname === '/api/teacher/assignments') {
+        requireRole(auth, 'teacher');
         const body = await readJsonBody(request);
         const payload = { ...body, userId: authenticatedUserId };
         validateRequest('TeacherAssignmentRequest', payload);
