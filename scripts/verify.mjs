@@ -20,7 +20,7 @@ for (const file of filesToCheck) {
   }
 }
 
-const manifestPath = join(process.cwd(), 'dist', 'build-manifest.json');
+const manifestPath = join(process.cwd(), 'dist', 'verify-manifest.json');
 mkdirSync(dirname(manifestPath), { recursive: true });
 writeFileSync(manifestPath, JSON.stringify({ built_at: new Date().toISOString(), files_checked: filesToCheck }, null, 2));
-console.log(`Build completed. Manifest written to ${manifestPath}`);
+console.log(`Verification completed. Manifest written to ${manifestPath}`);

@@ -12,8 +12,9 @@
   "scripts": {
     "start": "node services/api/server.mjs",
     "dev": "node services/api/server.mjs",
-    "build": "node scripts/build.mjs",
-    "check": "node scripts/validate-foundation.mjs && npm run build && node --test",
+    "verify": "node scripts/verify.mjs",
+    "build": "npm run verify",
+    "check": "node scripts/validate-foundation.mjs && npm run verify && node --test",
     "check:schemas": "node scripts/validate-foundation.mjs",
     "test": "node --test"
   },
