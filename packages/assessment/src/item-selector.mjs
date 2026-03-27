@@ -178,7 +178,14 @@ function selectTimedSetItems(items, count, weaknessMap, skillOrder, exposureCoun
     .slice(0, count);
 }
 
-function selectModuleItems(items, count, skillOrder, exposureCounts = {}) {
+function selectModuleItems(items, count, skillOrder, exposureCounts = {}, options = {}) {
+  if (options.section) {
+    return items
+      .filter((item) => item.section === options.section)
+      .sort((left, right) => compareModule(left, right, skillOrder, exposureCounts))
+      .slice(0, count);
+  }
+
   const perSectionTarget = Math.floor(count / 2);
   const selected = [];
   const used = new Set();
@@ -205,7 +212,7 @@ function selectModuleItems(items, count, skillOrder, exposureCounts = {}) {
   return selected.concat(remaining).slice(0, count);
 }
 
-export function selectSessionItems(items, skillStates = [], sessionType = 'diagnostic', count = 3, recentItemIds = [], exposureCounts = {}) {
+export function selectSessionItems(items, skillStates = [], sessionType = 'diagnostic', count = 3, recentItemIds = [], exposureCounts = {}, options = {}) {
   if (!Array.isArray(items) || count <= 0) return [];
 
   const recentIds = new Set(recentItemIds.filter(Boolean));
@@ -218,7 +225,7 @@ export function selectSessionItems(items, skillStates = [], sessionType = 'diagn
   );
 
   if (sessionType === 'module_simulation') {
-    return selectModuleItems(shuffledCandidates, count, skillMetadata.order, exposureCounts);
+    return selectModuleItems(shuffledCandidates, count, skillMetadata.order, exposureCounts, options);
   }
 
   if (sessionType === 'timed_set') {
