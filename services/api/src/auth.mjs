@@ -1,6 +1,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
+// SECURITY: When NODE_ENV === 'production', replace this secret with an environment variable before issuing tokens.
 const SECRET = 'helix-sat-dev-secret-change-in-production';
+const DEFAULT_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
 export function hashPassword(password) {
   return createHmac('sha256', SECRET).update(password).digest('hex');
@@ -21,8 +23,9 @@ function fromBase64url(str) {
   return Buffer.from(str, 'base64url').toString();
 }
 
-export function createToken(userId, role) {
-  const payload = JSON.stringify({ userId, role, iat: Date.now() });
+export function createToken(userId, role, expiresInMs = DEFAULT_TOKEN_TTL_MS) {
+  const iat = Date.now();
+  const payload = JSON.stringify({ userId, role, iat, exp: iat + expiresInMs });
   const encoded = base64url(payload);
   const sig = createHmac('sha256', SECRET).update(encoded).digest('base64url');
   return encoded + '.' + sig;
@@ -39,7 +42,8 @@ export function verifyToken(token) {
   if (sigBuf.length !== expectedBuf.length || !timingSafeEqual(sigBuf, expectedBuf)) return null;
   try {
     const payload = JSON.parse(fromBase64url(encoded));
-    if (!payload.userId || !payload.role) return null;
+    if (!payload.userId || !payload.role || typeof payload.exp !== 'number') return null;
+    if (Date.now() > payload.exp) return null;
     return { userId: payload.userId, role: payload.role };
   } catch {
     return null;

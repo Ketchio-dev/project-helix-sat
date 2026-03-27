@@ -155,6 +155,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
   state.reflections ??= {};
   state.teacherAssignments ??= {};
   state.events ??= [];
+  state.itemExposure ??= {};
 
   state.users[DEMO_USER_ID].password ??= hashPassword('demo123');
   state.users[DEMO_USER_ID].role ??= 'student';
