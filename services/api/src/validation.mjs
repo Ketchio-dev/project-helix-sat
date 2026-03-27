@@ -148,7 +148,7 @@ const responseSchemas = new Map([
   ['NextBestActionResponse', nextBestActionResponseSchema],
   ['DiagnosticRevealResponse', {
     type: 'object',
-    required: ['sessionId', 'scoreBand', 'confidence', 'momentum', 'topScoreLeaks', 'firstRecommendedAction'],
+    required: ['sessionId', 'scoreBand', 'confidence', 'confidenceLabel', 'momentum', 'topScoreLeaks', 'whyThisPlan', 'evidenceBullets', 'firstRecommendedAction'],
     additionalProperties: false,
     properties: {
       sessionId: { type: 'string', minLength: 1 },
@@ -162,6 +162,7 @@ const responseSchemas = new Map([
         },
       },
       confidence: { type: 'number', minimum: 0, maximum: 1 },
+      confidenceLabel: { type: 'string', minLength: 1 },
       momentum: { type: 'number', minimum: 0, maximum: 1 },
       topScoreLeaks: {
         type: 'array',
@@ -176,6 +177,12 @@ const responseSchemas = new Map([
             summary: { type: 'string', minLength: 1 },
           },
         },
+      },
+      whyThisPlan: { type: 'string', minLength: 1 },
+      evidenceBullets: {
+        type: 'array',
+        minItems: 1,
+        items: { type: 'string', minLength: 1 },
       },
       firstRecommendedAction: nextBestActionResponseSchema,
     },

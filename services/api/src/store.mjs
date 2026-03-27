@@ -171,6 +171,12 @@ function formatSkillLabel(skillId = '') {
   return humanizeIdentifier(`${skillId}`.replace(/^rw_/, '').replace(/^math_/, ''));
 }
 
+function toConfidenceLabel(confidence = 0) {
+  if (confidence >= 0.6) return 'strong starting signal';
+  if (confidence >= 0.45) return 'usable signal';
+  return 'early read';
+}
+
 function addDays(date, days) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
@@ -1393,23 +1399,31 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       if (firstBlock?.block_type === 'timed_set') {
         return {
           kind: 'start_timed_set',
-          title: 'Pressure-test today’s work',
-          reason: firstBlock.objective ?? plan.rationale_summary,
-          ctaLabel: 'Start timed set',
+          title: targetSkill ? `Pressure-test ${formatSkillLabel(targetSkill)}` : 'Pressure-test today’s work',
+          reason: targetSkill
+            ? `${firstBlock.objective ?? plan.rationale_summary} Helix wants to see whether ${formatSkillLabel(targetSkill).toLowerCase()} holds up under time pressure.`
+            : (firstBlock.objective ?? plan.rationale_summary),
+          ctaLabel: targetSkill ? `Start ${formatSkillLabel(targetSkill)} timed set` : 'Start timed set',
           estimatedMinutes: firstBlock.minutes ?? 12,
           sessionType: 'timed_set',
           section: null,
+          focusSkill: targetSkill ?? null,
         };
       }
 
       return {
         kind: 'start_module',
-        title: `Start your ${inferredSection ? sectionLabel(inferredSection) : 'focus'} block`,
-        reason: firstBlock?.objective ?? plan.rationale_summary,
-        ctaLabel: inferredSection ? `Start ${sectionLabel(inferredSection)} module` : 'Start focus module',
+        title: targetSkill
+          ? `Start your ${formatSkillLabel(targetSkill)} repair block`
+          : `Start your ${inferredSection ? sectionLabel(inferredSection) : 'focus'} block`,
+        reason: targetSkill
+          ? `${firstBlock?.objective ?? plan.rationale_summary} Helix is opening on ${formatSkillLabel(targetSkill).toLowerCase()} because it looks like the fastest score-moving lane.`
+          : (firstBlock?.objective ?? plan.rationale_summary),
+        ctaLabel: targetSkill ? `Start ${formatSkillLabel(targetSkill)} block` : (inferredSection ? `Start ${sectionLabel(inferredSection)} module` : 'Start focus module'),
         estimatedMinutes: firstBlock?.minutes ?? 15,
         sessionType: 'module_simulation',
         section: inferredSection,
+        focusSkill: targetSkill ?? null,
       };
     },
 
@@ -1426,6 +1440,54 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       }
 
       const projection = api.getProjection(userId);
+      const sessionItems = api.getSessionItems(diagnosticSession.id);
+      const attempts = state.attempts.filter((attempt) => attempt.session_id === diagnosticSession.id);
+      const sectionRows = toBreakdownRows(sessionItems, attempts, (itemId) => api.getItem(itemId), (item) => item.section);
+      const topScoreLeaks = api.getErrorDnaSummary(userId, 3);
+      const review = api.getReviewRecommendations(userId);
+      const reviewLead = review.recommendations[0] ?? null;
+      const plan = api.getPlan(userId);
+      const firstBlock = plan.blocks?.find((block) => block.block_type !== 'reflection') ?? plan.blocks?.[0] ?? null;
+      const leakLead = topScoreLeaks[0] ?? null;
+      const confidenceLabel = toConfidenceLabel(projection.confidence);
+
+      let firstRecommendedAction = api.getNextBestAction(userId, { preferSessionStart: true });
+      if (reviewLead) {
+        firstRecommendedAction = {
+          kind: 'start_retry_loop',
+          title: reviewLead.skill
+            ? `Repair ${formatSkillLabel(reviewLead.skill)} before new volume`
+            : 'Repair your biggest score leak first',
+          reason: reviewLead.errorTag
+            ? `${formatErrorInsight(reviewLead.errorTag, 1).label} showed up during your baseline. One short correction loop now will move the next session more than generic practice.`
+            : `Helix saw an unstable pattern in ${reviewLead.skill ? formatSkillLabel(reviewLead.skill).toLowerCase() : 'your recent work'}. Fix it once before adding more volume.`,
+          ctaLabel: reviewLead.skill ? `Repair ${formatSkillLabel(reviewLead.skill)}` : 'Start repair loop',
+          estimatedMinutes: 8,
+          sessionType: 'review',
+          section: reviewLead.section ?? null,
+          itemId: reviewLead.itemId,
+          focusSkill: reviewLead.skill ?? null,
+        };
+      }
+
+      const evidenceBullets = [
+        `Baseline completed: ${sessionItems.length} questions across Reading/Writing and Math.`,
+        ...sectionRows.map((row) => (
+          row.accuracy === null
+            ? `${sectionLabel(row.key)} still needs more evidence.`
+            : `${sectionLabel(row.key)} accuracy started at ${Math.round(row.accuracy * 100)}% across ${row.answered}/${row.totalItems} answered items.`
+        )),
+        leakLead
+          ? `${leakLead.label} is the clearest early point leak from the baseline.`
+          : 'Helix needs a little more work before the top leak is fully stable.',
+      ].filter(Boolean).slice(0, 4);
+
+      const whyThisPlan = reviewLead?.skill
+        ? `Helix is sending you to ${formatSkillLabel(reviewLead.skill)} first because that is where your baseline exposed the most expensive early leak.`
+        : firstBlock?.target_skills?.[0]
+          ? `Helix is opening on ${formatSkillLabel(firstBlock.target_skills[0])} because it looks like the fastest score-moving lane from your baseline evidence.`
+          : 'Helix is using your baseline to start with the lane that should move points fastest.';
+
       return {
         sessionId: diagnosticSession.id,
         scoreBand: {
@@ -1433,9 +1495,12 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           high: projection.predicted_total_high,
         },
         confidence: projection.confidence,
+        confidenceLabel,
         momentum: projection.momentum_score ?? 0,
-        topScoreLeaks: api.getErrorDnaSummary(userId, 3),
-        firstRecommendedAction: api.getNextBestAction(userId, { preferSessionStart: true }),
+        topScoreLeaks,
+        whyThisPlan,
+        evidenceBullets,
+        firstRecommendedAction,
       };
     },
 

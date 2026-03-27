@@ -734,8 +734,21 @@ function renderDiagnosticReveal(reveal) {
   clear(container);
   container.append(node('p', {
     className: 'notice',
-    text: `Current score band: ${reveal.scoreBand.low}–${reveal.scoreBand.high} · confidence ${Math.round((reveal.confidence ?? 0) * 100)}% · momentum ${Math.round((reveal.momentum ?? 0) * 100)}%`,
+    text: `Current score band: ${reveal.scoreBand.low}–${reveal.scoreBand.high} · ${reveal.confidenceLabel ?? 'early read'} (${Math.round((reveal.confidence ?? 0) * 100)}%) · momentum ${Math.round((reveal.momentum ?? 0) * 100)}%`,
   }));
+
+  if (reveal.whyThisPlan) {
+    container.append(node('p', { text: reveal.whyThisPlan }));
+  }
+
+  if (Array.isArray(reveal.evidenceBullets) && reveal.evidenceBullets.length) {
+    const evidenceList = node('ul', { className: 'list compact' });
+    for (const bullet of reveal.evidenceBullets) {
+      evidenceList.append(node('li', { text: bullet }));
+    }
+    container.append(node('p', { className: 'muted', text: 'Why Helix believes this' }));
+    container.append(evidenceList);
+  }
 
   const leakList = node('div', { className: 'stack' });
   for (const leak of reveal.topScoreLeaks ?? []) {

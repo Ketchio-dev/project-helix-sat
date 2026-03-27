@@ -790,7 +790,7 @@ test('api fresh student diagnostic seeds skill states and exits empty-state plan
   });
 });
 
-test('api returns a diagnostic reveal after diagnostic completion', async () => {
+test('api returns a richer diagnostic reveal after diagnostic completion', async () => {
   await withServer(async (baseUrl) => {
     const registered = await registerSession(baseUrl, {
       name: 'Reveal Student',
@@ -816,13 +816,16 @@ test('api returns a diagnostic reveal after diagnostic completion', async () => 
     }).then((res) => res.json());
 
     let lastAttempt = null;
-    for (const item of diagnostic.items) {
+    for (const [index, item] of diagnostic.items.entries()) {
+      const answer = index === 0
+        ? buildIncorrectAttemptAnswer(item.itemId)
+        : buildAttemptAnswer(item.itemId);
       lastAttempt = await fetch(`${baseUrl}/api/attempt/submit`, {
         method: 'POST',
         headers: registered.headers,
         body: JSON.stringify({
           itemId: item.itemId,
-          ...buildAttemptAnswer(item.itemId),
+          ...answer,
           sessionId: diagnostic.session.id,
           mode: 'learn',
           confidenceLevel: 3,
@@ -835,13 +838,21 @@ test('api returns a diagnostic reveal after diagnostic completion', async () => 
     assert.equal(lastAttempt.diagnosticReveal.sessionId, diagnostic.session.id);
     assert.ok(lastAttempt.diagnosticReveal.scoreBand.low >= 400);
     assert.equal(Array.isArray(lastAttempt.diagnosticReveal.topScoreLeaks), true);
-    assert.ok(lastAttempt.diagnosticReveal.firstRecommendedAction);
+    assert.equal(typeof lastAttempt.diagnosticReveal.confidenceLabel, 'string');
+    assert.equal(typeof lastAttempt.diagnosticReveal.whyThisPlan, 'string');
+    assert.ok(Array.isArray(lastAttempt.diagnosticReveal.evidenceBullets));
+    assert.ok(lastAttempt.diagnosticReveal.evidenceBullets.length >= 2);
+    assert.equal(lastAttempt.diagnosticReveal.firstRecommendedAction.kind, 'start_retry_loop');
+    assert.ok(lastAttempt.diagnosticReveal.firstRecommendedAction.itemId);
 
     const reveal = await fetch(`${baseUrl}/api/diagnostic/reveal`, {
       headers: registered.headers,
     }).then((res) => res.json());
     assert.equal(reveal.sessionId, diagnostic.session.id);
-    assert.ok(reveal.firstRecommendedAction.kind === 'start_module' || reveal.firstRecommendedAction.kind === 'start_timed_set');
+    assert.equal(typeof reveal.confidenceLabel, 'string');
+    assert.equal(typeof reveal.whyThisPlan, 'string');
+    assert.ok(reveal.evidenceBullets.some((bullet) => bullet.includes('Baseline completed')));
+    assert.equal(reveal.firstRecommendedAction.kind, 'start_retry_loop');
   });
 });
 
