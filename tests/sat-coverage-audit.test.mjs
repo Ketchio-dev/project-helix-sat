@@ -148,7 +148,10 @@ test('coverage audit: learner app flow exposes both sections through timed and m
     assert.ok(finalModuleAttempt?.moduleSummary);
     assert.equal(finalModuleAttempt.moduleSummary.completed, true);
     assert.equal(finalModuleAttempt.moduleSummary.sectionBreakdown.length, 2);
-    assert.equal(finalModuleAttempt.moduleSummary.sectionBreakdown.every((entry) => entry.section === 'reading_writing' || entry.section === 'math'), true);
+    assert.deepEqual(
+      finalModuleAttempt.moduleSummary.sectionBreakdown.map((entry) => entry.section ?? entry.key).sort(),
+      ['math', 'reading_writing'],
+    );
 
     const finishedModule = await fetch(`${baseUrl}/api/module/finish`, {
       method: 'POST',
@@ -167,7 +170,7 @@ test('coverage audit: learner app flow exposes both sections through timed and m
     assert.equal(dashboard.latestModuleSummary.sessionId, moduleSimulation.session.id);
     assert.equal(dashboard.latestModuleSummary.completed, true);
     assert.deepEqual(
-      dashboard.latestModuleSummary.sectionBreakdown.map((entry) => entry.section).sort(),
+      dashboard.latestModuleSummary.sectionBreakdown.map((entry) => entry.section ?? entry.key).sort(),
       ['math', 'reading_writing'],
     );
 
