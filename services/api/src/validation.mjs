@@ -67,6 +67,30 @@ const linkedLearnerSchema = {
   },
 };
 
+const nextBestActionResponseSchema = {
+  type: 'object',
+  required: ['kind', 'title', 'reason', 'ctaLabel', 'estimatedMinutes', 'sessionType', 'section'],
+  additionalProperties: false,
+  properties: {
+    kind: {
+      enum: [
+        'complete_goal_setup',
+        'start_diagnostic',
+        'resume_active_session',
+        'review_mistakes',
+        'start_timed_set',
+        'start_module',
+      ],
+    },
+    title: { type: 'string', minLength: 1 },
+    reason: { type: 'string', minLength: 1 },
+    ctaLabel: { type: 'string', minLength: 1 },
+    estimatedMinutes: { type: ['integer', 'null'], minimum: 1 },
+    sessionType: { type: ['string', 'null'], enum: ['diagnostic', 'timed_set', 'module_simulation', null] },
+    section: { type: ['string', 'null'], enum: ['reading_writing', 'math', null] },
+  },
+};
+
 const responseSchemas = new Map([
   ['DailyPlan', loadedSchemas.get('planning/daily-plan.schema.json')],
   ['EventEnvelope', loadedSchemas.get('events/event-envelope.schema.json')],
@@ -100,6 +124,55 @@ const responseSchemas = new Map([
     additionalProperties: false,
     properties: {
       loggedOut: { type: 'boolean' },
+    },
+  }],
+  ['GoalProfileResponse', {
+    type: 'object',
+    required: ['targetScore', 'targetTestDate', 'dailyMinutes', 'preferredExplanationLanguage', 'selfReportedWeakArea', 'isComplete', 'completedAt'],
+    additionalProperties: false,
+    properties: {
+      targetScore: { type: ['number', 'null'], minimum: 400, maximum: 1600 },
+      targetTestDate: { type: ['string', 'null'] },
+      dailyMinutes: { type: ['number', 'null'], minimum: 5, maximum: 600 },
+      preferredExplanationLanguage: { type: ['string', 'null'] },
+      selfReportedWeakArea: { type: ['string', 'null'] },
+      isComplete: { type: 'boolean' },
+      completedAt: { type: ['string', 'null'] },
+    },
+  }],
+  ['NextBestActionResponse', nextBestActionResponseSchema],
+  ['DiagnosticRevealResponse', {
+    type: 'object',
+    required: ['sessionId', 'scoreBand', 'confidence', 'momentum', 'topScoreLeaks', 'firstRecommendedAction'],
+    additionalProperties: false,
+    properties: {
+      sessionId: { type: 'string', minLength: 1 },
+      scoreBand: {
+        type: 'object',
+        required: ['low', 'high'],
+        additionalProperties: false,
+        properties: {
+          low: { type: 'integer', minimum: 400, maximum: 1600 },
+          high: { type: 'integer', minimum: 400, maximum: 1600 },
+        },
+      },
+      confidence: { type: 'number', minimum: 0, maximum: 1 },
+      momentum: { type: 'number', minimum: 0, maximum: 1 },
+      topScoreLeaks: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['tag', 'label', 'score', 'summary'],
+          additionalProperties: false,
+          properties: {
+            tag: { type: 'string', minLength: 1 },
+            label: { type: 'string', minLength: 1 },
+            score: { type: 'number', minimum: 0 },
+            summary: { type: 'string', minLength: 1 },
+          },
+        },
+      },
+      firstRecommendedAction: nextBestActionResponseSchema,
     },
   }],
   ['AttemptExamAckResponse', {
@@ -219,6 +292,17 @@ const requestSchemas = new Map([
     additionalProperties: false,
     properties: {
       section: { enum: ['reading_writing', 'math'] },
+    },
+  }],
+  ['GoalProfileUpdateRequest', {
+    type: 'object',
+    required: ['targetScore', 'targetTestDate', 'dailyMinutes'],
+    additionalProperties: false,
+    properties: {
+      targetScore: { type: 'number', minimum: 400, maximum: 1600 },
+      targetTestDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+      dailyMinutes: { type: 'number', minimum: 5, maximum: 600 },
+      selfReportedWeakArea: { type: 'string', minLength: 1, maxLength: 120 },
     },
   }],
   ['SessionFinishRequest', {

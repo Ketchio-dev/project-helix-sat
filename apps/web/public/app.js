@@ -5,6 +5,9 @@ const state = {
   userRole: null,
   linkedLearners: [],
   selectedLearnerId: null,
+  goalProfile: null,
+  nextBestAction: null,
+  diagnosticReveal: null,
   currentItem: null,
   currentSessionId: null,
   currentSessionType: null,
@@ -41,6 +44,9 @@ const json = async (url, options) => {
     state.userRole = null;
     state.linkedLearners = [];
     state.selectedLearnerId = null;
+    state.goalProfile = null;
+    state.nextBestAction = null;
+    state.diagnosticReveal = null;
     showLogin();
     const payload = await response.json().catch(() => ({ error: 'Unauthorized' }));
     const error = new Error(payload.error || 'Unauthorized');
@@ -85,7 +91,7 @@ function kvRows(entries) {
   const wrapper = node('div', { className: 'kv' });
   for (const [label, value] of entries) {
     wrapper.append(node('strong', { text: label }));
-    wrapper.append(node('span', { text: String(value) }));
+    wrapper.append(node('span', { text: value === null || value === undefined || value === '' ? '—' : String(value) }));
   }
   return wrapper;
 }
@@ -342,6 +348,142 @@ function renderPlan(plan) {
   container.append(list);
   container.append(node('p', { className: 'muted', text: `Fallback: ${plan.fallback_plan.trigger}` }));
   container.append(node('p', { className: 'muted', text: `Stop condition: ${plan.stop_condition}` }));
+}
+
+function focusGoalSetup() {
+  const section = $('#goalSetupSection');
+  section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('#goalTargetScore')?.focus();
+}
+
+async function performNextBestAction(action) {
+  if (!action) return;
+
+  switch (action.kind) {
+    case 'complete_goal_setup':
+      focusGoalSetup();
+      return;
+    case 'start_diagnostic':
+      $('#startDiagnostic')?.click();
+      return;
+    case 'resume_active_session':
+      $('#itemArea')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    case 'review_mistakes':
+      $('#reviewRecommendations')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    case 'start_timed_set':
+      $('#startTimedSet')?.click();
+      return;
+    case 'start_module':
+      if (action.section) {
+        $('#moduleSection').value = action.section;
+      }
+      $('#startModule')?.click();
+      return;
+    default:
+      return;
+  }
+}
+
+function renderGoalProfile(goalProfile) {
+  state.goalProfile = goalProfile ?? null;
+  const section = $('#goalSetupSection');
+  const result = $('#goalSetupResult');
+  if (!section) return;
+
+  const isStudentSurface = state.userRole === 'student' || state.userRole === 'admin';
+  if (!isStudentSurface || !goalProfile || goalProfile.isComplete) {
+    section.style.display = 'none';
+    if (result) {
+      result.textContent = goalProfile?.isComplete
+        ? 'Goal profile saved. Helix can now shape your plan around your score target and schedule.'
+        : 'Finish your goal setup to unlock your first personalized plan.';
+    }
+    return;
+  }
+
+  section.style.display = 'block';
+  $('#goalTargetScore').value = goalProfile.targetScore ?? 1400;
+  $('#goalTargetDate').value = goalProfile.targetTestDate ?? '';
+  $('#goalDailyMinutes').value = goalProfile.dailyMinutes ?? 30;
+  $('#goalWeakArea').value = goalProfile.selfReportedWeakArea ?? '';
+  if (result) {
+    result.textContent = 'Complete this once so Helix can tune your first score-moving plan.';
+  }
+}
+
+function renderNextBestAction(action) {
+  state.nextBestAction = action ?? null;
+  const section = $('#nextBestActionSection');
+  const container = $('#nextBestAction');
+  if (!section || !container) return;
+
+  const isStudentSurface = state.userRole === 'student' || state.userRole === 'admin';
+  if (!isStudentSurface || !action) {
+    section.style.display = 'none';
+    clear(container);
+    return;
+  }
+
+  section.style.display = 'block';
+  clear(container);
+  container.append(node('h3', { text: action.title }));
+  container.append(node('p', { text: action.reason }));
+  const meta = [];
+  if (action.estimatedMinutes) meta.push(`~${action.estimatedMinutes} min`);
+  if (action.section) meta.push(formatSectionName(action.section));
+  if (action.sessionType) meta.push(toDisplaySessionType(action.sessionType));
+  if (meta.length) {
+    container.append(node('p', { className: 'muted', text: meta.join(' · ') }));
+  }
+  const button = node('button', { text: action.ctaLabel });
+  button.addEventListener('click', () => performNextBestAction(action));
+  container.append(button);
+}
+
+function renderDiagnosticReveal(reveal) {
+  state.diagnosticReveal = reveal ?? null;
+  const section = $('#diagnosticRevealSection');
+  const container = $('#diagnosticReveal');
+  if (!section || !container) return;
+
+  if (!reveal) {
+    section.style.display = 'none';
+    clear(container);
+    return;
+  }
+
+  section.style.display = 'block';
+  clear(container);
+  container.append(node('p', {
+    className: 'notice',
+    text: `Current score band: ${reveal.scoreBand.low}–${reveal.scoreBand.high} · confidence ${Math.round((reveal.confidence ?? 0) * 100)}% · momentum ${Math.round((reveal.momentum ?? 0) * 100)}%`,
+  }));
+
+  const leakList = node('div', { className: 'stack' });
+  for (const leak of reveal.topScoreLeaks ?? []) {
+    const card = node('article', { className: 'review-item' });
+    card.append(node('strong', { text: leak.label }));
+    card.append(node('p', { text: leak.summary }));
+    card.append(node('span', { className: 'muted', text: `Signal strength: ${leak.score}` }));
+    leakList.append(card);
+  }
+
+  if (!(reveal.topScoreLeaks ?? []).length) {
+    leakList.append(node('p', { className: 'muted', text: 'Helix needs a little more evidence before it can name your top score leaks.' }));
+  }
+
+  container.append(leakList);
+  if (reveal.firstRecommendedAction) {
+    const ctaWrap = node('div', { className: 'stack' });
+    ctaWrap.append(node('strong', { text: 'Start here next' }));
+    ctaWrap.append(node('p', { text: reveal.firstRecommendedAction.reason }));
+    const button = node('button', { text: reveal.firstRecommendedAction.ctaLabel });
+    button.addEventListener('click', () => performNextBestAction(reveal.firstRecommendedAction));
+    ctaWrap.append(button);
+    container.append(ctaWrap);
+  }
 }
 
 function renderErrorDna(errorDna) {
@@ -1026,6 +1168,10 @@ function showLogin() {
   const appSection = document.getElementById('appSection');
   if (loginSection) loginSection.style.display = 'block';
   if (appSection) appSection.style.display = 'none';
+  const loginError = $('#loginError');
+  const registerError = $('#registerError');
+  if (loginError) loginError.textContent = '';
+  if (registerError) registerError.textContent = '';
 }
 
 function showApp() {
@@ -1049,10 +1195,26 @@ function handleLogout() {
   state.userId = null;
   state.linkedLearners = [];
   state.selectedLearnerId = null;
+  state.goalProfile = null;
+  state.nextBestAction = null;
+  state.diagnosticReveal = null;
   showLogin();
 }
 
+async function bootstrapAuthenticatedApp() {
+  const me = await json('/api/me');
+  state.userRole = me.role;
+  state.userId = me.id;
+  setLinkedLearners(me.linkedLearners ?? []);
+  const badge = document.getElementById('userRoleBadge');
+  if (badge) badge.textContent = me.role;
+  showApp();
+  await loadDashboard();
+}
+
 async function handleLogin(email, password) {
+  const loginError = $('#loginError');
+  if (loginError) loginError.textContent = '';
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
@@ -1062,17 +1224,28 @@ async function handleLogin(email, password) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Login failed');
-    const me = await json('/api/me');
-    state.userRole = me.role;
-    state.userId = me.id;
-    setLinkedLearners(me.linkedLearners ?? []);
-    const badge = document.getElementById('userRoleBadge');
-    if (badge) badge.textContent = me.role;
-    showApp();
-    await loadDashboard();
+    await bootstrapAuthenticatedApp();
   } catch (err) {
-    const loginError = document.getElementById('loginError');
     if (loginError) loginError.textContent = err.message;
+  }
+}
+
+async function handleRegister(name, email, password) {
+  const registerError = $('#registerError');
+  if (registerError) registerError.textContent = '';
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Registration failed');
+    await bootstrapAuthenticatedApp();
+    focusGoalSetup();
+  } catch (err) {
+    if (registerError) registerError.textContent = err.message;
   }
 }
 
@@ -1093,7 +1266,7 @@ async function loadDashboard() {
       throw new Error('No linked learner available for this account.');
     }
 
-    const [dashboard, sessionHistory, parentSummary, teacherBrief, teacherAssignments, activeSession] = await Promise.all([
+    const [dashboard, sessionHistory, parentSummary, teacherBrief, teacherAssignments, activeSession, goalProfile, nextBestAction, diagnosticReveal] = await Promise.all([
       json(withLearnerContext('/api/dashboard/learner')),
       json(withLearnerContext('/api/sessions/history')).catch(() => null),
       state.userRole === 'parent' ? json(withLearnerContext('/api/parent/summary')).catch(() => null) : Promise.resolve(null),
@@ -1102,8 +1275,20 @@ async function loadDashboard() {
       (state.userRole === 'student' || state.userRole === 'admin'
         ? loadActiveSession().catch((error) => (error.status === 404 ? null : Promise.reject(error)))
         : Promise.resolve(null)),
+      (state.userRole === 'student' || state.userRole === 'admin'
+        ? json('/api/goal-profile').catch((error) => ([400, 404].includes(error.status) ? null : Promise.reject(error)))
+        : Promise.resolve(null)),
+      (state.userRole === 'student' || state.userRole === 'admin'
+        ? json('/api/next-best-action').catch((error) => ([400, 404].includes(error.status) ? null : Promise.reject(error)))
+        : Promise.resolve(null)),
+      (state.userRole === 'student' || state.userRole === 'admin'
+        ? json('/api/diagnostic/reveal').catch((error) => ([400, 404].includes(error.status) ? null : Promise.reject(error)))
+        : Promise.resolve(null)),
     ]);
 
+    renderGoalProfile(goalProfile);
+    renderNextBestAction(nextBestAction);
+    renderDiagnosticReveal(diagnosticReveal);
     renderProfile(dashboard.profile);
     renderProjection(dashboard.projection);
     renderPlan(dashboard.plan);
@@ -1146,6 +1331,7 @@ $('#startDiagnostic').addEventListener('click', async () => {
     state.currentSessionType = result.session.type;
     state.currentSessionProgress = result.sessionProgress ?? null;
     clearSessionNotice();
+    renderDiagnosticReveal(null);
     state.activeSessionEnvelope = { session: result.session, sessionProgress: result.sessionProgress ?? null };
     renderItem(result.currentItem);
     renderSessionProgress(result.sessionProgress);
@@ -1164,6 +1350,7 @@ $('#startTimedSet').addEventListener('click', async () => {
     state.currentSessionType = result.session.type;
     state.currentSessionProgress = result.sessionProgress ?? null;
     clearSessionNotice();
+    renderDiagnosticReveal(null);
     state.activeSessionEnvelope = {
       session: result.session,
       timing: result.timing ?? result.pacing ?? null,
@@ -1202,6 +1389,7 @@ $('#startModule').addEventListener('click', async () => {
     state.currentSessionType = result.session.type;
     state.currentSessionProgress = result.sessionProgress ?? null;
     clearSessionNotice();
+    renderDiagnosticReveal(null);
     state.activeSessionEnvelope = {
       session: result.session,
       timing: result.timing ?? result.pacing ?? null,
@@ -1280,6 +1468,10 @@ $('#attemptForm').addEventListener('submit', async (event) => {
     if (result.projection) renderProjection(result.projection);
     if (result.plan) renderPlan(result.plan);
     if (result.errorDna) renderErrorDna(result.errorDna);
+    if (result.diagnosticReveal) {
+      renderDiagnosticReveal(result.diagnosticReveal);
+      renderNextBestAction(result.diagnosticReveal.firstRecommendedAction ?? null);
+    }
     if (result.review) renderReview(result.review);
     if (result.summary?.kind === 'timed_set' && result.summary.payload) {
       renderTimedSetSummary(result.summary.payload);
@@ -1457,14 +1649,55 @@ $('#teacherAssignmentForm').addEventListener('submit', async (event) => {
   }
 });
 
+$('#goalSetupForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const targetScore = Number($('#goalTargetScore').value);
+  const targetTestDate = $('#goalTargetDate').value;
+  const dailyMinutes = Number($('#goalDailyMinutes').value);
+  const selfReportedWeakArea = $('#goalWeakArea').value.trim();
+
+  if (!targetTestDate) {
+    $('#goalSetupResult').textContent = 'Choose your test date before saving.';
+    return;
+  }
+
+  try {
+    const result = await json('/api/goal-profile', {
+      method: 'POST',
+      body: JSON.stringify({
+        targetScore,
+        targetTestDate,
+        dailyMinutes,
+        selfReportedWeakArea: selfReportedWeakArea || undefined,
+      }),
+    });
+    renderGoalProfile(result);
+    $('#goalSetupResult').textContent = 'Goal profile saved. Helix just updated your next best move.';
+    await loadDashboard();
+  } catch (error) {
+    $('#goalSetupResult').textContent = error.message;
+  }
+});
+
 document.getElementById('loginButton').addEventListener('click', () => {
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
   handleLogin(email, password);
 });
 
+document.getElementById('registerButton').addEventListener('click', () => {
+  const name = document.getElementById('registerName').value.trim();
+  const email = document.getElementById('registerEmail').value.trim();
+  const password = document.getElementById('registerPassword').value;
+  handleRegister(name, email, password);
+});
+
 document.getElementById('loginPassword').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('loginButton').click();
+});
+
+document.getElementById('registerPassword').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('registerButton').click();
 });
 
 document.getElementById('logoutButton').addEventListener('click', handleLogout);

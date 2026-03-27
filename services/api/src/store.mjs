@@ -123,9 +123,47 @@ function isExamSession(session) {
 }
 
 const SECTION_LABELS = { reading_writing: 'Reading & Writing', math: 'Math' };
+const ERROR_TAG_LABELS = {
+  scope_mismatch: 'Reading beyond the evidence',
+  unsupported_inference: 'Invented support',
+  careless_under_time: 'Rushing under time pressure',
+  partial_truth: 'Choosing a partly right answer',
+  grammar_rule_misapplication: 'Applying the wrong grammar rule',
+  transition_logic_mismatch: 'Using the wrong logical connection',
+};
+const ERROR_TAG_SUMMARIES = {
+  scope_mismatch: 'Your answer drifted wider than the text actually supports.',
+  unsupported_inference: 'You added a conclusion that the text never fully earned.',
+  careless_under_time: 'Accuracy drops when you lock an answer before checking the last clue.',
+  partial_truth: 'You are often finding an answer that sounds close but misses the exact task.',
+  grammar_rule_misapplication: 'The rule choice is unstable even when the sentence clue is visible.',
+  transition_logic_mismatch: 'You are spotting topic overlap but missing the sentence-to-sentence logic.',
+};
 
 function sectionLabel(key) {
   return SECTION_LABELS[key] ?? key;
+}
+
+function capitalize(value = '') {
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : '';
+}
+
+function humanizeIdentifier(value = '') {
+  return `${value}`
+    .split('_')
+    .filter(Boolean)
+    .map((part) => capitalize(part))
+    .join(' ');
+}
+
+function formatErrorInsight(tag, score) {
+  const label = ERROR_TAG_LABELS[tag] ?? humanizeIdentifier(tag) ?? 'Recurring trap';
+  return {
+    tag,
+    label,
+    score,
+    summary: ERROR_TAG_SUMMARIES[tag] ?? `${label} is still costing points in recent work.`,
+  };
 }
 
 function chooseModuleSection(items = [], skillStates = []) {
@@ -400,6 +438,42 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         linkedLearners: api.getLinkedLearners(userId),
         lastSessionSummary: latestSession ? `${toSessionLabel(latestSession)} in progress` : null,
       };
+    },
+
+    getGoalProfile(userId = DEMO_USER_ID) {
+      const profile = state.learnerProfiles[userId];
+      if (!profile) {
+        throw new HttpError(404, 'Unknown learner');
+      }
+      return {
+        targetScore: profile.target_score ?? null,
+        targetTestDate: profile.target_test_date ?? null,
+        dailyMinutes: profile.daily_minutes ?? null,
+        preferredExplanationLanguage: profile.preferred_explanation_language ?? null,
+        selfReportedWeakArea: profile.self_reported_weak_area ?? null,
+        isComplete: Boolean(profile.goal_setup_completed_at),
+        completedAt: profile.goal_setup_completed_at ?? null,
+      };
+    },
+
+    updateGoalProfile(userId = DEMO_USER_ID, {
+      targetScore,
+      targetTestDate,
+      dailyMinutes,
+      selfReportedWeakArea = null,
+    } = {}) {
+      const profile = state.learnerProfiles[userId];
+      if (!profile) {
+        throw new HttpError(404, 'Unknown learner');
+      }
+
+      profile.target_score = Number(targetScore);
+      profile.target_test_date = targetTestDate;
+      profile.daily_minutes = Number(dailyMinutes);
+      profile.self_reported_weak_area = selfReportedWeakArea ? `${selfReportedWeakArea}`.trim() : null;
+      profile.goal_setup_completed_at = new Date().toISOString();
+      persistState();
+      return api.getGoalProfile(userId);
     },
 
     getProfile(learnerId = DEMO_USER_ID) {
@@ -897,6 +971,132 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       return latestModule ? api.getModuleSummary(latestModule.id) : null;
     },
 
+    getErrorDnaSummary(userId = DEMO_USER_ID, limit = 3) {
+      return Object.entries(api.getErrorDna(userId))
+        .sort((left, right) => right[1] - left[1])
+        .slice(0, limit)
+        .map(([tag, score]) => formatErrorInsight(tag, score));
+    },
+
+    getNextBestAction(userId = DEMO_USER_ID, { preferSessionStart = false } = {}) {
+      api.getUser(userId);
+      const activeSession = api.getActiveSession(userId);
+      if (activeSession.hasActiveSession) {
+        const session = activeSession.activeSession?.session ?? {};
+        const remainingTimeSec = activeSession.activeSession?.timing?.remainingTimeSec ?? null;
+        return {
+          kind: 'resume_active_session',
+          title: `Resume your ${toSessionLabel(session)}`,
+          reason: session.exam_mode
+            ? 'Your score signal stays cleaner if you finish the active session before starting another block.'
+            : 'You already have an unfinished learning session in progress.',
+          ctaLabel: `Resume ${toSessionLabel(session)}`,
+          estimatedMinutes: remainingTimeSec === null ? 10 : Math.max(1, Math.ceil(remainingTimeSec / 60)),
+          sessionType: session.type ?? null,
+          section: session.section ?? null,
+        };
+      }
+
+      const goalProfile = api.getGoalProfile(userId);
+      if (!goalProfile.isComplete) {
+        return {
+          kind: 'complete_goal_setup',
+          title: 'Set your score goal',
+          reason: 'Helix uses your target score, test date, and study time to shape your first adaptive plan.',
+          ctaLabel: 'Finish goal setup',
+          estimatedMinutes: 2,
+          sessionType: null,
+          section: null,
+        };
+      }
+
+      const attempts = api.getAttempts(userId);
+      const plan = api.getPlan(userId);
+      const review = api.getReviewRecommendations(userId);
+      if (!attempts.length || plan.status === 'needs_diagnostic') {
+        return {
+          kind: 'start_diagnostic',
+          title: 'Build your first baseline',
+          reason: 'A short diagnostic lets Helix find the fastest score-moving starting point for you.',
+          ctaLabel: 'Start diagnostic',
+          estimatedMinutes: 6,
+          sessionType: 'diagnostic',
+          section: null,
+        };
+      }
+
+      if (!preferSessionStart && review.recommendations?.length) {
+        const lead = review.recommendations[0];
+        return {
+          kind: 'review_mistakes',
+          title: 'Fix your most expensive recent trap',
+          reason: lead.errorTag
+            ? `${formatErrorInsight(lead.errorTag, 1).label} keeps resurfacing. Correct it before you pile on more timed work.`
+            : 'Your recent misses are clustered tightly enough that review will move the next session more than new volume.',
+          ctaLabel: 'Open review',
+          estimatedMinutes: 10,
+          sessionType: null,
+          section: lead.section ?? null,
+        };
+      }
+
+      const firstBlock = plan.blocks?.[0] ?? null;
+      const targetSkill = firstBlock?.target_skills?.[0] ?? null;
+      const targetSkillState = targetSkill
+        ? api.getSkillStates(userId).find((skillState) => skillState.skill_id === targetSkill) ?? null
+        : null;
+      const inferredSection = targetSkillState?.section
+        ?? (targetSkill?.startsWith('math_') ? 'math' : targetSkill ? 'reading_writing' : null);
+
+      if (firstBlock?.block_type === 'timed_set') {
+        return {
+          kind: 'start_timed_set',
+          title: 'Pressure-test today’s work',
+          reason: firstBlock.objective ?? plan.rationale_summary,
+          ctaLabel: 'Start timed set',
+          estimatedMinutes: firstBlock.minutes ?? 12,
+          sessionType: 'timed_set',
+          section: null,
+        };
+      }
+
+      return {
+        kind: 'start_module',
+        title: `Start your ${inferredSection ? sectionLabel(inferredSection) : 'focus'} block`,
+        reason: firstBlock?.objective ?? plan.rationale_summary,
+        ctaLabel: inferredSection ? `Start ${sectionLabel(inferredSection)} module` : 'Start focus module',
+        estimatedMinutes: firstBlock?.minutes ?? 15,
+        sessionType: 'module_simulation',
+        section: inferredSection,
+      };
+    },
+
+    getDiagnosticReveal(userId = DEMO_USER_ID, sessionId = null) {
+      api.getUser(userId);
+      const diagnosticSession = sessionId
+        ? api.getSession(sessionId)
+        : Object.values(state.sessions)
+          .filter((session) => session.user_id === userId && session.type === 'diagnostic' && session.ended_at)
+          .sort((left, right) => new Date(right.ended_at) - new Date(left.ended_at))[0] ?? null;
+
+      if (!diagnosticSession || diagnosticSession.user_id !== userId || diagnosticSession.type !== 'diagnostic' || !diagnosticSession.ended_at) {
+        throw new HttpError(404, 'No completed diagnostic reveal is available');
+      }
+
+      const projection = api.getProjection(userId);
+      return {
+        sessionId: diagnosticSession.id,
+        scoreBand: {
+          low: projection.predicted_total_low,
+          high: projection.predicted_total_high,
+        },
+        confidence: projection.confidence,
+        momentum: projection.momentum_score ?? 0,
+        topScoreLeaks: api.getErrorDnaSummary(userId, 3),
+        firstRecommendedAction: api.getNextBestAction(userId, { preferSessionStart: true }),
+      };
+    },
+
     getDashboard(userId = DEMO_USER_ID) {
       return {
         profile: api.getProfile(userId),
@@ -1358,6 +1558,9 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         projection: api.getProjection(userId),
         plan: api.getPlan(userId),
         errorDna: api.getErrorDna(userId),
+        diagnosticReveal: session.type === 'diagnostic' && sessionProgress.isComplete
+          ? api.getDiagnosticReveal(userId, sessionId)
+          : null,
         review: api.getReviewRecommendations(userId),
         sessionProgress,
         sessionType: session.type,
@@ -1562,6 +1765,8 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         target_test_date: null,
         daily_minutes: 30,
         preferred_explanation_language: 'en',
+        self_reported_weak_area: null,
+        goal_setup_completed_at: null,
       };
       state.skillStates[userId] = [];
       state.errorDna[userId] = {};

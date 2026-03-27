@@ -16,6 +16,15 @@
         <button id="loginButton" style="padding:10px; background:#1a73e8; color:#fff; border:none; border-radius:4px; font-size:14px; cursor:pointer;">Sign In</button>
         <span id="loginError" style="color:#d93025; font-size:13px;"></span>
       </div>
+      <hr style="margin:20px 0; border:none; border-top:1px solid #e0e0e0;" />
+      <p style="color:#666; margin-bottom:12px;">New here? Create a student account.</p>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <input id="registerName" type="text" placeholder="Full name" style="padding:8px; border:1px solid #ccc; border-radius:4px; font-size:14px;" />
+        <input id="registerEmail" type="email" placeholder="Email" style="padding:8px; border:1px solid #ccc; border-radius:4px; font-size:14px;" />
+        <input id="registerPassword" type="password" placeholder="Password (8+ chars)" style="padding:8px; border:1px solid #ccc; border-radius:4px; font-size:14px;" />
+        <button id="registerButton" style="padding:10px; background:#0f8a4b; color:#fff; border:none; border-radius:4px; font-size:14px; cursor:pointer;">Create Account</button>
+        <span id="registerError" style="color:#d93025; font-size:13px;"></span>
+      </div>
     </div>
 
     <div id="appSection" style="display:none;">
@@ -44,6 +53,44 @@
 
       <div id="sessionNotice" class="session-notice hidden" aria-live="polite"></div>
       <div id="sessionTimer" class="session-timer hidden" aria-live="polite"></div>
+
+      <section class="grid two">
+        <article class="card" id="goalSetupSection" style="display:none;">
+          <h2>Set Your Goal</h2>
+          <p class="notice">Tell Helix what score you want, when you’re testing, and how much time you have. We’ll use it to shape your first adaptive plan.</p>
+          <form id="goalSetupForm" class="teacher-assignment-form">
+            <label>
+              Goal score
+              <input id="goalTargetScore" type="number" min="400" max="1600" step="10" value="1400" />
+            </label>
+            <label>
+              Test date
+              <input id="goalTargetDate" type="date" />
+            </label>
+            <label>
+              Daily study time (minutes)
+              <input id="goalDailyMinutes" type="number" min="5" max="600" step="5" value="30" />
+            </label>
+            <label>
+              What feels weakest right now?
+              <input id="goalWeakArea" type="text" placeholder="e.g. punctuation, algebra, inference questions" />
+            </label>
+            <div class="row gap">
+              <button type="submit">Save Goal Profile</button>
+            </div>
+          </form>
+          <pre id="goalSetupResult">Finish your goal setup to unlock your first personalized plan.</pre>
+        </article>
+        <article class="card" id="nextBestActionSection" style="display:none;">
+          <h2>Next Best Action</h2>
+          <div id="nextBestAction"></div>
+        </article>
+      </section>
+
+      <section class="card" id="diagnosticRevealSection" style="display:none;">
+        <h2>Your First Reveal</h2>
+        <div id="diagnosticReveal"></div>
+      </section>
 
       <section class="grid two">
         <article class="card">

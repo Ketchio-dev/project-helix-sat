@@ -667,6 +667,50 @@ test('api public register only creates student accounts and rejects client-suppl
   });
 });
 
+test('api exposes goal profile setup and updates next-best-action after completion', async () => {
+  await withServer(async (baseUrl) => {
+    const registered = await registerSession(baseUrl, {
+      name: 'Goal Setup Student',
+      email: nextUniqueEmail('goal-student'),
+      password: 'pass1234',
+    });
+    assert.equal(registered.response.status, 201);
+
+    const goalProfileBefore = await fetch(`${baseUrl}/api/goal-profile`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.equal(goalProfileBefore.isComplete, false);
+    assert.equal(goalProfileBefore.targetScore, 1400);
+
+    const nextBefore = await fetch(`${baseUrl}/api/next-best-action`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.equal(nextBefore.kind, 'complete_goal_setup');
+
+    const updatedGoalProfile = await fetch(`${baseUrl}/api/goal-profile`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({
+        targetScore: 1480,
+        targetTestDate: '2026-10-03',
+        dailyMinutes: 45,
+        selfReportedWeakArea: 'algebra',
+      }),
+    }).then((res) => res.json());
+    assert.equal(updatedGoalProfile.isComplete, true);
+    assert.equal(updatedGoalProfile.targetScore, 1480);
+    assert.equal(updatedGoalProfile.targetTestDate, '2026-10-03');
+    assert.equal(updatedGoalProfile.dailyMinutes, 45);
+    assert.equal(updatedGoalProfile.selfReportedWeakArea, 'algebra');
+
+    const nextAfter = await fetch(`${baseUrl}/api/next-best-action`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.equal(nextAfter.kind, 'start_diagnostic');
+    assert.equal(nextAfter.sessionType, 'diagnostic');
+  });
+});
+
 test('api fresh student diagnostic seeds skill states and exits empty-state planning', async () => {
   await withServer(async (baseUrl) => {
     const registered = await registerSession(baseUrl, {
@@ -717,6 +761,61 @@ test('api fresh student diagnostic seeds skill states and exits empty-state plan
     }).then((res) => res.json());
     assert.notEqual(planAfter.status, 'needs_diagnostic');
     assert.notEqual(planAfter.blocks[0].block_type, 'diagnostic');
+  });
+});
+
+test('api returns a diagnostic reveal after diagnostic completion', async () => {
+  await withServer(async (baseUrl) => {
+    const registered = await registerSession(baseUrl, {
+      name: 'Reveal Student',
+      email: nextUniqueEmail('reveal-student'),
+      password: 'pass1234',
+    });
+
+    await fetch(`${baseUrl}/api/goal-profile`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({
+        targetScore: 1450,
+        targetTestDate: '2026-09-12',
+        dailyMinutes: 35,
+        selfReportedWeakArea: 'inference',
+      }),
+    });
+
+    const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+
+    let lastAttempt = null;
+    for (const item of diagnostic.items) {
+      lastAttempt = await fetch(`${baseUrl}/api/attempt/submit`, {
+        method: 'POST',
+        headers: registered.headers,
+        body: JSON.stringify({
+          itemId: item.itemId,
+          ...buildAttemptAnswer(item.itemId),
+          sessionId: diagnostic.session.id,
+          mode: 'learn',
+          confidenceLevel: 3,
+          responseTimeMs: 30000,
+        }),
+      }).then((res) => res.json());
+    }
+
+    assert.equal(lastAttempt.sessionProgress.isComplete, true);
+    assert.equal(lastAttempt.diagnosticReveal.sessionId, diagnostic.session.id);
+    assert.ok(lastAttempt.diagnosticReveal.scoreBand.low >= 400);
+    assert.equal(Array.isArray(lastAttempt.diagnosticReveal.topScoreLeaks), true);
+    assert.ok(lastAttempt.diagnosticReveal.firstRecommendedAction);
+
+    const reveal = await fetch(`${baseUrl}/api/diagnostic/reveal`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.equal(reveal.sessionId, diagnostic.session.id);
+    assert.ok(reveal.firstRecommendedAction.kind === 'start_module' || reveal.firstRecommendedAction.kind === 'start_timed_set');
   });
 });
 

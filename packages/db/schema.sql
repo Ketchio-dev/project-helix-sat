@@ -15,6 +15,8 @@ create table if not exists learner_profiles (
   target_test_date date,
   daily_minutes integer not null default 30 check (daily_minutes between 5 and 600),
   preferred_explanation_language text not null default 'en',
+  self_reported_weak_area text,
+  goal_setup_completed_at timestamptz,
   current_score_band_low integer,
   current_score_band_high integer,
   motivation_style text,

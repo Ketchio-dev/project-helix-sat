@@ -97,6 +97,8 @@ export function createDemoData() {
         target_test_date: '2026-06-06',
         daily_minutes: 35,
         preferred_explanation_language: 'ko',
+        self_reported_weak_area: 'information_and_ideas',
+        goal_setup_completed_at: '2026-03-01T12:00:00.000Z',
       },
     },
     teacherStudentLinks: {
