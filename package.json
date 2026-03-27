@@ -16,7 +16,8 @@
     "build": "npm run verify",
     "check": "node scripts/validate-foundation.mjs && npm run verify && node --test",
     "check:schemas": "node scripts/validate-foundation.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "audit:helix": "node scripts/audit-project-helix-sat.mjs"
   },
   "engines": {
     "node": ">=22"
