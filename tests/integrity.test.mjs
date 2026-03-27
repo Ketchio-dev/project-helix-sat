@@ -174,6 +174,28 @@ describe('integrity: curriculum lesson bundle', () => {
     assert.ok(bundle.workedExample.walkthrough.length >= 1);
     assert.equal(bundle.transferCard.id, 'transfer_rw_inferences_v1');
     assert.equal(bundle.transferCard.itemId, transferItem.itemId);
+    assert.match(bundle.teachCard.summary, /strongest claim the lines force/i);
+    assert.match(bundle.workedExample.walkthrough[0], /collect the concrete clues first/i);
+    assert.match(bundle.transferCard.rationalePreview, /prove the answer from one or two exact clues/i);
+  });
+
+  it('uses authored lesson phrasing for math repair skills instead of generic fallback copy', () => {
+    const seed = createDemoData();
+    const workedExampleItem = seed.items.math_linear_09;
+    const transferItem = seed.items.math_linear_08;
+    const bundle = buildCurriculumLessonBundle({
+      skillId: 'math_linear_equations',
+      workedExampleItem,
+      workedExampleRationale: seed.rationales[workedExampleItem.itemId],
+      transferItem,
+      transferRationale: seed.rationales[transferItem.itemId],
+    });
+
+    assert.match(bundle.teachCard.summary, /write the full linear equation or inequality first/i);
+    assert.match(bundle.teachCard.checkFor, /greatest or least valid answer/i);
+    assert.equal(bundle.teachCard.commonTrap, 'Stopping after the algebra boundary without checking which answer actually satisfies the context.');
+    assert.match(bundle.workedExample.takeaway, /setup is correct and the final bound is checked/i);
+    assert.match(bundle.transferCard.rationalePreview, /verify the requested maximum, minimum, or satisfying value/i);
   });
 });
 

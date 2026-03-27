@@ -387,7 +387,7 @@ function ensureMathStudentResponseExposure(selected, rankedItems, options = {}) 
   }
 
   const desiredStudentResponseCount = Math.min(
-    selected.length >= 8 ? 2 : 1,
+    selected.length >= 12 ? 3 : selected.length >= 8 ? 2 : 1,
     studentResponseCandidates.length,
   );
   const upgradedSelection = [...selected];

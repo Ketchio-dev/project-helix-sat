@@ -12,14 +12,14 @@ const generatedAuditSnapshot = fs.readFileSync(new URL('../docs/audits/project-h
 test('project helix audit captures current MVP coverage and blueprint gaps', () => {
   const audit = buildProjectHelixSatAudit({ ontology, routerSource, appSource, apiTestSource });
 
-  assert.equal(audit.content.itemCount, 76);
-  assert.equal(audit.content.rationaleCount, 76);
+  assert.equal(audit.content.itemCount, 79);
+  assert.equal(audit.content.rationaleCount, 79);
   assert.deepEqual(audit.content.sectionCounts, {
-    math: 43,
+    math: 46,
     reading_writing: 33,
   });
   assert.deepEqual(audit.content.itemFormatCounts, {
-    grid_in: 11,
+    grid_in: 14,
     single_select: 65,
   });
 
@@ -39,7 +39,7 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   assert.deepEqual(audit.appFlow.exposedButUnused, []);
   assert.equal(audit.formatRealism.allSingleSelect, false);
   assert.equal(audit.formatRealism.hasMathGridIn, true);
-  assert.equal(audit.formatRealism.mathGridInCount, 11);
+  assert.equal(audit.formatRealism.mathGridInCount, 14);
 
   assert.equal(audit.sessions.diagnostic.itemCount, 13);
   assert.deepEqual(audit.sessions.diagnostic.sectionCounts, {
@@ -48,14 +48,16 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   });
   assert.equal(audit.sessions.timedSet.itemCount, 3);
   assert.equal(audit.sessions.timedSet.timeLimitSec, 210);
-  assert.equal(audit.sessions.moduleSimulation.itemCount, 10);
+  assert.equal(audit.sessions.moduleSimulation.itemCount, 12);
   assert.deepEqual(audit.sessions.moduleSimulation.sectionCounts, {
-    math: 10,
+    math: 12,
   });
-  assert.equal(audit.sessions.moduleSimulation.timeLimitSec, 1050);
+  assert.equal(audit.sessions.moduleSimulation.timeLimitSec, 1260);
   assert.equal(audit.sessions.sessionReview.blockedUntilCompletion, true);
   assert.ok(audit.majorRisks.some((entry) => entry.includes('Module simulation')), 'should flag module simulation length as a risk');
   assert.equal(audit.majorRisks.length, 1);
-  assert.deepEqual(audit.nextFixes, []);
+  assert.deepEqual(audit.nextFixes, [
+    'Increase section-specific module item counts toward exam-realistic module shapes.',
+  ]);
   assert.equal(formatProjectHelixSatAudit(audit).trimEnd(), generatedAuditSnapshot.trimEnd());
 });

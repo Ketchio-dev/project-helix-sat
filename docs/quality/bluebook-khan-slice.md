@@ -9,12 +9,12 @@ This note tracks the **current fidelity slice** for Project Helix SAT for the cu
 
 ## Current baseline from the latest audit
 
-- 62 demo items total (`math=30`, `reading_writing=28`)
-- 19 ontology skills tracked: 14 covered, 5 partial, 0 missing
+- 79 demo items total (`math=46`, `reading_writing=33`)
+- 19 ontology skills tracked: 19 covered, 0 partial, 0 missing
 - No singleton-skill lanes remain
-- 5 hand-authored Math items now use `grid_in`
-- Module simulation is now section-separated and expanded to an 8-item block
-- `/api/session/review` is wired into the web app via session history "Review Session" buttons
+- 14 hand-authored Math items now use `grid_in`
+- Module simulation is section-separated and expanded to a 12-item block
+- `/api/session/review`, remediation cards, retry loops, curriculum paths, and weekly evidence surfaces are wired into the learner flow
 
 ## What this slice improves
 
@@ -30,14 +30,14 @@ This note tracks the **current fidelity slice** for Project Helix SAT for the cu
 - Audit and docs now describe prompt improvements honestly without claiming Bluebook parity.
 
 ### Still needed (not in this commit)
-- Additional hand-authored items are still needed to move the five partial lanes from “partial” to “covered.”
-- Expanded math grid-in support beyond 5 items and into more skill families.
-- Module realism improvements beyond the current 8-item section-specific blocks.
+- Expanded math grid-in support beyond 14 items and into more skill families.
+- Module realism improvements beyond the current 12-item section-specific blocks.
+- Richer authored lesson assets so curriculum remediation depends less on rationale-derived scaffolding.
 
 ## What this slice should improve next
 
 ### Format realism
-- Expand the math grid-in / student-produced-response slice beyond the current 5 items so the format is no longer a narrow hand-authored slice.
+- Expand the math grid-in / student-produced-response slice beyond the current 14 items so the format is no longer a narrow hand-authored slice.
 - New grid-in items should cover additional math skills (not just the same lane) and work end to end in all session types.
 - Do not overclaim generator support while the richer format is still demo-bank-only.
 
@@ -84,7 +84,7 @@ Before merging, confirm all of the following:
 ## Still not promised after this slice
 
 - Full official-exam replication
-- Full-length SAT module sizing (real modules are still much longer than the current 8-item demo modules)
+- Full-length SAT module sizing (real modules are still much longer than the current 12-item demo modules)
 - Broad generator-native support for every SAT interaction type
 - Production-depth coverage across every skill bucket
 - Adaptive module routing (real digital SAT picks module 2 difficulty based on module 1 performance)

@@ -300,7 +300,7 @@ export function buildProjectHelixSatAudit({ ontology, routerSource, appSource, a
     ...(formatRealism.mathGridInCount < 6
       ? ['Expand grid-in / student-produced-response support beyond the current narrow math slice before claiming stronger Bluebook format realism.']
       : []),
-    ...(sessions.moduleSimulation.itemCount < 8
+    ...(sessions.moduleSimulation.itemCount < 22
       ? ['Increase section-specific module item counts toward exam-realistic module shapes.']
       : []),
     ...(appFlow.exposedButUnused.length

@@ -19,6 +19,10 @@ const STUDENT_RESPONSE_FORMATS = new Set(['grid_in', 'student_produced_response'
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 const DIFFICULTY_RANK = { easy: 0, medium: 1, hard: 2 };
+const MODULE_SESSION_SHAPE = {
+  reading_writing: { itemCount: 12, recommendedPaceSec: 95 },
+  math: { itemCount: 12, recommendedPaceSec: 105 },
+};
 
 export function isStudentProducedResponseItem(item) {
   return STUDENT_RESPONSE_FORMATS.has(item?.item_format);
@@ -1870,8 +1874,10 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         ...api.getAttempts(userId).slice(-8).map((attempt) => attempt.item_id),
         ...api.getActiveSessions(userId).flatMap((session) => api.getSessionItems(session.id).map((entry) => entry.item_id)),
       ])];
-      const moduleItemCount = 10;
-      const recommendedPaceSec = 105;
+      const {
+        itemCount: moduleItemCount,
+        recommendedPaceSec,
+      } = MODULE_SESSION_SHAPE[section] ?? MODULE_SESSION_SHAPE.math;
       const moduleItems = selectSessionItems(
         Object.values(state.items),
         api.getSkillStates(userId),
