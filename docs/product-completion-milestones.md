@@ -2,6 +2,9 @@
 
 Last updated: 2026-03-27
 
+Related tracking:
+- `docs/security-integrity-issue-log.md` — resolved and follow-up security/integrity issue record
+
 ## Why this plan exists
 
 Project Helix SAT already has the core system pieces to function:
