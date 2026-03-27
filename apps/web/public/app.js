@@ -1,9 +1,10 @@
 import { normalizeTeacherAssignments, normalizeTeacherBrief } from './teacher-view-model.js';
 
 const state = {
-  userId: 'demo-student',
-  authToken: localStorage.getItem('helix_token') || null,
+  userId: null,
   userRole: null,
+  linkedLearners: [],
+  selectedLearnerId: null,
   currentItem: null,
   currentSessionId: null,
   currentSessionType: null,
@@ -17,17 +18,29 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 
+function currentLearnerQuery() {
+  if (!state.selectedLearnerId || ['student', 'admin'].includes(state.userRole)) {
+    return '';
+  }
+  return `learnerId=${encodeURIComponent(state.selectedLearnerId)}`;
+}
+
+function withLearnerContext(url) {
+  const query = currentLearnerQuery();
+  if (!query) return url;
+  return url.includes('?') ? `${url}&${query}` : `${url}?${query}`;
+}
+
 const json = async (url, options) => {
   const headers = {
     'Content-Type': 'application/json',
-    'X-Demo-User-Id': state.userId,
   };
-  if (state.authToken) headers['Authorization'] = 'Bearer ' + state.authToken;
-  const response = await fetch(url, { headers, ...options });
+  const response = await fetch(url, { credentials: 'same-origin', headers, ...options });
   if (response.status === 401) {
-    state.authToken = null;
+    state.userId = null;
     state.userRole = null;
-    localStorage.removeItem('helix_token');
+    state.linkedLearners = [];
+    state.selectedLearnerId = null;
     showLogin();
     const payload = await response.json().catch(() => ({ error: 'Unauthorized' }));
     const error = new Error(payload.error || 'Unauthorized');
@@ -897,7 +910,7 @@ function applySessionEnvelope(envelope, { fallbackNotice = null, tone = null } =
 async function loadActiveSession() {
   for (const path of ['/api/session/active', '/api/sessions/active']) {
     try {
-      return await json(path);
+      return await json(withLearnerContext(path));
     } catch (error) {
       if (error.status === 404) continue;
       throw error;
@@ -941,7 +954,7 @@ function renderSessionProgress(progress) {
 }
 
 async function loadReviewRecommendations() {
-  const review = await json('/api/review/recommendations');
+  const review = await json(withLearnerContext('/api/review/recommendations'));
   renderReview(review);
 }
 
@@ -1022,10 +1035,20 @@ function showApp() {
   if (appSection) appSection.style.display = 'block';
 }
 
+function setLinkedLearners(linkedLearners = []) {
+  state.linkedLearners = linkedLearners;
+  state.selectedLearnerId = linkedLearners[0]?.id ?? null;
+}
+
 function handleLogout() {
-  state.authToken = null;
+  fetch('/api/auth/logout', {
+    method: 'POST',
+    credentials: 'same-origin',
+  }).catch(() => {});
   state.userRole = null;
-  localStorage.removeItem('helix_token');
+  state.userId = null;
+  state.linkedLearners = [];
+  state.selectedLearnerId = null;
   showLogin();
 }
 
@@ -1033,17 +1056,18 @@ async function handleLogin(email, password) {
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Login failed');
-    state.authToken = data.token;
-    state.userRole = data.user.role;
-    state.userId = data.user.id;
-    localStorage.setItem('helix_token', data.token);
+    const me = await json('/api/me');
+    state.userRole = me.role;
+    state.userId = me.id;
+    setLinkedLearners(me.linkedLearners ?? []);
     const badge = document.getElementById('userRoleBadge');
-    if (badge) badge.textContent = data.user.role;
+    if (badge) badge.textContent = me.role;
     showApp();
     await loadDashboard();
   } catch (err) {
@@ -1052,15 +1076,32 @@ async function handleLogin(email, password) {
   }
 }
 
+async function initializeSession() {
+  showApp();
+  await loadDashboard();
+  await loadReviewRecommendations();
+}
+
 async function loadDashboard() {
   try {
+    const me = await json('/api/me');
+    state.userRole = me.role;
+    state.userId = me.id;
+    setLinkedLearners(me.linkedLearners ?? []);
+
+    if ((state.userRole === 'teacher' || state.userRole === 'parent') && !state.selectedLearnerId) {
+      throw new Error('No linked learner available for this account.');
+    }
+
     const [dashboard, sessionHistory, parentSummary, teacherBrief, teacherAssignments, activeSession] = await Promise.all([
-      json('/api/dashboard/learner'),
-      json('/api/sessions/history').catch(() => null),
-      json('/api/parent/summary').catch(() => null),
-      json('/api/teacher/brief').catch(() => null),
-      json('/api/teacher/assignments').catch(() => null),
-      loadActiveSession().catch((error) => (error.status === 404 ? null : Promise.reject(error))),
+      json(withLearnerContext('/api/dashboard/learner')),
+      json(withLearnerContext('/api/sessions/history')).catch(() => null),
+      state.userRole === 'parent' ? json(withLearnerContext('/api/parent/summary')).catch(() => null) : Promise.resolve(null),
+      state.userRole === 'teacher' ? json(withLearnerContext('/api/teacher/brief')).catch(() => null) : Promise.resolve(null),
+      state.userRole === 'teacher' ? json(withLearnerContext('/api/teacher/assignments')).catch(() => null) : Promise.resolve(null),
+      (state.userRole === 'student' || state.userRole === 'admin'
+        ? loadActiveSession().catch((error) => (error.status === 404 ? null : Promise.reject(error)))
+        : Promise.resolve(null)),
     ]);
 
     renderProfile(dashboard.profile);
@@ -1099,7 +1140,7 @@ $('#startDiagnostic').addEventListener('click', async () => {
   try {
     const result = await json('/api/diagnostic/start', {
       method: 'POST',
-      body: JSON.stringify({ userId: state.userId }),
+      body: JSON.stringify({}),
     });
     state.currentSessionId = result.session.id;
     state.currentSessionType = result.session.type;
@@ -1117,7 +1158,7 @@ $('#startTimedSet').addEventListener('click', async () => {
   try {
     const result = await json('/api/timed-set/start', {
       method: 'POST',
-      body: JSON.stringify({ userId: state.userId }),
+      body: JSON.stringify({}),
     });
     state.currentSessionId = result.session.id;
     state.currentSessionType = result.session.type;
@@ -1155,7 +1196,7 @@ $('#startModule').addEventListener('click', async () => {
     const section = $('#moduleSection')?.value ?? 'reading_writing';
     const result = await json('/api/module/start', {
       method: 'POST',
-      body: JSON.stringify({ userId: state.userId, section }),
+      body: JSON.stringify({ section }),
     });
     state.currentSessionId = result.session.id;
     state.currentSessionType = result.session.type;
@@ -1201,7 +1242,6 @@ $('#attemptForm').addEventListener('submit', async (event) => {
   }
 
   const payload = {
-    userId: state.userId,
     itemId: state.currentItem.itemId,
     sessionId: state.currentSessionId,
     confidenceLevel: Number($('#confidenceLevel').value),
@@ -1233,9 +1273,7 @@ $('#attemptForm').addEventListener('submit', async (event) => {
     if (result.correctAnswer !== undefined) {
       $('#attemptResult').textContent = JSON.stringify(result, null, 2);
     } else {
-      $('#attemptResult').textContent = result.attempt?.is_correct
-        ? 'Answer recorded. Review available after session ends.'
-        : 'Answer recorded. Review available after session ends.';
+      $('#attemptResult').textContent = `Answer recorded (${result.attemptId}). Review unlocks after the session ends.`;
     }
     state.currentSessionType = result.sessionType ?? state.currentSessionType;
     state.currentSessionProgress = result.sessionProgress ?? state.currentSessionProgress;
@@ -1243,36 +1281,43 @@ $('#attemptForm').addEventListener('submit', async (event) => {
     if (result.plan) renderPlan(result.plan);
     if (result.errorDna) renderErrorDna(result.errorDna);
     if (result.review) renderReview(result.review);
-    if (result.timedSummary) {
-      renderTimedSetSummary(result.timedSummary);
+    if (result.summary?.kind === 'timed_set' && result.summary.payload) {
+      renderTimedSetSummary(result.summary.payload);
     }
-    if (result.moduleSummary) {
-      renderModuleSummary(result.moduleSummary);
+    if (result.summary?.kind === 'module_simulation' && result.summary.payload) {
+      renderModuleSummary(result.summary.payload);
     }
-    state.activeSessionEnvelope = state.currentSessionId
-      ? {
-          ...(state.activeSessionEnvelope ?? {}),
-          session: {
-            ...(state.activeSessionEnvelope?.session ?? {}),
-            id: state.currentSessionId,
-            type: state.currentSessionType,
-          },
-          sessionProgress: result.sessionProgress ?? state.activeSessionEnvelope?.sessionProgress ?? null,
-          currentItem: result.nextItem ?? null,
-          timedSummary: result.timedSummary ?? state.activeSessionEnvelope?.timedSummary ?? null,
-          moduleSummary: result.moduleSummary ?? state.activeSessionEnvelope?.moduleSummary ?? null,
-        }
-      : null;
     renderSessionProgress(result.sessionProgress);
-    if (result.nextItem) {
-      renderItem(result.nextItem);
+
+    if (result.correctAnswer === undefined) {
+      const activeSession = await loadActiveSession();
+      const envelope = extractSessionEnvelope(activeSession);
+      applySessionEnvelope(envelope, { fallbackNotice: 'Answer recorded. Continue the session.' });
     } else {
-      if (isExamSessionType(state.currentSessionType)) {
-        state.currentItem = null;
-        state.sessionCompleted = true;
-        renderSessionNotice('Session complete — click Finish to review results.', 'info');
+      state.activeSessionEnvelope = state.currentSessionId
+        ? {
+            ...(state.activeSessionEnvelope ?? {}),
+            session: {
+              ...(state.activeSessionEnvelope?.session ?? {}),
+              id: state.currentSessionId,
+              type: state.currentSessionType,
+            },
+            sessionProgress: result.sessionProgress ?? state.activeSessionEnvelope?.sessionProgress ?? null,
+            currentItem: result.nextItem ?? null,
+            timedSummary: result.timedSummary ?? state.activeSessionEnvelope?.timedSummary ?? null,
+            moduleSummary: result.moduleSummary ?? state.activeSessionEnvelope?.moduleSummary ?? null,
+          }
+        : null;
+      if (result.nextItem) {
+        renderItem(result.nextItem);
+      } else {
+        if (isExamSessionType(state.currentSessionType)) {
+          state.currentItem = null;
+          state.sessionCompleted = true;
+          renderSessionNotice('Session complete — click Finish to review results.', 'info');
+        }
+        renderItem(null);
       }
-      renderItem(null);
     }
   } catch (error) {
     if (error?.payload?.reason === 'exam_session_expired') {
@@ -1345,7 +1390,6 @@ $('#getHint').addEventListener('click', async () => {
     const result = await json('/api/tutor/hint', {
       method: 'POST',
       body: JSON.stringify({
-        userId: state.userId,
         itemId: state.currentItem.itemId,
         sessionId: state.currentSessionId,
         mode: $('#modeSelect').value,
@@ -1370,7 +1414,6 @@ $('#reflectionForm').addEventListener('submit', async (event) => {
     const result = await json('/api/reflection/submit', {
       method: 'POST',
       body: JSON.stringify({
-        userId: state.userId,
         sessionId: state.currentSessionId,
         prompt: state.reflectionPrompt,
         response,
@@ -1398,6 +1441,7 @@ $('#teacherAssignmentForm').addEventListener('submit', async (event) => {
     const result = await json('/api/teacher/assignments', {
       method: 'POST',
       body: JSON.stringify({
+        learnerId: state.selectedLearnerId,
         title,
         objective,
         minutes: Number($('#teacherAssignmentMinutes').value),
@@ -1425,15 +1469,22 @@ document.getElementById('loginPassword').addEventListener('keydown', (e) => {
 
 document.getElementById('logoutButton').addEventListener('click', handleLogout);
 
-if (state.authToken) {
-  showApp();
-  loadDashboard().then(loadReviewRecommendations).catch((error) => {
-    if (error.status === 401) {
-      showLogin();
-    } else {
+json('/api/me')
+  .then((me) => {
+    state.userRole = me.role;
+    state.userId = me.id;
+    setLinkedLearners(me.linkedLearners ?? []);
+    if (me.role === 'student') {
+      state.selectedLearnerId = me.id;
+    }
+    const badge = document.getElementById('userRoleBadge');
+    if (badge) badge.textContent = me.role;
+    showApp();
+    return loadDashboard().then(loadReviewRecommendations);
+  })
+  .catch((error) => {
+    if (error.status !== 401) {
       $('#diagnosticStatus').textContent = error.message;
     }
+    showLogin();
   });
-} else {
-  showLogin();
-}

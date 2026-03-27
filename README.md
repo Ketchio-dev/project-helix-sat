@@ -25,26 +25,26 @@ open http://localhost:3000
 
 # Login with demo credentials
 #   Email:    mina@example.com
-#   Password: demo123
+#   Password: demo1234
 ```
 
 ## API Authentication
 
-Obtain a token via the login endpoint:
+Log in via the auth endpoint:
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/login \
+curl -i -X POST http://localhost:3000/api/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"email":"mina@example.com","password":"demo123"}'
+  -d '{"email":"mina@example.com","password":"demo1234"}'
 ```
 
-The response includes a `token` field. Use it as a Bearer token on subsequent requests:
+The server now sets an HttpOnly `helix_auth` cookie and returns auth metadata in the JSON body. Reuse that cookie on subsequent requests:
 
 ```bash
-curl -H 'Authorization: Bearer <token>' http://localhost:3000/api/dashboard/learner
+curl -b 'helix_auth=<cookie-value>' http://localhost:3000/api/dashboard/learner
 ```
 
-Tokens expire after 24 hours. Re-authenticate to obtain a fresh token.
+Sessions expire after 24 hours. Re-authenticate to obtain a fresh cookie.
 
 ## SAT content quality snapshot
 

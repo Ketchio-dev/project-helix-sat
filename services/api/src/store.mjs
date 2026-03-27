@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createDemoData, DEMO_USER_ID } from './demo-data.mjs';
-import { hashPassword, verifyPassword, createToken } from './auth.mjs';
+import { hashPassword, verifyPassword, createToken, needsPasswordRehash } from './auth.mjs';
 import { HttpError } from './http-utils.mjs';
 import { generateDailyPlan } from '../../../packages/assessment/src/daily-plan-generator.mjs';
 import { selectSessionItems } from '../../../packages/assessment/src/item-selector.mjs';
@@ -14,6 +14,8 @@ function createId(prefix) {
 }
 
 const STUDENT_RESPONSE_FORMATS = new Set(['grid_in', 'student_produced_response', 'student-produced-response']);
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 8;
 
 export function isStudentProducedResponseItem(item) {
   return STUDENT_RESPONSE_FORMATS.has(item?.item_format);
@@ -188,6 +190,18 @@ function getExamTiming(session) {
   };
 }
 
+function toExamAckSummary(session, sessionProgress) {
+  const timing = getExamTiming(session);
+  return {
+    completed: sessionProgress.isComplete || timing.expired,
+    expired: timing.expired,
+    timeLimitSec: timing.timeLimitSec,
+    remainingTimeSec: timing.remainingTimeSec,
+    recommendedPaceSec: session?.recommended_pace_sec ?? null,
+    section: session?.section ?? null,
+  };
+}
+
 function getReflectionPrompt(errorDna = {}) {
   const dominantError = Object.entries(errorDna).sort((a, b) => b[1] - a[1])[0]?.[0];
   if (!dominantError) {
@@ -250,7 +264,19 @@ function toBreakdownRows(sessionItems = [], attempts = [], resolveItem, keySelec
   }));
 }
 
-function toAssignmentDraft({ id, title, objective, minutes, focusSkill, mode, rationale, source = 'recommended', savedAt = null }) {
+function toAssignmentDraft({
+  id,
+  title,
+  objective,
+  minutes,
+  focusSkill,
+  mode,
+  rationale,
+  source = 'recommended',
+  savedAt = null,
+  learnerId = null,
+  assignedByUserId = null,
+}) {
   return {
     id,
     title,
@@ -261,7 +287,15 @@ function toAssignmentDraft({ id, title, objective, minutes, focusSkill, mode, ra
     rationale,
     source,
     savedAt,
+    learnerId,
+    assignedByUserId,
   };
+}
+
+function getTeacherAssignmentBucket(state, teacherId, learnerId) {
+  state.teacherAssignments[teacherId] ??= {};
+  state.teacherAssignments[teacherId][learnerId] ??= [];
+  return state.teacherAssignments[teacherId][learnerId];
 }
 
 export function createStore({ seed = createDemoData(), storage = createMemoryStateStorage({ seed }) } = {}) {
@@ -269,11 +303,15 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
   state.sessionItems ??= {};
   state.reflections ??= {};
   state.teacherAssignments ??= {};
+  state.teacherStudentLinks ??= {};
+  state.parentStudentLinks ??= {};
   state.events ??= [];
   state.itemExposure ??= {};
 
-  state.users[DEMO_USER_ID].password ??= hashPassword('demo123');
-  state.users[DEMO_USER_ID].role ??= 'student';
+  for (const user of Object.values(state.users)) {
+    user.password ??= hashPassword('demo1234');
+    user.role ??= state.learnerProfiles[user.id] ? 'student' : 'admin';
+  }
 
   function persistState() {
     storage.save(state);
@@ -288,61 +326,186 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       return user;
     },
 
-    getProfile(userId = DEMO_USER_ID) {
+    hasLearnerProfile(learnerId = DEMO_USER_ID) {
+      return Boolean(state.learnerProfiles[learnerId]);
+    },
+
+    getLinkedLearnerIds(userId = DEMO_USER_ID) {
       const user = api.getUser(userId);
-      const latestSession = api.getActiveSessions(userId)[0] ?? null;
+      if (user.role === 'student') {
+        return api.hasLearnerProfile(userId) ? [userId] : [];
+      }
+      if (user.role === 'teacher') {
+        return [...new Set(state.teacherStudentLinks[userId] ?? [])];
+      }
+      if (user.role === 'parent') {
+        return [...new Set(state.parentStudentLinks[userId] ?? [])];
+      }
+      if (user.role === 'admin') {
+        return Object.keys(state.learnerProfiles);
+      }
+      return [];
+    },
+
+    getLinkedLearners(userId = DEMO_USER_ID) {
+      return api.getLinkedLearnerIds(userId).map((learnerId) => {
+        const learnerUser = api.getUser(learnerId);
+        const learnerProfile = state.learnerProfiles[learnerId] ?? null;
+        return {
+          id: learnerId,
+          name: learnerUser.name,
+          role: learnerUser.role,
+          targetScore: learnerProfile?.target_score ?? null,
+          targetTestDate: learnerProfile?.target_test_date ?? null,
+          dailyMinutes: learnerProfile?.daily_minutes ?? null,
+        };
+      });
+    },
+
+    linkTeacherToLearner(teacherId, learnerId) {
+      api.getUser(teacherId);
+      api.getProfile(learnerId);
+      state.teacherStudentLinks[teacherId] ??= [];
+      if (!state.teacherStudentLinks[teacherId].includes(learnerId)) {
+        state.teacherStudentLinks[teacherId].push(learnerId);
+        persistState();
+      }
+      return [...state.teacherStudentLinks[teacherId]];
+    },
+
+    linkParentToLearner(parentId, learnerId) {
+      api.getUser(parentId);
+      api.getProfile(learnerId);
+      state.parentStudentLinks[parentId] ??= [];
+      if (!state.parentStudentLinks[parentId].includes(learnerId)) {
+        state.parentStudentLinks[parentId].push(learnerId);
+        persistState();
+      }
+      return [...state.parentStudentLinks[parentId]];
+    },
+
+    getUserProfile(userId = DEMO_USER_ID) {
+      const user = api.getUser(userId);
+      const learnerProfile = state.learnerProfiles[userId] ?? null;
+      const latestSession = learnerProfile ? api.getActiveSessions(userId)[0] ?? null : null;
       return {
         id: user.id,
         name: user.name,
-        targetScore: user.targetScore,
-        targetTestDate: user.targetTestDate,
-        dailyMinutes: user.dailyMinutes,
-        preferredExplanationLanguage: user.preferredExplanationLanguage,
+        email: user.email ?? null,
+        role: user.role,
+        targetScore: learnerProfile?.target_score ?? null,
+        targetTestDate: learnerProfile?.target_test_date ?? null,
+        dailyMinutes: learnerProfile?.daily_minutes ?? null,
+        preferredExplanationLanguage: learnerProfile?.preferred_explanation_language ?? null,
+        linkedLearners: api.getLinkedLearners(userId),
         lastSessionSummary: latestSession ? `${toSessionLabel(latestSession)} in progress` : null,
       };
     },
 
-    getSkillStates(userId = DEMO_USER_ID) {
-      api.getUser(userId);
-      return state.skillStates[userId] ?? [];
+    getProfile(learnerId = DEMO_USER_ID) {
+      const user = api.getUser(learnerId);
+      const profile = state.learnerProfiles[learnerId];
+      if (!profile) {
+        throw new HttpError(404, 'Unknown learner');
+      }
+      const latestSession = api.getActiveSessions(learnerId)[0] ?? null;
+      return {
+        id: user.id,
+        name: user.name,
+        targetScore: profile.target_score,
+        targetTestDate: profile.target_test_date,
+        dailyMinutes: profile.daily_minutes,
+        preferredExplanationLanguage: profile.preferred_explanation_language,
+        lastSessionSummary: latestSession ? `${toSessionLabel(latestSession)} in progress` : null,
+      };
     },
 
-    getErrorDna(userId = DEMO_USER_ID) {
-      api.getUser(userId);
-      return state.errorDna[userId] ?? {};
+    getSkillStates(learnerId = DEMO_USER_ID) {
+      if (!api.hasLearnerProfile(learnerId)) {
+        throw new HttpError(404, 'Unknown learner');
+      }
+      return state.skillStates[learnerId] ?? [];
     },
 
-    getAttempts(userId = DEMO_USER_ID) {
-      api.getUser(userId);
-      return state.attempts.filter((attempt) => attempt.user_id === userId);
+    ensureSkillState(learnerId = DEMO_USER_ID, itemOrSkill, itemMetadata = null) {
+      const item = typeof itemOrSkill === 'object' ? itemOrSkill : itemMetadata;
+      const skillId = typeof itemOrSkill === 'string' ? itemOrSkill : itemOrSkill?.skill;
+      if (!skillId) {
+        throw new HttpError(400, 'skillId is required');
+      }
+      if (!api.hasLearnerProfile(learnerId)) {
+        throw new HttpError(404, 'Unknown learner');
+      }
+      state.skillStates[learnerId] ??= [];
+      const existing = state.skillStates[learnerId].find((skillState) => skillState.skill_id === skillId);
+      if (existing) {
+        return existing;
+      }
+      const created = {
+        skill_id: skillId,
+        section: item?.section ?? null,
+        domain: item?.domain ?? null,
+        mastery: 0.35,
+        timed_mastery: 0.3,
+        confidence_calibration: 0.5,
+        retention_risk: 0.55,
+        careless_risk: 0.25,
+        hint_dependency: 0.15,
+        trap_susceptibility: 0.3,
+        attempts_count: 0,
+        last_seen_at: null,
+        latest_error_tag: null,
+      };
+      state.skillStates[learnerId].push(created);
+      return created;
+    },
+
+    getErrorDna(learnerId = DEMO_USER_ID) {
+      if (!api.hasLearnerProfile(learnerId)) {
+        throw new HttpError(404, 'Unknown learner');
+      }
+      return state.errorDna[learnerId] ?? {};
+    },
+
+    getAttempts(learnerId = DEMO_USER_ID) {
+      if (!api.hasLearnerProfile(learnerId)) {
+        throw new HttpError(404, 'Unknown learner');
+      }
+      return state.attempts.filter((attempt) => attempt.user_id === learnerId);
     },
 
     getSessionAttempts(sessionId) {
       return state.attempts.filter((attempt) => attempt.session_id === sessionId);
     },
 
-    getReflections(userId = DEMO_USER_ID) {
-      api.getUser(userId);
-      return state.reflections[userId] ?? [];
+    getReflections(learnerId = DEMO_USER_ID) {
+      if (!api.hasLearnerProfile(learnerId)) {
+        throw new HttpError(404, 'Unknown learner');
+      }
+      return state.reflections[learnerId] ?? [];
     },
 
-    getPlan(userId = DEMO_USER_ID) {
+    getPlan(learnerId = DEMO_USER_ID) {
+      if (!api.hasLearnerProfile(learnerId)) {
+        throw new HttpError(404, 'Unknown learner');
+      }
       return generateDailyPlan({
-        profile: state.learnerProfiles[userId],
-        skillStates: api.getSkillStates(userId),
-        errorDna: api.getErrorDna(userId),
+        profile: state.learnerProfiles[learnerId],
+        skillStates: api.getSkillStates(learnerId),
+        errorDna: api.getErrorDna(learnerId),
       });
     },
 
-    getProjection(userId = DEMO_USER_ID) {
-      api.getUser(userId);
-      const profile = state.learnerProfiles[userId];
-      return projectScoreBand(api.getSkillStates(userId), profile.target_score);
+    getProjection(learnerId = DEMO_USER_ID) {
+      const profile = state.learnerProfiles[learnerId];
+      if (!profile) {
+        throw new HttpError(404, 'Unknown learner');
+      }
+      return projectScoreBand(api.getSkillStates(learnerId), profile.target_score);
     },
 
-    getReviewRecommendations(userId = DEMO_USER_ID) {
-      api.getUser(userId);
-      const attempts = api.getAttempts(userId);
+    getReviewRecommendations(learnerId = DEMO_USER_ID) {
+      const attempts = api.getAttempts(learnerId);
       const recentIncorrect = [...attempts]
         .reverse()
         .filter((attempt) => !attempt.is_correct)
@@ -379,22 +542,24 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         );
       }
 
-      const reflectionPrompt = getReflectionPrompt(api.getErrorDna(userId));
-      const lastReflection = api.getReflections(userId).at(-1) ?? null;
+      const reflectionPrompt = getReflectionPrompt(api.getErrorDna(learnerId));
+      const lastReflection = api.getReflections(learnerId).at(-1) ?? null;
       return {
         generatedAt: new Date().toISOString(),
-        dominantError: Object.entries(api.getErrorDna(userId)).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
+        dominantError: Object.entries(api.getErrorDna(learnerId)).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
         reflectionPrompt,
         recommendations,
         lastReflection,
       };
     },
 
-    getSessionHistory(userId = DEMO_USER_ID, limit = 5) {
-      api.getUser(userId);
-      const reflections = api.getReflections(userId);
+    getSessionHistory(learnerId = DEMO_USER_ID, limit = 5) {
+      if (!api.hasLearnerProfile(learnerId)) {
+        throw new HttpError(404, 'Unknown learner');
+      }
+      const reflections = api.getReflections(learnerId);
       return Object.values(state.sessions)
-        .filter((session) => session.user_id === userId)
+        .filter((session) => session.user_id === learnerId)
         .sort((left, right) => new Date(right.started_at) - new Date(left.started_at))
         .slice(0, limit)
         .map((session) => {
@@ -432,13 +597,12 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         });
     },
 
-    getParentSummary(userId = DEMO_USER_ID) {
-      api.getUser(userId);
-      const profile = api.getProfile(userId);
-      const projection = api.getProjection(userId);
-      const skillStates = [...api.getSkillStates(userId)];
-      const sessionHistory = api.getSessionHistory(userId, 5);
-      const attempts = api.getAttempts(userId);
+    getParentSummary(learnerId = DEMO_USER_ID) {
+      const profile = api.getProfile(learnerId);
+      const projection = api.getProjection(learnerId);
+      const skillStates = [...api.getSkillStates(learnerId)];
+      const sessionHistory = api.getSessionHistory(learnerId, 5);
+      const attempts = api.getAttempts(learnerId);
       const totalStudyMinutes = Math.round(attempts.reduce((sum, attempt) => sum + attempt.response_time_ms, 0) / 60000);
       const strongestSkills = [...skillStates]
         .sort((left, right) => (right.mastery + right.timed_mastery) - (left.mastery + left.timed_mastery))
@@ -448,8 +612,8 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         .sort((left, right) => (left.mastery + left.timed_mastery + left.retention_risk) - (right.mastery + right.timed_mastery + right.retention_risk))
         .slice(0, 2)
         .map((skillState) => skillState.skill_id);
-      const topErrorPattern = Object.entries(api.getErrorDna(userId)).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-      const latestReflection = api.getReflections(userId).at(-1) ?? null;
+      const topErrorPattern = Object.entries(api.getErrorDna(learnerId)).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      const latestReflection = api.getReflections(learnerId).at(-1) ?? null;
       const completedSessions = sessionHistory.filter((session) => session.status === 'complete').length;
 
       return {
@@ -475,10 +639,10 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       };
     },
 
-    getTeacherAssignments(userId = DEMO_USER_ID) {
-      api.getUser(userId);
-      const review = api.getReviewRecommendations(userId);
-      const plan = api.getPlan(userId);
+    getTeacherAssignments(teacherId, learnerId = DEMO_USER_ID) {
+      api.getUser(teacherId);
+      const review = api.getReviewRecommendations(learnerId);
+      const plan = api.getPlan(learnerId);
       const recommended = [];
 
       const topReview = review.recommendations?.slice(0, 2) ?? [];
@@ -510,18 +674,18 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       return {
         generatedAt: new Date().toISOString(),
         recommended,
-        saved: state.teacherAssignments[userId] ?? [],
+        saved: getTeacherAssignmentBucket(state, teacherId, learnerId),
       };
     },
 
-    getTeacherBrief(userId = DEMO_USER_ID) {
-      api.getUser(userId);
-      const profile = api.getProfile(userId);
-      const projection = api.getProjection(userId);
-      const sessionHistory = api.getSessionHistory(userId, 3);
-      const review = api.getReviewRecommendations(userId);
-      const assignments = api.getTeacherAssignments(userId);
-      const skillStates = [...api.getSkillStates(userId)];
+    getTeacherBrief(teacherId, learnerId = DEMO_USER_ID) {
+      api.getUser(teacherId);
+      const profile = api.getProfile(learnerId);
+      const projection = api.getProjection(learnerId);
+      const sessionHistory = api.getSessionHistory(learnerId, 3);
+      const review = api.getReviewRecommendations(learnerId);
+      const assignments = api.getTeacherAssignments(teacherId, learnerId);
+      const skillStates = [...api.getSkillStates(learnerId)];
       const topStrengths = skillStates
         .sort((left, right) => (right.mastery + right.timed_mastery) - (left.mastery + left.timed_mastery))
         .slice(0, 2)
@@ -541,7 +705,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           : 'No recent session data yet.',
         recommendedWarmup: assignments.recommended[0] ?? null,
         recommendedHomework: assignments.recommended[1] ?? assignments.recommended[0] ?? null,
-        latestReflection: api.getReflections(userId).at(-1)?.response ?? null,
+        latestReflection: api.getReflections(learnerId).at(-1)?.response ?? null,
         teacherActionNote: interventionPriorities[0]
           ? `Open the next session by repairing ${interventionPriorities[0]}, then assign one timed follow-up rep.`
           : `Start with a short mixed warm-up and collect more learner attempts before narrowing the focus.`,
@@ -745,9 +909,6 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         sessionHistory: api.getSessionHistory(userId, 5),
         latestTimedSetSummary: api.getLatestTimedSetSummary(userId),
         latestModuleSummary: api.getLatestModuleSummary(userId),
-        parentSummary: api.getParentSummary(userId),
-        teacherBrief: api.getTeacherBrief(userId),
-        teacherAssignments: api.getTeacherAssignments(userId),
       };
     },
 
@@ -1136,15 +1297,22 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
 
       sessionItem.answered_at = new Date().toISOString();
 
-      state.skillStates[userId] = api.getSkillStates(userId).map((skillState) => {
-        if (skillState.skill_id !== item.skill) return skillState;
-        return updateLearnerSkillState(skillState, {
-          isCorrect,
-          responseTimeMs: serverResponseTimeMs,
-          confidenceLevel,
-          hintCount: 0,
-        }, item, distractorTag);
-      });
+      const currentSkillStates = [...api.getSkillStates(userId)];
+      const ensuredSkillState = api.ensureSkillState(userId, item);
+      const nextSkillState = updateLearnerSkillState(ensuredSkillState, {
+        isCorrect,
+        responseTimeMs: serverResponseTimeMs,
+        confidenceLevel,
+        hintCount: 0,
+      }, item, distractorTag);
+      const existingSkillIndex = currentSkillStates.findIndex((skillState) => skillState.skill_id === item.skill);
+      if (existingSkillIndex === -1) {
+        currentSkillStates.push(nextSkillState);
+      } else {
+        currentSkillStates[existingSkillIndex] = nextSkillState;
+      }
+      state.skillStates[userId] = currentSkillStates;
+      state.errorDna[userId] ??= {};
       state.errorDna[userId] = updateErrorDna(api.getErrorDna(userId), {
         isCorrect,
         responseTimeMs: serverResponseTimeMs,
@@ -1166,20 +1334,20 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       persistState();
 
       if (isExamSession(session)) {
+        const summary = isTimedSession(session)
+          ? { kind: 'timed_set', payload: toExamAckSummary(session, sessionProgress) }
+          : isModuleSession(session)
+            ? { kind: 'module_simulation', payload: toExamAckSummary(session, sessionProgress) }
+            : { kind: 'none', payload: null };
         return {
-          attempt: {
-            id: attempt.id,
-            is_correct: attempt.is_correct,
-            selected_answer: attempt.selected_answer,
-            input_format: item.item_format,
-            session_id: attempt.session_id,
-            mode: attempt.mode,
-          },
+          attemptId: attempt.id,
           sessionProgress,
           sessionType: session.type,
-          timedSummary: session.type === 'timed_set' ? api.getTimedSetSummary(sessionId) : null,
-          moduleSummary: isModuleSession(session) ? api.getModuleSummary(sessionId) : null,
-          nextItem: nextSessionItem ? toClientItem(api.getItem(nextSessionItem.item_id)) : null,
+          nextItemCursor: {
+            sessionItemId: nextSessionItem?.session_item_id ?? null,
+            ordinal: nextSessionItem?.ordinal ?? null,
+          },
+          summary,
         };
       }
 
@@ -1316,6 +1484,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
 
     saveTeacherAssignment({
       userId = DEMO_USER_ID,
+      learnerId,
       title,
       objective,
       minutes,
@@ -1324,6 +1493,9 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       rationale = '',
     }) {
       api.getUser(userId);
+      if (!learnerId || !api.hasLearnerProfile(learnerId)) {
+        throw new HttpError(400, 'learnerId is required');
+      }
       if (!title || !`${title}`.trim()) throw new HttpError(400, 'title is required');
       if (!objective || !`${objective}`.trim()) throw new HttpError(400, 'objective is required');
       if (!focusSkill || !`${focusSkill}`.trim()) throw new HttpError(400, 'focusSkill is required');
@@ -1342,69 +1514,78 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         rationale: `${rationale}`.trim(),
         source: 'saved',
         savedAt: new Date().toISOString(),
+        learnerId,
+        assignedByUserId: userId,
       });
 
-      state.teacherAssignments[userId] ??= [];
-      state.teacherAssignments[userId].push(assignment);
+      getTeacherAssignmentBucket(state, userId, learnerId).push(assignment);
       state.events.push(createEvent({
         userId,
         eventName: 'teacher_assignment_saved',
-        payload: { assignmentId: assignment.id, focusSkill: assignment.focusSkill, minutes: assignment.minutes },
+        payload: { assignmentId: assignment.id, learnerId, focusSkill: assignment.focusSkill, minutes: assignment.minutes },
       }));
       persistState();
 
       return {
         saved: true,
         assignment,
-        teacherAssignments: api.getTeacherAssignments(userId),
-        teacherBrief: api.getTeacherBrief(userId),
+        teacherAssignments: api.getTeacherAssignments(userId, learnerId),
+        teacherBrief: api.getTeacherBrief(userId, learnerId),
       };
     },
 
     registerUser({ name, email, password, role = 'student' }) {
       if (!name || !email || !password) throw new HttpError(400, 'name, email, and password are required');
       const trimmedEmail = email.trim().toLowerCase();
+      const trimmedName = `${name}`.trim();
+      if (!trimmedName) throw new HttpError(400, 'name is required');
+      if (!EMAIL_PATTERN.test(trimmedEmail)) throw new HttpError(400, 'Valid email is required');
+      if (`${password}`.length < MIN_PASSWORD_LENGTH) {
+        throw new HttpError(400, `Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+      }
       const existingUser = Object.values(state.users).find((u) => u.email?.toLowerCase() === trimmedEmail);
       if (existingUser) throw new HttpError(409, 'Email already registered');
-      const validRoles = ['student', 'teacher', 'parent', 'admin'];
-      if (!validRoles.includes(role)) throw new HttpError(400, 'Invalid role');
+      if (role !== 'student') throw new HttpError(400, 'Public registration can only create student accounts');
       const userId = createId('user');
       const user = {
         id: userId,
-        name: name.trim(),
+        name: trimmedName,
         email: trimmedEmail,
         password: hashPassword(password),
-        role,
+        role: 'student',
         createdAt: new Date().toISOString(),
       };
       state.users[userId] = user;
-      if (role === 'student') {
-        state.learnerProfiles[userId] = {
-          user_id: userId,
-          target_score: 1400,
-          target_test_date: null,
-          daily_minutes: 30,
-          preferred_explanation_language: 'en',
-        };
-        state.skillStates[userId] = [];
-        state.errorDna[userId] = {};
-        state.reflections[userId] = [];
-      }
+      state.learnerProfiles[userId] = {
+        user_id: userId,
+        target_score: 1400,
+        target_test_date: null,
+        daily_minutes: 30,
+        preferred_explanation_language: 'en',
+      };
+      state.skillStates[userId] = [];
+      state.errorDna[userId] = {};
+      state.reflections[userId] = [];
       persistState();
-      const token = createToken(userId, role);
+      const token = createToken(userId, user.role);
       const { password: _, ...safeUser } = user;
-      return { user: safeUser, token };
+      return { user: safeUser, token, tokenExpiresAt: new Date(Date.now() + (24 * 60 * 60 * 1000)).toISOString() };
     },
 
     loginUser({ email, password }) {
       if (!email || !password) throw new HttpError(400, 'email and password are required');
       const trimmedEmail = email.trim().toLowerCase();
+      if (!EMAIL_PATTERN.test(trimmedEmail)) throw new HttpError(400, 'Valid email is required');
       const user = Object.values(state.users).find((u) => u.email?.toLowerCase() === trimmedEmail);
       if (!user) throw new HttpError(401, 'Invalid credentials');
       if (!verifyPassword(password, user.password)) throw new HttpError(401, 'Invalid credentials');
+      if (needsPasswordRehash(user.password)) {
+        user.password = hashPassword(password);
+        persistState();
+      }
       const token = createToken(user.id, user.role);
       const { password: _, ...safeUser } = user;
-      return { user: safeUser, token };
+      return { user: safeUser, token, tokenExpiresAt: new Date(Date.now() + (24 * 60 * 60 * 1000)).toISOString() };
     },
   };
 

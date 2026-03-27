@@ -6,16 +6,13 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createAppServer } from '../services/api/server.mjs';
 import { createDemoData } from '../services/api/src/demo-data.mjs';
+import { createStateStorage } from '../services/api/src/state-storage.mjs';
 import { createStore } from '../services/api/src/store.mjs';
-
-const authHeaders = {
-  'Content-Type': 'application/json',
-  'X-Demo-User-Id': 'demo-student',
-};
 
 const demoItemMap = new Map(
   Object.values(createDemoData().items).map((item) => [item.itemId, item]),
 );
+let uniqueUserCounter = 0;
 
 function buildAttemptAnswer(itemId) {
   const item = demoItemMap.get(itemId);
@@ -88,17 +85,82 @@ async function withServer(run, options = {}) {
   }
 }
 
-test('api serves profile, plan, diagnostic progression, attempt submission, review, reflection, and tutor hint', async () => {
+async function createSession(baseUrl, { email, password = 'demo1234' }) {
+  const response = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  const payload = await response.json();
+  assert.equal(response.status, 200, `expected login success for ${email}`);
+  const cookieHeader = response.headers.get('set-cookie');
+  assert.ok(cookieHeader, `expected auth cookie for ${email}`);
+  const cookie = cookieHeader.split(';')[0];
+  return {
+    payload,
+    cookie,
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: cookie,
+    },
+  };
+}
+
+function nextUniqueEmail(prefix = 'user') {
+  uniqueUserCounter += 1;
+  return `${prefix}-${Date.now()}-${uniqueUserCounter}@example.com`;
+}
+
+async function registerSession(baseUrl, {
+  name = 'Test Student',
+  email = nextUniqueEmail('student'),
+  password = 'pass1234',
+  extraBody = {},
+} = {}) {
+  const response = await fetch(`${baseUrl}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password, ...extraBody }),
+  });
+  const payload = await response.json();
+  const cookieHeader = response.headers.get('set-cookie');
+  return {
+    response,
+    payload,
+    cookie: cookieHeader?.split(';')[0] ?? null,
+    headers: cookieHeader
+      ? {
+        'Content-Type': 'application/json',
+        Cookie: cookieHeader.split(';')[0],
+      }
+      : { 'Content-Type': 'application/json' },
+    email,
+    password,
+  };
+}
+
+async function withAuthedServer(run, options = {}) {
   await withServer(async (baseUrl) => {
-    const me = await fetch(`${baseUrl}/api/me`, { headers: authHeaders }).then((res) => res.json());
+    const sessions = {
+      student: await createSession(baseUrl, { email: 'mina@example.com' }),
+      teacher: await createSession(baseUrl, { email: 'teacher@example.com' }),
+      parent: await createSession(baseUrl, { email: 'parent@example.com' }),
+    };
+    await run(baseUrl, sessions);
+  }, options);
+}
+
+test('api serves profile, plan, diagnostic progression, attempt submission, review, reflection, and tutor hint', async () => {
+  await withAuthedServer(async (baseUrl, sessions) => {
+    const me = await fetch(`${baseUrl}/api/me`, { headers: sessions.student.headers }).then((res) => res.json());
     assert.equal(me.id, 'demo-student');
 
-    const plan = await fetch(`${baseUrl}/api/plan/today`, { headers: authHeaders }).then((res) => res.json());
+    const plan = await fetch(`${baseUrl}/api/plan/today`, { headers: sessions.student.headers }).then((res) => res.json());
     assert.ok(Array.isArray(plan.blocks));
 
     const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({}),
     }).then((res) => res.json());
     assert.ok(diagnostic.session.id);
@@ -107,7 +169,7 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
 
     const attemptOne = await fetch(`${baseUrl}/api/attempt/submit`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({
         itemId: diagnostic.items[0].itemId,
         ...buildAttemptAnswer(diagnostic.items[0].itemId),
@@ -123,14 +185,14 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
     assert.equal(attemptOne.review.recommendations[0].itemId, diagnostic.items[0].itemId);
 
     const review = await fetch(`${baseUrl}/api/review/recommendations`, {
-      headers: authHeaders,
+      headers: sessions.student.headers,
     }).then((res) => res.json());
     assert.ok(review.reflectionPrompt);
     assert.ok(review.recommendations.length >= 1);
 
     const reflection = await fetch(`${baseUrl}/api/reflection/submit`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({
         sessionId: diagnostic.session.id,
         prompt: review.reflectionPrompt,
@@ -142,7 +204,7 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
 
     const hint = await fetch(`${baseUrl}/api/tutor/hint`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({
         itemId: 'math_linear_01',
         mode: 'learn',
@@ -158,16 +220,16 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
 });
 
 test('api rejects items that do not belong to the active session', async () => {
-  await withServer(async (baseUrl) => {
+  await withAuthedServer(async (baseUrl, sessions) => {
     const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({}),
     }).then((res) => res.json());
 
     const invalid = await fetch(`${baseUrl}/api/attempt/submit`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({
         itemId: 'math_stats_01',
         ...buildAttemptAnswer('math_stats_01'),
@@ -182,9 +244,9 @@ test('api rejects items that do not belong to the active session', async () => {
 });
 
 test('api exposes the active session for restore and returns null when nothing is active', async () => {
-  await withServer(async (baseUrl) => {
+  await withAuthedServer(async (baseUrl, sessions) => {
     const initial = await fetch(`${baseUrl}/api/session/active`, {
-      headers: authHeaders,
+      headers: sessions.student.headers,
     }).then((res) => res.json());
 
     assert.equal(initial.hasActiveSession, false);
@@ -192,12 +254,12 @@ test('api exposes the active session for restore and returns null when nothing i
 
     const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({}),
     }).then((res) => res.json());
 
     const active = await fetch(`${baseUrl}/api/session/active`, {
-      headers: authHeaders,
+      headers: sessions.student.headers,
     }).then((res) => res.json());
 
     assert.equal(active.hasActiveSession, true);
@@ -210,16 +272,16 @@ test('api exposes the active session for restore and returns null when nothing i
 });
 
 test('api arbitrates overlapping exam sessions and returns the active session for resume', async () => {
-  await withServer(async (baseUrl) => {
+  await withAuthedServer(async (baseUrl, sessions) => {
     const timedSet = await fetch(`${baseUrl}/api/timed-set/start`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({}),
     }).then((res) => res.json());
 
     const conflictingStart = await fetch(`${baseUrl}/api/module/start`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({}),
     });
     assert.equal(conflictingStart.status, 409);
@@ -233,7 +295,7 @@ test('api arbitrates overlapping exam sessions and returns the active session fo
     assert.equal(conflict.activeSession.currentItem.itemId, timedSet.currentItem.itemId);
 
     const active = await fetch(`${baseUrl}/api/session/active`, {
-      headers: authHeaders,
+      headers: sessions.student.headers,
     }).then((res) => res.json());
     assert.equal(active.activeSession.session.id, timedSet.session.id);
     assert.equal(active.resumeReason, 'unfinished_exam_session');
@@ -241,10 +303,10 @@ test('api arbitrates overlapping exam sessions and returns the active session fo
 });
 
 test('api serves timed-set start, completion, finish, and exam-mode hint blocking', async () => {
-  await withServer(async (baseUrl) => {
+  await withAuthedServer(async (baseUrl, sessions) => {
     const timedSet = await fetch(`${baseUrl}/api/timed-set/start`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({}),
     }).then((res) => res.json());
 
@@ -256,7 +318,7 @@ test('api serves timed-set start, completion, finish, and exam-mode hint blockin
 
     const examHint = await fetch(`${baseUrl}/api/tutor/hint`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({
         itemId: timedSet.currentItem.itemId,
         sessionId: timedSet.session.id,
@@ -269,7 +331,7 @@ test('api serves timed-set start, completion, finish, and exam-mode hint blockin
 
     const bypassAttemptHint = await fetch(`${baseUrl}/api/tutor/hint`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({
         itemId: timedSet.currentItem.itemId,
         sessionId: timedSet.session.id,
@@ -284,7 +346,7 @@ test('api serves timed-set start, completion, finish, and exam-mode hint blockin
     for (const [index, item] of timedSet.items.entries()) {
       lastAttemptResult = await fetch(`${baseUrl}/api/attempt/submit`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: sessions.student.headers,
         body: JSON.stringify(buildAttemptBody(item, {
           sessionId: timedSet.session.id,
           mode: 'exam',
@@ -297,14 +359,16 @@ test('api serves timed-set start, completion, finish, and exam-mode hint blockin
 
     assert.equal(lastAttemptResult.sessionProgress.isComplete, true);
     assert.equal(lastAttemptResult.sessionType, 'timed_set');
-    assert.ok(lastAttemptResult.timedSummary);
-    assert.equal(lastAttemptResult.timedSummary.completed, true);
-    assert.equal(lastAttemptResult.timedSummary.timeLimitSec, 210);
-    assert.equal(lastAttemptResult.timedSummary.paceStatus, 'on_pace');
+    assert.equal(lastAttemptResult.attemptId.startsWith('attempt_'), true);
+    assert.equal(lastAttemptResult.summary.kind, 'timed_set');
+    assert.equal(lastAttemptResult.summary.payload.completed, true);
+    assert.equal(lastAttemptResult.summary.payload.timeLimitSec, 210);
+    assert.equal(typeof lastAttemptResult.summary.payload.remainingTimeSec, 'number');
+    assert.equal(lastAttemptResult.summary.payload.section, null);
 
     const finished = await fetch(`${baseUrl}/api/timed-set/finish`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({ sessionId: timedSet.session.id }),
     }).then((res) => res.json());
 
@@ -314,7 +378,7 @@ test('api serves timed-set start, completion, finish, and exam-mode hint blockin
     assert.equal(typeof finished.timedSummary.nextAction, 'string');
 
     const dashboard = await fetch(`${baseUrl}/api/dashboard/learner`, {
-      headers: authHeaders,
+      headers: sessions.student.headers,
     }).then((res) => res.json());
 
     assert.equal(dashboard.latestTimedSetSummary.sessionId, timedSet.session.id);
@@ -323,23 +387,23 @@ test('api serves timed-set start, completion, finish, and exam-mode hint blockin
 });
 
 test('api restores the active session and prevents parallel exam-mode starts', async () => {
-  await withServer(async (baseUrl) => {
+  await withAuthedServer(async (baseUrl, sessions) => {
     const noActiveSession = await fetch(`${baseUrl}/api/session/active`, {
-      headers: authHeaders,
+      headers: sessions.student.headers,
     }).then((res) => res.json());
     assert.equal(noActiveSession.hasActiveSession, false);
     assert.equal(noActiveSession.activeSession, null);
 
     const timedSet = await fetch(`${baseUrl}/api/timed-set/start`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({}),
     }).then((res) => res.json());
     assert.equal(timedSet.started, true);
     assert.equal(timedSet.resumed, false);
 
     const activeSession = await fetch(`${baseUrl}/api/session/active`, {
-      headers: authHeaders,
+      headers: sessions.student.headers,
     }).then((res) => res.json());
     assert.equal(activeSession.hasActiveSession, true);
     assert.equal(activeSession.activeSession.session.id, timedSet.session.id);
@@ -348,7 +412,7 @@ test('api restores the active session and prevents parallel exam-mode starts', a
 
     const conflictResponse = await fetch(`${baseUrl}/api/module/start`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({}),
     });
     assert.equal(conflictResponse.status, 409);
@@ -361,13 +425,13 @@ test('api restores the active session and prevents parallel exam-mode starts', a
 
     const finished = await fetch(`${baseUrl}/api/timed-set/finish`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({ sessionId: timedSet.session.id }),
     }).then((res) => res.json());
     assert.equal(finished.session.id, timedSet.session.id);
 
     const clearedActiveSession = await fetch(`${baseUrl}/api/session/active`, {
-      headers: authHeaders,
+      headers: sessions.student.headers,
     }).then((res) => res.json());
     assert.equal(clearedActiveSession.hasActiveSession, false);
     assert.equal(clearedActiveSession.activeSession, null);
@@ -375,10 +439,10 @@ test('api restores the active session and prevents parallel exam-mode starts', a
 });
 
 test('api serves module simulation start, completion, finish, and dashboard/history summaries', async () => {
-  await withServer(async (baseUrl) => {
+  await withAuthedServer(async (baseUrl, sessions) => {
     const moduleSimulation = await fetch(`${baseUrl}/api/module/start`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({ section: 'math' }),
     }).then((res) => res.json());
 
@@ -398,7 +462,7 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
 
     const examHint = await fetch(`${baseUrl}/api/tutor/hint`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({
         itemId: moduleSimulation.currentItem.itemId,
         sessionId: moduleSimulation.session.id,
@@ -413,7 +477,7 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
     for (const item of moduleSimulation.items) {
       lastAttemptResult = await fetch(`${baseUrl}/api/attempt/submit`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: sessions.student.headers,
         body: JSON.stringify({
           itemId: item.itemId,
           ...buildAttemptAnswer(item.itemId),
@@ -427,17 +491,14 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
 
     assert.equal(lastAttemptResult.sessionType, 'module_simulation');
     assert.equal(lastAttemptResult.sessionProgress.isComplete, true);
-    assert.ok(lastAttemptResult.moduleSummary);
-    assert.equal(lastAttemptResult.moduleSummary.completed, true);
-    assert.equal(lastAttemptResult.moduleSummary.paceStatus, 'on_pace');
-    assert.equal(typeof lastAttemptResult.moduleSummary.readinessSignal, 'string');
-    assert.equal(lastAttemptResult.moduleSummary.sectionBreakdown.length, 1);
-    assert.equal(lastAttemptResult.moduleSummary.section, 'math');
-    assert.ok(lastAttemptResult.moduleSummary.domainBreakdown.length >= 1);
+    assert.equal(lastAttemptResult.summary.kind, 'module_simulation');
+    assert.equal(lastAttemptResult.summary.payload.completed, true);
+    assert.equal(lastAttemptResult.summary.payload.section, 'math');
+    assert.equal(typeof lastAttemptResult.summary.payload.remainingTimeSec, 'number');
 
     const finished = await fetch(`${baseUrl}/api/module/finish`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({ sessionId: moduleSimulation.session.id }),
     }).then((res) => res.json());
 
@@ -446,13 +507,13 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
     assert.equal(finished.moduleSummary.completed, true);
 
     const dashboard = await fetch(`${baseUrl}/api/dashboard/learner`, {
-      headers: authHeaders,
+      headers: sessions.student.headers,
     }).then((res) => res.json());
     assert.equal(dashboard.latestModuleSummary.sessionId, moduleSimulation.session.id);
     assert.equal(dashboard.latestModuleSummary.completed, true);
 
     const history = await fetch(`${baseUrl}/api/sessions/history`, {
-      headers: authHeaders,
+      headers: sessions.student.headers,
     }).then((res) => res.json());
     const moduleHistory = history.sessions.find((session) => session.sessionId === moduleSimulation.session.id);
     assert.ok(moduleHistory);
@@ -462,16 +523,16 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
 });
 
 test('api returns session history for the authenticated learner', async () => {
-  await withServer(async (baseUrl) => {
+  await withAuthedServer(async (baseUrl, sessions) => {
     const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({}),
     }).then((res) => res.json());
 
     await fetch(`${baseUrl}/api/attempt/submit`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({
         itemId: diagnostic.items[0].itemId,
         ...buildAttemptAnswer(diagnostic.items[0].itemId),
@@ -483,7 +544,7 @@ test('api returns session history for the authenticated learner', async () => {
     });
 
     const historyResponse = await fetch(`${baseUrl}/api/sessions/history`, {
-      headers: authHeaders,
+      headers: sessions.student.headers,
     });
     assert.equal(historyResponse.status, 200);
 
@@ -495,9 +556,9 @@ test('api returns session history for the authenticated learner', async () => {
 });
 
 test('api returns a parent-facing learner summary', async () => {
-  await withServer(async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/parent/summary`, {
-      headers: authHeaders,
+  await withAuthedServer(async (baseUrl, sessions) => {
+    const response = await fetch(`${baseUrl}/api/parent/summary?learnerId=demo-student`, {
+      headers: sessions.parent.headers,
     });
     assert.equal(response.status, 200);
 
@@ -509,9 +570,9 @@ test('api returns a parent-facing learner summary', async () => {
 });
 
 test('api returns a teacher-facing learner brief', async () => {
-  await withServer(async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/teacher/brief`, {
-      headers: authHeaders,
+  await withAuthedServer(async (baseUrl, sessions) => {
+    const response = await fetch(`${baseUrl}/api/teacher/brief?learnerId=demo-student`, {
+      headers: sessions.teacher.headers,
     });
     assert.equal(response.status, 200);
 
@@ -523,9 +584,9 @@ test('api returns a teacher-facing learner brief', async () => {
 });
 
 test('api returns teacher assignment recommendations', async () => {
-  await withServer(async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/teacher/assignments`, {
-      headers: authHeaders,
+  await withAuthedServer(async (baseUrl, sessions) => {
+    const response = await fetch(`${baseUrl}/api/teacher/assignments?learnerId=demo-student`, {
+      headers: sessions.teacher.headers,
     });
     assert.equal(response.status, 200);
 
@@ -536,11 +597,12 @@ test('api returns teacher assignment recommendations', async () => {
 });
 
 test('api saves a teacher assignment draft', async () => {
-  await withServer(async (baseUrl) => {
+  await withAuthedServer(async (baseUrl, sessions) => {
     const response = await fetch(`${baseUrl}/api/teacher/assignments`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.teacher.headers,
       body: JSON.stringify({
+        learnerId: 'demo-student',
         title: 'Scope mismatch recovery',
         objective: 'Reinforce sentence-role reading discipline.',
         minutes: 20,
@@ -557,23 +619,148 @@ test('api saves a teacher assignment draft', async () => {
 });
 
 test('api requires demo auth, enforces request size guard, and validates reflection payloads', async () => {
-  await withServer(async (baseUrl) => {
+  await withAuthedServer(async (baseUrl, sessions) => {
     const unauthorized = await fetch(`${baseUrl}/api/me`);
     assert.equal(unauthorized.status, 401);
 
     const oversized = await fetch(`${baseUrl}/api/diagnostic/start`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({ filler: 'x'.repeat(40_000) }),
     });
     assert.equal(oversized.status, 413);
 
     const invalidReflection = await fetch(`${baseUrl}/api/reflection/submit`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: sessions.student.headers,
       body: JSON.stringify({ response: '   ' }),
     });
     assert.equal(invalidReflection.status, 400);
+  });
+});
+
+test('api public register only creates student accounts and rejects client-supplied roles', async () => {
+  await withServer(async (baseUrl) => {
+    const registered = await registerSession(baseUrl, {
+      name: 'Fresh Student',
+      email: nextUniqueEmail('fresh-student'),
+      password: 'pass1234',
+    });
+    assert.equal(registered.response.status, 201);
+    assert.equal(registered.payload.user.role, 'student');
+    assert.ok(registered.cookie);
+
+    const me = await fetch(`${baseUrl}/api/me`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.equal(me.role, 'student');
+
+    const privilegedAttempt = await registerSession(baseUrl, {
+      name: 'Bad Teacher',
+      email: nextUniqueEmail('bad-teacher'),
+      password: 'pass1234',
+      extraBody: { role: 'teacher' },
+    });
+    assert.equal(privilegedAttempt.response.status, 400);
+    assert.equal(privilegedAttempt.payload.error, 'Request validation failed');
+    assert.ok(privilegedAttempt.payload.details.some((detail) => /body\.role is not allowed/i.test(detail)));
+  });
+});
+
+test('api fresh student diagnostic seeds skill states and exits empty-state planning', async () => {
+  await withServer(async (baseUrl) => {
+    const registered = await registerSession(baseUrl, {
+      name: 'Bootstrap Student',
+      email: nextUniqueEmail('bootstrap-student'),
+      password: 'pass1234',
+    });
+    assert.equal(registered.response.status, 201);
+
+    const projectionBefore = await fetch(`${baseUrl}/api/projection`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.equal(projectionBefore.status, 'insufficient_evidence');
+
+    const planBefore = await fetch(`${baseUrl}/api/plan/today`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.equal(planBefore.status, 'needs_diagnostic');
+
+    const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+
+    const firstItem = diagnostic.currentItem;
+    const attempt = await fetch(`${baseUrl}/api/attempt/submit`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({
+        itemId: firstItem.itemId,
+        ...buildAttemptAnswer(firstItem.itemId),
+        sessionId: diagnostic.session.id,
+        mode: 'learn',
+        confidenceLevel: 3,
+        responseTimeMs: 40000,
+      }),
+    }).then((res) => res.json());
+    assert.equal(attempt.sessionProgress.answered, 1);
+
+    const projectionAfter = await fetch(`${baseUrl}/api/projection`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.equal(projectionAfter.status, 'low_evidence');
+
+    const planAfter = await fetch(`${baseUrl}/api/plan/today`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.notEqual(planAfter.status, 'needs_diagnostic');
+    assert.notEqual(planAfter.blocks[0].block_type, 'diagnostic');
+  });
+});
+
+test('api teacher routes require explicit learner context', async () => {
+  await withAuthedServer(async (baseUrl, sessions) => {
+    const response = await fetch(`${baseUrl}/api/teacher/brief`, {
+      headers: sessions.teacher.headers,
+    });
+    assert.equal(response.status, 400);
+
+    const payload = await response.json();
+    assert.match(payload.error, /learnerId is required/i);
+  });
+});
+
+test('api exam submit ACK omits correctness and review payloads', async () => {
+  await withAuthedServer(async (baseUrl, sessions) => {
+    const timedSet = await fetch(`${baseUrl}/api/timed-set/start`, {
+      method: 'POST',
+      headers: sessions.student.headers,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+
+    const attempt = await fetch(`${baseUrl}/api/attempt/submit`, {
+      method: 'POST',
+      headers: sessions.student.headers,
+      body: JSON.stringify({
+        itemId: timedSet.currentItem.itemId,
+        ...buildAttemptAnswer(timedSet.currentItem.itemId),
+        sessionId: timedSet.session.id,
+        mode: 'exam',
+        confidenceLevel: 3,
+        responseTimeMs: 45000,
+      }),
+    }).then((res) => res.json());
+
+    assert.equal(attempt.sessionType, 'timed_set');
+    assert.equal(typeof attempt.attemptId, 'string');
+    assert.equal('correctAnswer' in attempt, false);
+    assert.equal('distractorTag' in attempt, false);
+    assert.equal('review' in attempt, false);
+    assert.equal('projection' in attempt, false);
+    assert.equal('plan' in attempt, false);
+    assert.equal('nextItem' in attempt, false);
   });
 });
 
@@ -636,10 +823,10 @@ test('api restores unfinished exam sessions across server restart when file pers
     let sessionId = null;
     let nextItemId = null;
 
-    await withServer(async (baseUrl) => {
+    await withAuthedServer(async (baseUrl, sessions) => {
       const timedSet = await fetch(`${baseUrl}/api/timed-set/start`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: sessions.student.headers,
         body: JSON.stringify({}),
       }).then((res) => res.json());
 
@@ -647,7 +834,7 @@ test('api restores unfinished exam sessions across server restart when file pers
 
       const attempt = await fetch(`${baseUrl}/api/attempt/submit`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: sessions.student.headers,
         body: JSON.stringify({
           itemId: timedSet.currentItem.itemId,
           ...buildAttemptAnswer(timedSet.currentItem.itemId),
@@ -658,13 +845,16 @@ test('api restores unfinished exam sessions across server restart when file pers
         }),
       }).then((res) => res.json());
 
-      nextItemId = attempt.nextItem.itemId;
+      const activeAfterAttempt = await fetch(`${baseUrl}/api/session/active`, {
+        headers: sessions.student.headers,
+      }).then((res) => res.json());
+      nextItemId = activeAfterAttempt.activeSession.currentItem.itemId;
       assert.equal(attempt.sessionProgress.answered, 1);
     }, { stateFilePath });
 
-    await withServer(async (baseUrl) => {
+    await withAuthedServer(async (baseUrl, sessions) => {
       const active = await fetch(`${baseUrl}/api/session/active`, {
-        headers: authHeaders,
+        headers: sessions.student.headers,
       }).then((res) => res.json());
 
       assert.equal(active.hasActiveSession, true);
@@ -684,10 +874,10 @@ test('api restores unfinished diagnostic sessions across server restart when fil
     let sessionId = null;
     let nextItemId = null;
 
-    await withServer(async (baseUrl) => {
+    await withAuthedServer(async (baseUrl, sessions) => {
       const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: sessions.student.headers,
         body: JSON.stringify({}),
       }).then((res) => res.json());
 
@@ -695,7 +885,7 @@ test('api restores unfinished diagnostic sessions across server restart when fil
 
       const attempt = await fetch(`${baseUrl}/api/attempt/submit`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: sessions.student.headers,
         body: JSON.stringify({
           itemId: diagnostic.currentItem.itemId,
           ...buildAttemptAnswer(diagnostic.currentItem.itemId),
@@ -710,9 +900,9 @@ test('api restores unfinished diagnostic sessions across server restart when fil
       assert.equal(attempt.sessionProgress.answered, 1);
     }, { stateFilePath });
 
-    await withServer(async (baseUrl) => {
+    await withAuthedServer(async (baseUrl, sessions) => {
       const active = await fetch(`${baseUrl}/api/session/active`, {
-        headers: authHeaders,
+        headers: sessions.student.headers,
       }).then((res) => res.json());
 
       assert.equal(active.hasActiveSession, true);
@@ -729,10 +919,10 @@ test('api keeps completed session history and dashboard summaries across restart
   await withPersistentStateFile('helix-sat-complete-state-', async ({ stateFilePath }) => {
     let sessionId = null;
 
-    await withServer(async (baseUrl) => {
+    await withAuthedServer(async (baseUrl, sessions) => {
       const timedSet = await fetch(`${baseUrl}/api/timed-set/start`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: sessions.student.headers,
         body: JSON.stringify({}),
       }).then((res) => res.json());
       sessionId = timedSet.session.id;
@@ -740,7 +930,7 @@ test('api keeps completed session history and dashboard summaries across restart
       for (const [index, item] of timedSet.items.entries()) {
         await fetch(`${baseUrl}/api/attempt/submit`, {
           method: 'POST',
-          headers: authHeaders,
+          headers: sessions.student.headers,
           body: JSON.stringify(buildAttemptBody(item, {
             sessionId,
             mode: 'exam',
@@ -753,21 +943,21 @@ test('api keeps completed session history and dashboard summaries across restart
 
       const finished = await fetch(`${baseUrl}/api/timed-set/finish`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: sessions.student.headers,
         body: JSON.stringify({ sessionId }),
       }).then((res) => res.json());
 
       assert.equal(finished.timedSummary.completed, true);
     }, { stateFilePath });
 
-    await withServer(async (baseUrl) => {
+    await withAuthedServer(async (baseUrl, sessions) => {
       const active = await fetch(`${baseUrl}/api/session/active`, {
-        headers: authHeaders,
+        headers: sessions.student.headers,
       }).then((res) => res.json());
       assert.equal(active.hasActiveSession, false);
 
       const history = await fetch(`${baseUrl}/api/sessions/history`, {
-        headers: authHeaders,
+        headers: sessions.student.headers,
       }).then((res) => res.json());
       const timedHistory = history.sessions.find((session) => session.sessionId === sessionId);
       assert.ok(timedHistory);
@@ -775,7 +965,7 @@ test('api keeps completed session history and dashboard summaries across restart
       assert.equal(timedHistory.timedSummary.completed, true);
 
       const dashboard = await fetch(`${baseUrl}/api/dashboard/learner`, {
-        headers: authHeaders,
+        headers: sessions.student.headers,
       }).then((res) => res.json());
       assert.equal(dashboard.latestTimedSetSummary.sessionId, sessionId);
       assert.equal(dashboard.latestTimedSetSummary.completed, true);
@@ -785,20 +975,20 @@ test('api keeps completed session history and dashboard summaries across restart
 
 test('api keeps reflections and teacher assignments across restart when file persistence is enabled', async () => {
   await withPersistentStateFile('helix-sat-support-state-', async ({ stateFilePath }) => {
-    await withServer(async (baseUrl) => {
+    await withAuthedServer(async (baseUrl, sessions) => {
       const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: sessions.student.headers,
         body: JSON.stringify({}),
       }).then((res) => res.json());
 
       const review = await fetch(`${baseUrl}/api/review/recommendations`, {
-        headers: authHeaders,
+        headers: sessions.student.headers,
       }).then((res) => res.json());
 
       const reflection = await fetch(`${baseUrl}/api/reflection/submit`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: sessions.student.headers,
         body: JSON.stringify({
           sessionId: diagnostic.session.id,
           prompt: review.reflectionPrompt,
@@ -809,8 +999,9 @@ test('api keeps reflections and teacher assignments across restart when file per
 
       const assignment = await fetch(`${baseUrl}/api/teacher/assignments`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: sessions.teacher.headers,
         body: JSON.stringify({
+          learnerId: 'demo-student',
           title: 'Sentence-role reset',
           objective: 'Reinforce sentence-role reading before the next timed block.',
           minutes: 15,
@@ -821,14 +1012,14 @@ test('api keeps reflections and teacher assignments across restart when file per
       assert.equal(assignment.saved, true);
     }, { stateFilePath });
 
-    await withServer(async (baseUrl) => {
+    await withAuthedServer(async (baseUrl, sessions) => {
       const review = await fetch(`${baseUrl}/api/review/recommendations`, {
-        headers: authHeaders,
+        headers: sessions.student.headers,
       }).then((res) => res.json());
       assert.equal(review.lastReflection.response, 'I will slow down and verify the exact sentence role before choosing.');
 
-      const assignments = await fetch(`${baseUrl}/api/teacher/assignments`, {
-        headers: authHeaders,
+      const assignments = await fetch(`${baseUrl}/api/teacher/assignments?learnerId=demo-student`, {
+        headers: sessions.teacher.headers,
       }).then((res) => res.json());
       assert.ok(assignments.saved.some((assignment) => assignment.title === 'Sentence-role reset'));
     }, { stateFilePath });
@@ -839,9 +1030,9 @@ test('api falls back safely when the persistence file is corrupted', async () =>
   await withPersistentStateFile('helix-sat-corrupt-state-', async ({ tempDir, stateFilePath }) => {
     await writeFile(stateFilePath, '{"mutableState": invalid-json');
 
-    await withServer(async (baseUrl) => {
+    await withAuthedServer(async (baseUrl, sessions) => {
       const active = await fetch(`${baseUrl}/api/session/active`, {
-        headers: authHeaders,
+        headers: sessions.student.headers,
       }).then((res) => res.json());
 
       assert.equal(active.hasActiveSession, false);
@@ -862,9 +1053,9 @@ test('api falls back safely when the persistence file has a valid JSON envelope 
       },
     }, null, 2));
 
-    await withServer(async (baseUrl) => {
+    await withAuthedServer(async (baseUrl, sessions) => {
       const active = await fetch(`${baseUrl}/api/session/active`, {
-        headers: authHeaders,
+        headers: sessions.student.headers,
       }).then((res) => res.json());
 
       assert.equal(active.hasActiveSession, false);
@@ -878,16 +1069,16 @@ test('api falls back safely when the persistence file has a valid JSON envelope 
 
 test('api persists exam-session conflict telemetry in file-backed mode', async () => {
   await withPersistentStateFile('helix-sat-conflict-state-', async ({ stateFilePath }) => {
-    await withServer(async (baseUrl) => {
+    await withAuthedServer(async (baseUrl, sessions) => {
       await fetch(`${baseUrl}/api/timed-set/start`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: sessions.student.headers,
         body: JSON.stringify({}),
       }).then((res) => res.json());
 
       const conflict = await fetch(`${baseUrl}/api/module/start`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: sessions.student.headers,
         body: JSON.stringify({}),
       });
 
@@ -897,5 +1088,33 @@ test('api persists exam-session conflict telemetry in file-backed mode', async (
     const persisted = JSON.parse(await readFile(stateFilePath, 'utf8'));
     const events = persisted.mutableState?.events ?? [];
     assert.ok(events.some((event) => event.event_name === 'exam_session_resume_required'));
+  });
+});
+
+test('file-backed state preserves itemExposure across reloads', async () => {
+  await withPersistentStateFile('helix-sat-exposure-state-', async ({ stateFilePath }) => {
+    const seed = createDemoData();
+    const initialStore = createStore({
+      seed,
+      storage: createStateStorage({ seed, filePath: stateFilePath }),
+    });
+
+    const timedSet = initialStore.startTimedSet('demo-student');
+    const exposedItemId = timedSet.currentItem.itemId;
+    initialStore.submitAttempt({
+      userId: 'demo-student',
+      itemId: exposedItemId,
+      ...buildAttemptAnswer(exposedItemId),
+      sessionId: timedSet.session.id,
+      mode: 'exam',
+      confidenceLevel: 3,
+      responseTimeMs: 42000,
+    });
+
+    const persisted = JSON.parse(await readFile(stateFilePath, 'utf8'));
+    assert.equal(persisted.mutableState.itemExposure[exposedItemId], 1);
+
+    const reloadedState = createStateStorage({ seed, filePath: stateFilePath }).load();
+    assert.equal(reloadedState.itemExposure[exposedItemId], 1);
   });
 });

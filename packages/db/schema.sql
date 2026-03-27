@@ -22,6 +22,20 @@ create table if not exists learner_profiles (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists teacher_student_links (
+  teacher_user_id text not null references users(id) on delete cascade,
+  learner_user_id text not null references users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (teacher_user_id, learner_user_id)
+);
+
+create table if not exists parent_student_links (
+  parent_user_id text not null references users(id) on delete cascade,
+  learner_user_id text not null references users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (parent_user_id, learner_user_id)
+);
+
 create table if not exists skills (
   id text primary key,
   section text not null check (section in ('reading_writing', 'math')),

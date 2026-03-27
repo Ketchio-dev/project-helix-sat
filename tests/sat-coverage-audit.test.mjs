@@ -4,11 +4,6 @@ import { once } from 'node:events';
 import { createDemoData } from '../services/api/src/demo-data.mjs';
 import { createAppServer } from '../services/api/server.mjs';
 
-const authHeaders = {
-  'Content-Type': 'application/json',
-  'X-Demo-User-Id': 'demo-student',
-};
-
 const expectedDomainsBySection = {
   reading_writing: [
     'craft_and_structure',
@@ -58,6 +53,24 @@ async function withServer(run, options = {}) {
   }
 }
 
+async function createSession(baseUrl, { email, password = 'demo1234' }) {
+  const response = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  assert.equal(response.status, 200, `expected login success for ${email}`);
+  const cookieHeader = response.headers.get('set-cookie');
+  assert.ok(cookieHeader, `expected auth cookie for ${email}`);
+  const cookie = cookieHeader.split(';')[0];
+  return {
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: cookie,
+    },
+  };
+}
+
 test('coverage audit: demo item bank spans both SAT sections and all top-level domains', () => {
   const data = createDemoData();
   const items = Object.values(data.items);
@@ -98,8 +111,9 @@ test('coverage audit: demo item bank spans both SAT sections and all top-level d
 
 test('coverage audit: learner app flow exposes both sections through timed and module sessions', async () => {
   await withServer(async (baseUrl) => {
+    const studentSession = await createSession(baseUrl, { email: 'mina@example.com' });
     const initialDashboard = await fetch(`${baseUrl}/api/dashboard/learner`, {
-      headers: authHeaders,
+      headers: studentSession.headers,
     }).then((res) => res.json());
 
     assert.equal(initialDashboard.profile.name, 'Mina Park');
@@ -108,7 +122,7 @@ test('coverage audit: learner app flow exposes both sections through timed and m
 
     const timedSet = await fetch(`${baseUrl}/api/timed-set/start`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: studentSession.headers,
       body: JSON.stringify({}),
     }).then((res) => res.json());
 
@@ -118,7 +132,7 @@ test('coverage audit: learner app flow exposes both sections through timed and m
     for (const item of timedSet.items) {
       const timedResult = await fetch(`${baseUrl}/api/attempt/submit`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: studentSession.headers,
         body: JSON.stringify({
           itemId: item.itemId,
           [item.item_format === 'grid_in' ? 'freeResponse' : 'selectedAnswer']: pickExamResponse(item),
@@ -134,7 +148,7 @@ test('coverage audit: learner app flow exposes both sections through timed and m
 
     const finishedTimedSet = await fetch(`${baseUrl}/api/timed-set/finish`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: studentSession.headers,
       body: JSON.stringify({ sessionId: timedSet.session.id }),
     }).then((res) => res.json());
 
@@ -143,7 +157,7 @@ test('coverage audit: learner app flow exposes both sections through timed and m
 
     const moduleSimulation = await fetch(`${baseUrl}/api/module/start`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: studentSession.headers,
       body: JSON.stringify({ section: 'math' }),
     }).then((res) => res.json());
 
@@ -159,7 +173,7 @@ test('coverage audit: learner app flow exposes both sections through timed and m
     for (const item of moduleSimulation.items) {
       finalModuleAttempt = await fetch(`${baseUrl}/api/attempt/submit`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: studentSession.headers,
         body: JSON.stringify({
           itemId: item.itemId,
           [item.item_format === 'grid_in' ? 'freeResponse' : 'selectedAnswer']: pickExamResponse(item),
@@ -171,23 +185,25 @@ test('coverage audit: learner app flow exposes both sections through timed and m
       }).then((res) => res.json());
     }
 
-    assert.ok(finalModuleAttempt?.moduleSummary);
-    assert.equal(finalModuleAttempt.moduleSummary.completed, true);
-    assert.equal(finalModuleAttempt.moduleSummary.sectionBreakdown.length, 1);
-    assert.deepEqual(finalModuleAttempt.moduleSummary.sectionBreakdown.map((entry) => entry.section ?? entry.key), ['math']);
-    assert.match(finalModuleAttempt.moduleSummary.nextAction, /\bMath\b/);
-    assert.doesNotMatch(finalModuleAttempt.moduleSummary.nextAction, /which section/i);
+    assert.equal(finalModuleAttempt?.sessionType, 'module_simulation');
+    assert.equal(finalModuleAttempt?.summary?.kind, 'module_simulation');
+    assert.equal(finalModuleAttempt?.summary?.payload?.completed, true);
+    assert.equal(finalModuleAttempt?.summary?.payload?.section, 'math');
 
     const finishedModule = await fetch(`${baseUrl}/api/module/finish`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: studentSession.headers,
       body: JSON.stringify({ sessionId: moduleSimulation.session.id }),
     }).then((res) => res.json());
 
     assert.equal(finishedModule.moduleSummary.completed, true);
+    assert.equal(finishedModule.moduleSummary.sectionBreakdown.length, 1);
+    assert.deepEqual(finishedModule.moduleSummary.sectionBreakdown.map((entry) => entry.section ?? entry.key), ['math']);
+    assert.match(finishedModule.moduleSummary.nextAction, /\bMath\b/);
+    assert.doesNotMatch(finishedModule.moduleSummary.nextAction, /which section/i);
 
     const dashboard = await fetch(`${baseUrl}/api/dashboard/learner`, {
-      headers: authHeaders,
+      headers: studentSession.headers,
     }).then((res) => res.json());
 
     assert.equal(dashboard.latestTimedSetSummary.sessionId, timedSet.session.id);
@@ -200,7 +216,7 @@ test('coverage audit: learner app flow exposes both sections through timed and m
     );
 
     const history = await fetch(`${baseUrl}/api/sessions/history`, {
-      headers: authHeaders,
+      headers: studentSession.headers,
     }).then((res) => res.json());
 
     const completedTypes = new Set(history.sessions.map((session) => session.type));

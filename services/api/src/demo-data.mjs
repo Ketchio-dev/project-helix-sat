@@ -58,6 +58,9 @@ function createRationale({
 }
 
 export const DEMO_USER_ID = 'demo-student';
+export const DEMO_TEACHER_USER_ID = 'demo-teacher';
+export const DEMO_PARENT_USER_ID = 'demo-parent';
+export const DEMO_ADMIN_USER_ID = 'demo-admin';
 
 export function createDemoData() {
   return {
@@ -66,10 +69,25 @@ export function createDemoData() {
         id: DEMO_USER_ID,
         name: 'Mina Park',
         email: 'mina@example.com',
-        targetScore: 1490,
-        targetTestDate: '2026-06-06',
-        dailyMinutes: 35,
-        preferredExplanationLanguage: 'ko',
+        role: 'student',
+      },
+      [DEMO_TEACHER_USER_ID]: {
+        id: DEMO_TEACHER_USER_ID,
+        name: 'Alex Kim',
+        email: 'teacher@example.com',
+        role: 'teacher',
+      },
+      [DEMO_PARENT_USER_ID]: {
+        id: DEMO_PARENT_USER_ID,
+        name: 'Jiyoon Park',
+        email: 'parent@example.com',
+        role: 'parent',
+      },
+      [DEMO_ADMIN_USER_ID]: {
+        id: DEMO_ADMIN_USER_ID,
+        name: 'Helix Admin',
+        email: 'admin@example.com',
+        role: 'admin',
       },
     },
     learnerProfiles: {
@@ -80,6 +98,12 @@ export function createDemoData() {
         daily_minutes: 35,
         preferred_explanation_language: 'ko',
       },
+    },
+    teacherStudentLinks: {
+      [DEMO_TEACHER_USER_ID]: [DEMO_USER_ID],
+    },
+    parentStudentLinks: {
+      [DEMO_PARENT_USER_ID]: [DEMO_USER_ID],
     },
     skillStates: {
       [DEMO_USER_ID]: [

@@ -4,11 +4,14 @@ import { dirname, resolve } from 'node:path';
 const MUTABLE_STATE_KEYS = [
   'users',
   'learnerProfiles',
+  'teacherStudentLinks',
+  'parentStudentLinks',
   'skillStates',
   'errorDna',
   'attempts',
   'sessions',
   'sessionItems',
+  'itemExposure',
   'events',
   'reflections',
   'teacherAssignments',
@@ -17,11 +20,14 @@ const MUTABLE_STATE_KEYS = [
 const STATE_SHAPE_VALIDATORS = {
   users: isRecord,
   learnerProfiles: isRecord,
+  teacherStudentLinks: isRecord,
+  parentStudentLinks: isRecord,
   skillStates: isRecord,
   errorDna: isRecord,
   attempts: Array.isArray,
   sessions: isRecord,
   sessionItems: isRecord,
+  itemExposure: isRecord,
   events: Array.isArray,
   reflections: isRecord,
   teacherAssignments: isRecord,
@@ -63,8 +69,11 @@ function mergeSeedWithSnapshot(seed, snapshot = {}) {
   }
 
   base.sessionItems ??= {};
+  base.itemExposure ??= {};
   base.reflections ??= {};
   base.teacherAssignments ??= {};
+  base.teacherStudentLinks ??= {};
+  base.parentStudentLinks ??= {};
   base.events ??= [];
   return base;
 }

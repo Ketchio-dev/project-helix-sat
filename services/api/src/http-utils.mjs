@@ -8,6 +8,25 @@ const MIME_TYPES = {
   '.json': 'application/json; charset=utf-8',
 };
 
+const SECURITY_HEADERS = {
+  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
+  'Referrer-Policy': 'no-referrer',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+};
+
+function createHeaders(contentType, extraHeaders = {}, { noStore = false } = {}) {
+  return {
+    ...SECURITY_HEADERS,
+    'Content-Type': contentType,
+    ...(noStore ? {
+      'Cache-Control': 'no-store, max-age=0',
+      Pragma: 'no-cache',
+    } : {}),
+    ...extraHeaders,
+  };
+}
+
 export async function readJsonBody(request) {
   const MAX_BYTES = 32 * 1024;
   const chunks = [];
@@ -28,17 +47,18 @@ export async function readJsonBody(request) {
   }
 }
 
-export function sendJson(response, statusCode, payload) {
-  response.writeHead(statusCode, { 'Content-Type': MIME_TYPES['.json'] });
+export function sendJson(response, statusCode, payload, headers = {}) {
+  response.writeHead(statusCode, createHeaders(MIME_TYPES['.json'], headers, { noStore: true }));
   response.end(JSON.stringify(payload, null, 2));
 }
 
 export class HttpError extends Error {
-  constructor(statusCode, message, payload = null) {
+  constructor(statusCode, message, payload = null, headers = null) {
     super(message);
     this.name = 'HttpError';
     this.statusCode = statusCode;
     this.payload = payload;
+    this.headers = headers;
   }
 }
 
@@ -52,7 +72,10 @@ export async function serveStaticFile(response, rootDir, pathname) {
 
   try {
     const data = await readFile(filePath);
-    response.writeHead(200, { 'Content-Type': MIME_TYPES[extname(filePath)] ?? 'text/plain; charset=utf-8' });
+    response.writeHead(
+      200,
+      createHeaders(MIME_TYPES[extname(filePath)] ?? 'text/plain; charset=utf-8', { 'Cache-Control': 'no-store, max-age=0' }),
+    );
     response.end(data);
     return true;
   } catch {
