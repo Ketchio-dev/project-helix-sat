@@ -1,4 +1,4 @@
-function createChoices(choices) {
+function createChoices(choices = []) {
   return choices.map(({ label, text }) => ({ key: label, label, text }));
 }
 
@@ -16,6 +16,7 @@ function createItem({
   status = 'production',
   tags = [],
   estimatedTimeSec = 75,
+  responseValidation = null,
 }) {
   return {
     itemId,
@@ -32,6 +33,7 @@ function createItem({
     status,
     tags,
     estimatedTimeSec,
+    ...(responseValidation ? { responseValidation } : {}),
   };
 }
 
@@ -424,16 +426,17 @@ export function createDemoData() {
         domain: 'algebra',
         skill: 'math_linear_equations',
         difficulty_band: 'medium',
-        item_format: 'single_select',
-        stem: 'When 5(2x - 3) = 4x + 18, what is the value of x?',
-        choices: [
-          { label: 'A', text: '11/3' },
-          { label: 'B', text: '3/2' },
-          { label: 'C', text: '11/2' },
-          { label: 'D', text: '33/2' },
-        ],
-        answerKey: 'C',
-        tags: ['algebra', 'distribution', 'variable_isolation', 'medium'],
+        item_format: 'grid_in',
+        stem: 'When 5(2x - 3) = 4x + 18, what is the value of x? Enter your answer as a fraction or decimal.',
+        choices: [],
+        answerKey: '11/2',
+        responseValidation: {
+          kind: 'grid_in',
+          acceptedResponses: ['11/2', '5.5'],
+          placeholder: 'e.g. 11/2',
+          instructions: 'Enter a decimal or fraction with no units.',
+        },
+        tags: ['algebra', 'distribution', 'variable_isolation', 'medium', 'grid_in'],
         estimatedTimeSec: 75,
       }),
 
@@ -1427,21 +1430,21 @@ export function createDemoData() {
         item_id: 'math_linear_04',
         explanation: 'Distribute first: 10x - 15 = 4x + 18. Subtract 4x from both sides to get 6x - 15 = 18. Add 15 to get 6x = 33, then divide by 6 to find x = 33/6 = 11/2.',
         wrongRationales: {
-          A: 'A student who picks 11/3 likely divides 33 by the wrong coefficient after combining terms. This happens when a student loses track of the 6x created by 10x - 4x.',
-          B: 'A student who picks 3/2 likely distributes or combines constants incorrectly before isolating x. This happens when a student compresses multiple algebra steps and drops part of the expression.',
-          D: 'A student who picks 33/2 likely stops after reaching 2x = 33 or fails to combine the x-terms before dividing. This happens when a student performs only part of the isolation process.',
+          '11/3': 'A student who enters 11/3 likely divides 33 by the wrong coefficient after combining terms. This happens when a student loses track of the 6x created by 10x - 4x.',
+          '3/2': 'A student who enters 3/2 likely distributes or combines constants incorrectly before isolating x. This happens when a student compresses multiple algebra steps and drops part of the expression.',
+          '33/2': 'A student who enters 33/2 likely stops after reaching 2x = 33 or fails to combine the x-terms before dividing. This happens when a student performs only part of the isolation process.',
         },
         misconceptionByChoice: {
-          A: 'variable_isolation_error',
-          B: 'arithmetic_slip',
-          D: 'partial_completion',
+          '11/3': 'variable_isolation_error',
+          '3/2': 'arithmetic_slip',
+          '33/2': 'partial_completion',
         },
         hint_ladder: [
           'Start by distributing the 5 across both terms inside the parentheses.',
           'After distribution, collect all x-terms on one side and constants on the other.',
           'You should reach 6x = 33 after simplifying.',
           'Divide both sides by 6 and reduce the fraction if needed.',
-          'The correct answer is C because 5(2x - 3) = 4x + 18 simplifies to 6x = 33, so x = 11/2.',
+          'The correct answer is 11/2 because 5(2x - 3) = 4x + 18 simplifies to 6x = 33, so x = 11/2.',
         ],
         misconception_tags: ['variable_isolation_error', 'partial_completion'],
       }),
