@@ -25,6 +25,16 @@ function buildAttemptAnswer(itemId) {
     : { selectedAnswer: value };
 }
 
+function buildIncorrectAttemptAnswer(itemId) {
+  const item = demoItemMap.get(itemId);
+  if (!item) throw new Error(`Missing item ${itemId}`);
+  if (item.item_format === 'grid_in') {
+    return { freeResponse: STUDENT_RESPONSE_FIXTURES[item.itemId]?.incorrect ?? '0' };
+  }
+  const wrongChoice = item.choices.find((choice) => choice.key !== item.answerKey)?.key ?? 'A';
+  return { selectedAnswer: wrongChoice };
+}
+
 const STUDENT_RESPONSE_FIXTURES = {
   math_linear_04: {
     correct: '11/2',
@@ -828,6 +838,113 @@ test('api returns a diagnostic reveal after diagnostic completion', async () => 
     }).then((res) => res.json());
     assert.equal(reveal.sessionId, diagnostic.session.id);
     assert.ok(reveal.firstRecommendedAction.kind === 'start_module' || reveal.firstRecommendedAction.kind === 'start_timed_set');
+  });
+});
+
+test('api starts a retry loop from review recommendations and schedules a revisit', async () => {
+  await withServer(async (baseUrl) => {
+    const registered = await registerSession(baseUrl, {
+      name: 'Retry Loop Student',
+      email: nextUniqueEmail('retry-loop-student'),
+      password: 'pass1234',
+    });
+
+    await fetch(`${baseUrl}/api/goal-profile`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({
+        targetScore: 1380,
+        targetTestDate: '2026-10-10',
+        dailyMinutes: 30,
+        selfReportedWeakArea: 'timing',
+      }),
+    });
+
+    const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+
+    const firstItem = diagnostic.items[0];
+    await fetch(`${baseUrl}/api/attempt/submit`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({
+        itemId: firstItem.itemId,
+        ...buildIncorrectAttemptAnswer(firstItem.itemId),
+        sessionId: diagnostic.session.id,
+        mode: 'learn',
+        confidenceLevel: 2,
+        responseTimeMs: 35000,
+      }),
+    });
+
+    for (const item of diagnostic.items.slice(1)) {
+      await fetch(`${baseUrl}/api/attempt/submit`, {
+        method: 'POST',
+        headers: registered.headers,
+        body: JSON.stringify({
+          itemId: item.itemId,
+          ...buildAttemptAnswer(item.itemId),
+          sessionId: diagnostic.session.id,
+          mode: 'learn',
+          confidenceLevel: 3,
+          responseTimeMs: 30000,
+        }),
+      });
+    }
+
+    const reviewBefore = await fetch(`${baseUrl}/api/review/recommendations`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.ok(reviewBefore.remediationCards.length >= 1);
+    assert.equal(reviewBefore.remediationCards[0].retryAction.kind, 'start_retry_loop');
+
+    const nextBestAction = await fetch(`${baseUrl}/api/next-best-action`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.equal(nextBestAction.kind, 'start_retry_loop');
+    assert.ok(nextBestAction.itemId);
+
+    const retrySession = await fetch(`${baseUrl}/api/review/retry/start`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({ itemId: reviewBefore.remediationCards[0].itemId }),
+    }).then((res) => res.json());
+    assert.equal(retrySession.session.type, 'review');
+    assert.equal(retrySession.currentItem.itemId, reviewBefore.remediationCards[0].itemId);
+    assert.ok(retrySession.sessionProgress.total >= 2);
+
+    let activeItem = retrySession.currentItem;
+    let lastAttempt = null;
+    while (activeItem) {
+      lastAttempt = await fetch(`${baseUrl}/api/attempt/submit`, {
+        method: 'POST',
+        headers: registered.headers,
+        body: JSON.stringify({
+          itemId: activeItem.itemId,
+          ...buildAttemptAnswer(activeItem.itemId),
+          sessionId: retrySession.session.id,
+          mode: 'review',
+          confidenceLevel: 3,
+          responseTimeMs: 25000,
+        }),
+      }).then((res) => res.json());
+      activeItem = lastAttempt.nextItem ?? null;
+    }
+
+    assert.equal(lastAttempt.sessionType, 'review');
+    assert.equal(lastAttempt.sessionProgress.isComplete, true);
+
+    const reviewAfter = await fetch(`${baseUrl}/api/review/recommendations`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.ok(Array.isArray(reviewAfter.revisitQueue));
+    const revisitEntry = reviewAfter.revisitQueue.find((entry) => entry.itemId === reviewBefore.remediationCards[0].itemId);
+    assert.ok(revisitEntry);
+    assert.ok(['revisit_due', 'retry_recommended', 'retry_started'].includes(revisitEntry.status));
+    assert.ok(revisitEntry.dueAt);
   });
 });
 

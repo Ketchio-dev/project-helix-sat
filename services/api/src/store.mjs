@@ -346,6 +346,31 @@ function getTeacherAssignmentBucket(state, teacherId, learnerId) {
   return state.teacherAssignments[teacherId][learnerId];
 }
 
+function getReviewRevisitBucket(state, userId) {
+  state.reviewRevisits ??= {};
+  state.reviewRevisits[userId] ??= [];
+  return state.reviewRevisits[userId];
+}
+
+function upsertReviewRevisit(state, userId, entry) {
+  const bucket = getReviewRevisitBucket(state, userId);
+  const index = bucket.findIndex((candidate) => candidate.itemId === entry.itemId);
+  const nextEntry = index === -1
+    ? { attemptCount: 0, ...entry }
+    : { ...bucket[index], ...entry };
+  if (index === -1) {
+    bucket.push(nextEntry);
+  } else {
+    bucket[index] = nextEntry;
+  }
+  return nextEntry;
+}
+
+function isReviewRevisitDue(revisit, now = new Date()) {
+  if (!revisit?.dueAt || revisit.completedAt) return false;
+  return new Date(`${revisit.dueAt}T00:00:00.000Z`) <= now;
+}
+
 export function createStore({ seed = createDemoData(), storage = createMemoryStateStorage({ seed }) } = {}) {
   const state = storage.load();
   state.sessionItems ??= {};
@@ -353,6 +378,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
   state.teacherAssignments ??= {};
   state.teacherStudentLinks ??= {};
   state.parentStudentLinks ??= {};
+  state.reviewRevisits ??= {};
   state.events ??= [];
   state.itemExposure ??= {};
 
@@ -651,8 +677,18 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       };
     },
 
+    getReviewRevisitQueue(userId = DEMO_USER_ID, { includeFuture = true } = {}) {
+      const queue = [...getReviewRevisitBucket(state, userId)]
+        .filter((entry) => !entry.completedAt)
+        .filter((entry) => includeFuture || isReviewRevisitDue(entry))
+        .sort((left, right) => new Date(left.dueAt ?? left.createdAt ?? 0) - new Date(right.dueAt ?? right.createdAt ?? 0));
+      return queue;
+    },
+
     getReviewRecommendations(learnerId = DEMO_USER_ID) {
       const attempts = api.getAttempts(learnerId);
+      const revisitQueue = api.getReviewRevisitQueue(learnerId);
+      const revisitByItemId = new Map(revisitQueue.map((entry) => [entry.itemId, entry]));
       const recentIncorrect = [...attempts]
         .reverse()
         .filter((attempt) => !attempt.is_correct)
@@ -698,6 +734,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         const misconception = recommendation.errorTag
           ? formatErrorInsight(recommendation.errorTag, api.getErrorDna(learnerId)[recommendation.errorTag] ?? 1)
           : null;
+        const revisitRecord = revisitByItemId.get(recommendation.itemId) ?? null;
         return {
           itemId: recommendation.itemId,
           section: recommendation.section,
@@ -713,11 +750,24 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
             itemId: recommendation.itemId,
             prompt: recommendation.prompt,
           },
+          retryAction: {
+            kind: 'start_retry_loop',
+            itemId: recommendation.itemId,
+            ctaLabel: revisitRecord?.status === 'revisit_due' ? 'Start revisit' : 'Start retry loop',
+          },
           confidenceBefore: matchingAttempt?.confidence_level ?? null,
           confidenceAfter: matchingAttempt?.confidence_level !== undefined
             ? Math.min(4, matchingAttempt.confidence_level + 1)
             : null,
-          nextScheduledRevisit: addDays(new Date(), 1).toISOString().slice(0, 10),
+          nextScheduledRevisit: revisitRecord?.dueAt ?? addDays(new Date(), 1).toISOString().slice(0, 10),
+          revisitStatus: revisitRecord
+            ? {
+                status: revisitRecord.status,
+                dueAt: revisitRecord.dueAt,
+                lastAccuracy: revisitRecord.lastAccuracy ?? null,
+                attemptCount: revisitRecord.attemptCount ?? 0,
+              }
+            : null,
         };
       });
       return {
@@ -726,6 +776,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         reflectionPrompt,
         recommendations,
         remediationCards,
+        revisitQueue,
         lastReflection,
       };
     },
@@ -1156,6 +1207,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       const attempts = api.getAttempts(userId);
       const plan = api.getPlan(userId);
       const review = api.getReviewRecommendations(userId);
+      const revisitQueue = api.getReviewRevisitQueue(userId);
       if (!attempts.length || plan.status === 'needs_diagnostic') {
         return {
           kind: 'start_diagnostic',
@@ -1168,18 +1220,39 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         };
       }
 
+      const revisitLead = revisitQueue.find((entry) => entry.status === 'retry_recommended' || isReviewRevisitDue(entry)) ?? null;
+      if (!preferSessionStart && revisitLead) {
+        return {
+          kind: 'start_retry_loop',
+          title: revisitLead.status === 'retry_recommended'
+            ? `Retry ${formatSkillLabel(revisitLead.skill)} before the pattern hardens`
+            : `Revisit ${formatSkillLabel(revisitLead.skill)} while the rule is still fresh`,
+          reason: revisitLead.status === 'retry_recommended'
+            ? 'The last retry did not stick yet. One short correction loop now is worth more than new volume.'
+            : `Helix scheduled this revisit for ${revisitLead.dueAt} so the corrected rule stays durable.`,
+          ctaLabel: revisitLead.status === 'retry_recommended' ? 'Retry now' : 'Start revisit',
+          estimatedMinutes: 8,
+          sessionType: 'review',
+          section: revisitLead.section ?? null,
+          itemId: revisitLead.itemId,
+          focusSkill: revisitLead.skill ?? null,
+        };
+      }
+
       if (!preferSessionStart && review.recommendations?.length) {
         const lead = review.recommendations[0];
         return {
-          kind: 'review_mistakes',
+          kind: 'start_retry_loop',
           title: 'Fix your most expensive recent trap',
           reason: lead.errorTag
             ? `${formatErrorInsight(lead.errorTag, 1).label} keeps resurfacing. Correct it before you pile on more timed work.`
             : 'Your recent misses are clustered tightly enough that review will move the next session more than new volume.',
-          ctaLabel: 'Open review',
-          estimatedMinutes: 10,
-          sessionType: null,
+          ctaLabel: 'Start retry loop',
+          estimatedMinutes: 8,
+          sessionType: 'review',
           section: lead.section ?? null,
+          itemId: lead.itemId,
+          focusSkill: lead.skill ?? null,
         };
       }
 
@@ -1396,6 +1469,87 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         && !session.ended_at
         && api.getSessionItems(session.id).some((entry) => entry.item_id === itemId)
       ));
+    },
+
+    startReviewRetry(userId = DEMO_USER_ID, { itemId = null } = {}) {
+      api.getUser(userId);
+      const review = api.getReviewRecommendations(userId);
+      const lead = (itemId
+        ? review.recommendations.find((entry) => entry.itemId === itemId)
+        : null) ?? review.recommendations[0] ?? null;
+      if (!lead) {
+        throw new HttpError(404, 'No review recommendation is available to retry');
+      }
+
+      const anchorItem = api.getItem(lead.itemId);
+      if (!anchorItem) {
+        throw new HttpError(404, 'Retry item not found');
+      }
+
+      const recentItemIds = new Set([
+        ...api.getAttempts(userId).slice(-8).map((attempt) => attempt.item_id),
+        ...api.getActiveSessions(userId).flatMap((session) => api.getSessionItems(session.id).map((entry) => entry.item_id)),
+      ]);
+      recentItemIds.delete(anchorItem.itemId);
+
+      const rankedItems = Object.values(state.items)
+        .filter((candidate) => candidate.itemId !== anchorItem.itemId)
+        .sort((left, right) => {
+          const leftSectionBonus = Number(left.section !== anchorItem.section);
+          const rightSectionBonus = Number(right.section !== anchorItem.section);
+          if (leftSectionBonus !== rightSectionBonus) return leftSectionBonus - rightSectionBonus;
+          const leftSkillBonus = Number(left.skill !== anchorItem.skill);
+          const rightSkillBonus = Number(right.skill !== anchorItem.skill);
+          if (leftSkillBonus !== rightSkillBonus) return leftSkillBonus - rightSkillBonus;
+          const exposureDelta = (state.itemExposure[left.itemId] ?? 0) - (state.itemExposure[right.itemId] ?? 0);
+          if (exposureDelta !== 0) return exposureDelta;
+          const recentDelta = Number(recentItemIds.has(left.itemId)) - Number(recentItemIds.has(right.itemId));
+          if (recentDelta !== 0) return recentDelta;
+          return left.itemId.localeCompare(right.itemId);
+        });
+
+      const companionItems = rankedItems.slice(0, 2);
+
+      const reviewItems = [anchorItem, ...companionItems];
+      const session = {
+        id: createId('sess'),
+        user_id: userId,
+        type: 'review',
+        section: anchorItem.section,
+        focus_skill: lead.skill,
+        review_anchor_item_id: anchorItem.itemId,
+        started_at: new Date().toISOString(),
+      };
+      state.sessions[session.id] = session;
+      state.sessionItems[session.id] = reviewItems.map((item, index) => ({
+        session_item_id: createId('session_item'),
+        item_id: item.itemId,
+        ordinal: index + 1,
+        answered_at: null,
+        delivered_at: null,
+      }));
+
+      upsertReviewRevisit(state, userId, {
+        itemId: anchorItem.itemId,
+        skill: lead.skill,
+        section: anchorItem.section,
+        status: 'retry_started',
+        dueAt: addDays(new Date(), 1).toISOString().slice(0, 10),
+        createdAt: new Date().toISOString(),
+        retrySessionId: session.id,
+      });
+
+      persistState();
+      return api.buildSessionPayload(session, {
+        started: true,
+        resumed: false,
+        conflict: false,
+        retryLoop: {
+          itemId: anchorItem.itemId,
+          focusSkill: lead.skill,
+          section: anchorItem.section,
+        },
+      });
     },
 
     startTimedSet(userId = DEMO_USER_ID) {
@@ -1671,6 +1825,27 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       const nextSessionItem = api.getCurrentSessionItem(sessionId);
       if (sessionProgress.isComplete) {
         state.sessions[sessionId].ended_at = new Date().toISOString();
+        if (session.type === 'review') {
+          const sessionAttempts = api.getSessionAttempts(sessionId);
+          const accuracy = sessionAttempts.length
+            ? roundRatio(sessionAttempts.filter((entry) => entry.is_correct).length / sessionAttempts.length)
+            : null;
+          const anchorItemId = session.review_anchor_item_id ?? sessionItems[0]?.item_id ?? itemId;
+          const dueAt = accuracy !== null && accuracy >= 0.67
+            ? addDays(new Date(), 1).toISOString().slice(0, 10)
+            : new Date().toISOString().slice(0, 10);
+          upsertReviewRevisit(state, userId, {
+            itemId: anchorItemId,
+            skill: item.skill,
+            section: item.section,
+            status: accuracy !== null && accuracy >= 0.67 ? 'revisit_due' : 'retry_recommended',
+            dueAt,
+            lastAccuracy: accuracy,
+            lastCompletedAt: new Date().toISOString(),
+            attemptCount: (getReviewRevisitBucket(state, userId).find((entry) => entry.itemId === anchorItemId)?.attemptCount ?? 0) + 1,
+            retrySessionId: sessionId,
+          });
+        }
         state.events.push(createEvent({ userId, sessionId, eventName: 'session_completed', payload: { type: session.type } }));
       }
 

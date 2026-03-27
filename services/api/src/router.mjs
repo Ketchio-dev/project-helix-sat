@@ -352,11 +352,24 @@ export function createRouter({ store, webRoot }) {
     },
   });
 
+  registerRoute('POST', '/api/review/retry/start', {
+    auth: 'authenticated',
+    learnerAccess: 'owner',
+    requestSchema: 'ReviewRetryStartRequest',
+    async handler({ learnerId, body }) {
+      return { body: store.startReviewRetry(learnerId, { itemId: body?.itemId ?? null }), statusCode: 201 };
+    },
+  });
+
   registerRoute('POST', '/api/attempt/submit', {
     auth: 'authenticated',
     learnerAccess: 'owner',
     requestSchema: 'AttemptSubmitRequest',
-    responseSchemaByPayload: (payload) => (payload.sessionType === 'diagnostic' ? null : 'AttemptExamAckResponse'),
+    responseSchemaByPayload: (payload) => (
+      payload.sessionType === 'timed_set' || payload.sessionType === 'module_simulation'
+        ? 'AttemptExamAckResponse'
+        : null
+    ),
     async handler({ learnerId, body }) {
       return { body: store.submitAttempt({ ...body, userId: learnerId }) };
     },

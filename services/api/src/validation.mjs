@@ -78,6 +78,7 @@ const nextBestActionResponseSchema = {
         'start_diagnostic',
         'resume_active_session',
         'review_mistakes',
+        'start_retry_loop',
         'start_timed_set',
         'start_module',
       ],
@@ -86,8 +87,10 @@ const nextBestActionResponseSchema = {
     reason: { type: 'string', minLength: 1 },
     ctaLabel: { type: 'string', minLength: 1 },
     estimatedMinutes: { type: ['integer', 'null'], minimum: 1 },
-    sessionType: { type: ['string', 'null'], enum: ['diagnostic', 'timed_set', 'module_simulation', null] },
+    sessionType: { type: ['string', 'null'], enum: ['diagnostic', 'review', 'timed_set', 'module_simulation', null] },
     section: { type: ['string', 'null'], enum: ['reading_writing', 'math', null] },
+    itemId: { type: ['string', 'null'], minLength: 1 },
+    focusSkill: { type: ['string', 'null'], minLength: 1 },
   },
 };
 
@@ -292,6 +295,13 @@ const requestSchemas = new Map([
     additionalProperties: false,
     properties: {
       section: { enum: ['reading_writing', 'math'] },
+    },
+  }],
+  ['ReviewRetryStartRequest', {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      itemId: { type: 'string', minLength: 1 },
     },
   }],
   ['GoalProfileUpdateRequest', {

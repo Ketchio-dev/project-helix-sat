@@ -6,6 +6,7 @@ const MUTABLE_STATE_KEYS = [
   'learnerProfiles',
   'teacherStudentLinks',
   'parentStudentLinks',
+  'reviewRevisits',
   'skillStates',
   'errorDna',
   'attempts',
@@ -22,6 +23,7 @@ const STATE_SHAPE_VALIDATORS = {
   learnerProfiles: isRecord,
   teacherStudentLinks: isRecord,
   parentStudentLinks: isRecord,
+  reviewRevisits: isRecord,
   skillStates: isRecord,
   errorDna: isRecord,
   attempts: Array.isArray,
@@ -74,6 +76,7 @@ function mergeSeedWithSnapshot(seed, snapshot = {}) {
   base.teacherAssignments ??= {};
   base.teacherStudentLinks ??= {};
   base.parentStudentLinks ??= {};
+  base.reviewRevisits ??= {};
   base.events ??= [];
   return base;
 }

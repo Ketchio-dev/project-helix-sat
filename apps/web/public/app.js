@@ -408,6 +408,9 @@ async function performNextBestAction(action) {
     case 'resume_active_session':
       $('#itemArea')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
+    case 'start_retry_loop':
+      await startRetryLoop(action.itemId ?? null);
+      return;
     case 'review_mistakes':
       $('#reviewRecommendations')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
@@ -422,6 +425,30 @@ async function performNextBestAction(action) {
       return;
     default:
       return;
+  }
+}
+
+async function startRetryLoop(itemId = null) {
+  try {
+    const result = await json('/api/review/retry/start', {
+      method: 'POST',
+      body: JSON.stringify(itemId ? { itemId } : {}),
+    });
+    state.currentSessionId = result.session.id;
+    state.currentSessionType = result.session.type;
+    state.currentSessionProgress = result.sessionProgress ?? null;
+    state.activeSessionEnvelope = {
+      session: result.session,
+      sessionProgress: result.sessionProgress ?? null,
+      currentItem: result.currentItem ?? null,
+    };
+    $('#modeSelect').value = 'review';
+    clearSessionNotice();
+    renderItem(result.currentItem);
+    renderSessionProgress(result.sessionProgress);
+    $('#itemArea')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (error) {
+    $('#attemptResult').textContent = error.message;
   }
 }
 
@@ -994,6 +1021,18 @@ function renderReview(review) {
       className: 'muted',
       text: `Confidence: ${cardData.confidenceBefore ?? '—'} -> ${cardData.confidenceAfter ?? '—'} · revisit ${cardData.nextScheduledRevisit ?? 'soon'}`,
     }));
+    if (cardData.revisitStatus?.status) {
+      card.append(node('p', {
+        className: 'notice',
+        text: `Loop status: ${cardData.revisitStatus.status.replaceAll('_', ' ')}${cardData.revisitStatus.dueAt ? ` · due ${cardData.revisitStatus.dueAt}` : ''}`,
+      }));
+    }
+    const retryButton = node('button', {
+      className: 'secondary',
+      text: cardData.retryAction?.ctaLabel ?? 'Start retry loop',
+    });
+    retryButton.addEventListener('click', async () => startRetryLoop(cardData.retryAction?.itemId ?? cardData.itemId));
+    card.append(retryButton);
     list.append(card);
   }
 
@@ -1589,12 +1628,18 @@ $('#attemptForm').addEventListener('submit', async (event) => {
       if (result.nextItem) {
         renderItem(result.nextItem);
       } else {
+        const completedReviewLoop = state.currentSessionType === 'review';
         if (isExamSessionType(state.currentSessionType)) {
           state.currentItem = null;
           state.sessionCompleted = true;
           renderSessionNotice('Session complete — click Finish to review results.', 'info');
         }
         renderItem(null);
+        if (completedReviewLoop) {
+          renderSessionNotice('Retry loop complete — Helix updated the next revisit for this trap.', 'info');
+          await loadDashboard();
+          await loadReviewRecommendations();
+        }
       }
     }
   } catch (error) {
