@@ -8,6 +8,7 @@ const SECTION_ORDER = {
   reading_writing: 0,
   math: 1,
 };
+const STUDENT_RESPONSE_FORMATS = new Set(['grid_in', 'student_produced_response', 'student-produced-response']);
 
 function hashString(value) {
   let hash = 0;
@@ -143,6 +144,10 @@ function compareModule(left, right, skillOrder, exposureCounts = {}) {
   return compareByItemId(left, right);
 }
 
+function isStudentProducedResponseItem(item) {
+  return STUDENT_RESPONSE_FORMATS.has(item?.item_format);
+}
+
 function selectDiagnosticItems(items, count, skillOrder, exposureCounts = {}) {
   const skills = uniqueSkills([], items).sort((left, right) => {
     const leftRank = skillOrder.get(left) ?? Number.MAX_SAFE_INTEGER;
@@ -211,12 +216,37 @@ function selectModuleItemsWithBreadth(items, count) {
   return selected;
 }
 
+function ensureMathStudentResponseExposure(selected, rankedItems, options = {}) {
+  if (options.section !== 'math' || selected.some(isStudentProducedResponseItem)) {
+    return selected;
+  }
+
+  const gridInCandidate = rankedItems.find((item) => isStudentProducedResponseItem(item) && !selected.some((selectedItem) => selectedItem.itemId === item.itemId));
+  if (!gridInCandidate) {
+    return selected;
+  }
+
+  const upgradedSelection = [...selected];
+  const sameDomainIndex = upgradedSelection.findIndex((item) => item.domain === gridInCandidate.domain);
+  if (sameDomainIndex !== -1) {
+    upgradedSelection[sameDomainIndex] = gridInCandidate;
+    return upgradedSelection;
+  }
+
+  const replaceableIndex = upgradedSelection.findIndex((item) => !isStudentProducedResponseItem(item));
+  if (replaceableIndex !== -1) {
+    upgradedSelection[replaceableIndex] = gridInCandidate;
+  }
+
+  return upgradedSelection;
+}
+
 function selectModuleItems(items, count, skillOrder, exposureCounts = {}, options = {}) {
   if (options.section) {
     const sectionItems = items
       .filter((item) => item.section === options.section)
       .sort((left, right) => compareModule(left, right, skillOrder, exposureCounts));
-    return selectModuleItemsWithBreadth(sectionItems, count);
+    return ensureMathStudentResponseExposure(selectModuleItemsWithBreadth(sectionItems, count), sectionItems, options);
   }
 
   const perSectionTarget = Math.floor(count / 2);

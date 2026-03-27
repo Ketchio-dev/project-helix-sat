@@ -22,3 +22,71 @@ test('math prompt acknowledges SAT SPR reality while keeping the current JSON co
   assert.match(prompt, /still works conceptually even if the answer choices are hidden/i);
   assert.match(prompt, /Bluebook-style digital SAT item/i);
 });
+
+test('weak-blueprint skills receive WEAK-BLUEPRINT BOOST guidance in the prompt', () => {
+  const weakSkills = [
+    { domain: 'reading_writing', skill: 'rw_transitions', label: 'organization' },
+    { domain: 'math', skill: 'math_linear_equations', label: 'linear equations' },
+    { domain: 'math', skill: 'math_quadratic_functions', label: 'nonlinear functions' },
+    { domain: 'math', skill: 'math_area_and_perimeter', label: 'area' },
+    { domain: 'math', skill: 'math_trigonometry', label: 'right-triangle trigonometry' },
+  ];
+
+  for (const { domain, skill, label } of weakSkills) {
+    const prompt = buildPrompt(domain, skill, 3, 'mixed');
+    assert.match(prompt, /WEAK-BLUEPRINT BOOST/, `${skill} should include WEAK-BLUEPRINT BOOST`);
+    assert.match(prompt, /partial-coverage area/i, `${skill} should mention partial-coverage`);
+  }
+});
+
+test('non-weak-blueprint skills do NOT receive WEAK-BLUEPRINT BOOST', () => {
+  const normalSkills = [
+    { domain: 'math', skill: 'math_statistics_probability' },
+    { domain: 'reading_writing', skill: 'rw_words_in_context' },
+    { domain: 'reading_writing', skill: 'rw_punctuation' },
+    { domain: 'math', skill: 'math_circles' },
+  ];
+
+  for (const { domain, skill } of normalSkills) {
+    const prompt = buildPrompt(domain, skill, 3, 'medium');
+    assert.ok(!prompt.includes('WEAK-BLUEPRINT BOOST'), `${skill} should NOT include WEAK-BLUEPRINT BOOST`);
+  }
+});
+
+test('rw_transitions boost requires varied logical relationships and near-synonym distinctions', () => {
+  const prompt = buildPrompt('reading_writing', 'rw_transitions', 3, 'mixed');
+
+  assert.match(prompt, /logical connectors/i);
+  assert.match(prompt, /cause\/effect.*contrast.*elaboration/i);
+  assert.match(prompt, /near-synonyms/i);
+});
+
+test('math_linear_equations boost requires inequality coverage and varied structures', () => {
+  const prompt = buildPrompt('math', 'math_linear_equations', 4, 'mixed');
+
+  assert.match(prompt, /inequality/i);
+  assert.match(prompt, /distribution.*combining like terms/i);
+  assert.match(prompt, /distinct procedural errors/i);
+});
+
+test('math_trigonometry boost requires real-world context and sin\/cos swap distractors', () => {
+  const prompt = buildPrompt('math', 'math_trigonometry', 3, 'medium');
+
+  assert.match(prompt, /angle of elevation/i);
+  assert.match(prompt, /sin\/cos swaps/i);
+  assert.match(prompt, /opposite\/adjacent confusion/i);
+});
+
+test('math_area_and_perimeter boost requires composite shapes and measure-selection items', () => {
+  const prompt = buildPrompt('math', 'math_area_and_perimeter', 3, 'mixed');
+
+  assert.match(prompt, /composite-shape/i);
+  assert.match(prompt, /choosing between area and perimeter/i);
+});
+
+test('math_quadratic_functions boost requires multiple representation forms', () => {
+  const prompt = buildPrompt('math', 'math_quadratic_functions', 3, 'medium');
+
+  assert.match(prompt, /vertex form.*factored form.*standard form/i);
+  assert.match(prompt, /graph feature/i);
+});

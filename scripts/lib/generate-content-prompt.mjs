@@ -84,6 +84,49 @@ const SKILL_GUIDANCE = {
   rw_form_structure_sense: 'Target agreement, pronouns, tense, modifiers, and formal written usage. Distractors should be grammar traps that sound natural in conversation but violate a specific convention.',
 };
 
+const WEAK_BLUEPRINT_BOOST = {
+  rw_transitions: [
+    'WEAK-BLUEPRINT BOOST — organization / transitions:',
+    '- This skill is flagged as a partial-coverage area in the current blueprint audit.',
+    '- Generate items that test precise logical connectors (however, therefore, moreover, nevertheless, for instance) rather than generic fill-in-the-blank.',
+    '- Each distractor transition must create a grammatically correct sentence but mismatch the logical relationship (e.g., using a contrast word where continuation is needed).',
+    '- Vary the clause-pair relationships across items: cause/effect, contrast, elaboration, example, and sequence.',
+    '- At least one item per batch should require distinguishing between two transitions that are near-synonyms in casual speech but differ in register or logical precision.',
+  ],
+  math_linear_equations: [
+    'WEAK-BLUEPRINT BOOST — linear equations and inequalities:',
+    '- This skill is flagged as a partial-coverage area in the current blueprint audit.',
+    '- Include at least one inequality item per batch when count >= 3, so coverage does not cluster on equations alone.',
+    '- Vary equation structures: distribution, combining like terms, fractions/decimals, and absolute value at SAT depth.',
+    '- Distractors must arise from distinct procedural errors — do not reuse the same sign-flip mistake across multiple wrong answers.',
+    '- Context-based items should use realistic SAT scenarios (cost models, measurement conversions) rather than abstract variable drills.',
+  ],
+  math_quadratic_functions: [
+    'WEAK-BLUEPRINT BOOST — nonlinear functions:',
+    '- This skill is flagged as a partial-coverage area in the current blueprint audit.',
+    '- Cover vertex form, factored form, and standard form interpretation — do not cluster all items on one representation.',
+    '- At least one item should require connecting a graph feature (vertex, intercepts, axis of symmetry) to an algebraic expression.',
+    '- Distractors should target sign-pattern confusion in factoring, mixing up vertex coordinates, or confusing minimum/maximum.',
+    '- Avoid items that reduce to pure arithmetic after a single substitution — the reasoning should feel genuinely nonlinear.',
+  ],
+  math_area_and_perimeter: [
+    'WEAK-BLUEPRINT BOOST — area, volume, and lines:',
+    '- This skill is flagged as a partial-coverage area in the current blueprint audit.',
+    '- Include composite-shape or shaded-region items, not just single-formula recall.',
+    '- At least one item should require choosing between area and perimeter (or surface area and volume) as the relevant measure.',
+    '- Distractors should reflect forgetting a factor of ½, using the wrong dimension, or applying a 2D formula to a 3D context.',
+    '- Keep diagrams verbal: describe the shape precisely enough that no figure is needed, matching Bluebook text-only item style.',
+  ],
+  math_trigonometry: [
+    'WEAK-BLUEPRINT BOOST — right-triangle trigonometry:',
+    '- This skill is flagged as a partial-coverage area in the current blueprint audit.',
+    '- Vary between finding a side, finding an angle, and interpreting a trig ratio in context.',
+    '- At least one item should use a real-world context (angle of elevation, ramp slope, shadow length) rather than an abstract triangle.',
+    '- Distractors should target sin/cos swaps, opposite/adjacent confusion, and forgetting to apply the inverse trig function.',
+    '- Keep numerical values clean enough for mental math or simple calculator work — SAT trig items do not require obscure angle measures.',
+  ],
+};
+
 const RW_TOPICS = ['natural science', 'social science', 'humanities', 'literature'];
 const KHAN_DIFFICULTY_LABELS = {
   easy: 'Foundations',
@@ -213,6 +256,7 @@ export function buildPrompt(domain, skill, count, difficulty) {
   const distractorTypes = domain === 'math' ? MATH_DISTRACTOR_TYPES : RW_DISTRACTOR_TYPES;
   const allowedErrorTags = domain === 'math' ? ERROR_DNA_TAGS.math : ERROR_DNA_TAGS.reading_writing;
   const skillSpecificGuidance = SKILL_GUIDANCE[skill] ?? 'Match the distractors to the exact reasoning demand of the skill rather than using generic wrong answers.';
+  const weakBlueprintBoost = WEAK_BLUEPRINT_BOOST[skill] ? '\n' + WEAK_BLUEPRINT_BOOST[skill].join('\n') : '';
   const exampleItem =
     domain === 'math'
       ? {
@@ -344,7 +388,7 @@ ${formatInstruction}
 
 3. Distractor design requirements
 Design each wrong answer to target a specific, common student error. No filler distractors. No joke answers. No choices that are obviously wrong on sight.
-- Skill-specific guidance: ${skillSpecificGuidance}
+- Skill-specific guidance: ${skillSpecificGuidance}${weakBlueprintBoost}
 - Allowed distractor taxonomy for this section: ${distractorTypes.join('; ')}.
 - Every wrong answer must map to one primary Error DNA tag from this project taxonomy: ${allowedErrorTags.join(', ')}.
 - Cross-domain tags are allowed when truly needed: ${ERROR_DNA_TAGS.cross_domain.join(', ')}.

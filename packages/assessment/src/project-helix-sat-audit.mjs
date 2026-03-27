@@ -294,11 +294,21 @@ export function buildProjectHelixSatAudit({ ontology, routerSource, appSource, a
   ];
 
   const nextFixes = [
-    'Keep adding explicit punctuation items plus broader organization coverage in Reading/Writing.',
-    'Continue deepening thin math areas, especially linear equations, circles, and trigonometry.',
-    'Expand grid-in / student-produced-response support beyond the current narrow math slice before claiming stronger Bluebook format realism.',
-    'Increase section-specific module item counts toward exam-realistic module shapes.',
-    'Wire and regression-test /api/session/review if per-session postmortems are part of the intended learner flow.',
+    ...(ontologyCoverage.partialSkillDetails.some((entry) => entry.section === 'reading_writing')
+      ? ['Keep deepening partial Reading/Writing blueprint lanes (organization, punctuation) before claiming broader coverage.']
+      : []),
+    ...(ontologyCoverage.partialSkillDetails.some((entry) => entry.section === 'math')
+      ? [`Continue deepening ${ontologyCoverage.partialSkillDetails.filter((entry) => entry.section === 'math').map((entry) => entry.skill).join(', ')} in Math before claiming full blueprint alignment.`]
+      : []),
+    ...(formatRealism.mathGridInCount < 6
+      ? ['Expand grid-in / student-produced-response support beyond the current narrow math slice before claiming stronger Bluebook format realism.']
+      : []),
+    ...(sessions.moduleSimulation.itemCount < 8
+      ? ['Increase section-specific module item counts toward exam-realistic module shapes.']
+      : []),
+    ...(appFlow.exposedButUnused.length
+      ? [`Wire and regression-test ${appFlow.exposedButUnused.join(', ')} if they are part of the intended learner flow.`]
+      : []),
   ];
 
   return {

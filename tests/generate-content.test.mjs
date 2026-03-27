@@ -57,6 +57,14 @@ test('normalizeGeneratedEntry fills omitted fields and validateItem accepts the 
   assert.deepEqual(normalized.rationale.hint_ladder_json, normalized.rationale.hint_ladder);
 });
 
+test('buildPrompt for weak-blueprint skills includes both base skill guidance and boost block', () => {
+  const prompt = buildPrompt('math', 'math_trigonometry', 3, 'mixed');
+
+  assert.match(prompt, /right-triangle trig or unit-circle reasoning/i, 'base SKILL_GUIDANCE present');
+  assert.match(prompt, /WEAK-BLUEPRINT BOOST/i, 'boost block present');
+  assert.match(prompt, /supports only single_select items/i, 'runtime format limit still explicit');
+});
+
 test('validateItem rejects malformed realism metadata', () => {
   const errors = validateItem({
     item: {

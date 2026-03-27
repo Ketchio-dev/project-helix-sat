@@ -57,13 +57,14 @@ Project Helix SAT **credibly covers both SAT Reading/Writing and Math as a proto
 4. **Review tooling is only partially surfaced.**
    - The API exposes per-session review, but the learner journey still does not emphasize it end to end.
 
-## Recommended next fixes
+## Recommended next fixes (slice 4, after `30f2588`)
 
-1. Expand the current 3-item math grid-in / student-produced-response slice into a broader numeric-entry lane.
-2. Raise section-specific module length and blueprint shape closer to a real module.
-3. Keep deepening the five partial blueprint lanes before making stronger coverage claims.
+1. Expand the current 3-item math grid-in / student-produced-response slice so format realism is no longer a token presence.
+2. Deepen the five partial blueprint lanes (organization, linear equations and inequalities, nonlinear functions, area/volume/lines, right-triangle trigonometry) before making stronger coverage claims.
+3. Raise section-specific module length closer to a real exam module (currently 4 items; target ≥ 8).
 4. Wire and regression-test `/api/session/review` if post-session review is part of the intended learner workflow.
+5. Improve content-generation prompt guidance so newly generated items stay closer to Bluebook/Khan quality without lying about current runtime limits.
 
 ## Bottom line
 
-Today the product is a believable **two-section SAT prototype** with strong wiring across content, sessions, and dashboards. The next fidelity slice should focus on **format realism and module structure**, while keeping audits and docs explicit about what still is not Bluebook-parity yet.
+Today the product is a believable **two-section SAT prototype** with strong wiring across content, sessions, and dashboards. The next fidelity slice should focus on **blueprint depth, format realism, and prompt quality**, while keeping audits and docs explicit about what still is not Bluebook-parity yet.

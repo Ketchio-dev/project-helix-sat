@@ -1,10 +1,11 @@
 # Bluebook / Khan quality-upgrade slice
 
-This note tracks the **current fidelity slice** for Project Helix SAT after commit `e49840e`. The goal is still not full SAT replication. The goal of the current slice is to close the most visible realism gaps without breaking the existing learner flow:
+This note tracks the **current fidelity slice** for Project Helix SAT after commit `30f2588`. The goal is still not full SAT replication. The goal of the current slice is to close the most visible realism gaps without breaking the existing learner flow:
 
-1. add the smallest safe end-to-end math grid-in / student-produced-response slice,
-2. make module simulation section-separated so it looks less unlike the digital SAT,
-3. keep audits, tests, and docs explicit about what still remains incomplete.
+1. deepen weak blueprint lanes in both sections so partial coverage shrinks,
+2. expand the math grid-in / student-produced-response slice beyond its current narrow footprint,
+3. improve prompt and content guidance so generated items stay closer to Bluebook/Khan quality,
+4. keep audits, tests, and docs explicit about what still remains incomplete.
 
 ## Current baseline from the latest audit
 
@@ -18,8 +19,8 @@ This note tracks the **current fidelity slice** for Project Helix SAT after comm
 ## What this slice should improve
 
 ### Format realism
-- Keep the current hand-authored math grid-in / student-produced-response slice working end to end.
-- The slice is still intentionally small: three supported math numeric-entry items are better than broad but brittle pseudo-support.
+- Expand the math grid-in / student-produced-response slice beyond the current 3 items so the format is no longer a token presence.
+- New grid-in items should cover additional math skills (not just the same lane) and work end to end in all session types.
 - Do not overclaim generator support while the richer format is still demo-bank-only.
 
 ### Module realism
@@ -65,9 +66,10 @@ Before merging, confirm all of the following:
 ## Still not promised after this slice
 
 - Full official-exam replication
-- Full-length SAT module sizing
+- Full-length SAT module sizing (real modules have 27–33 items per section)
 - Broad generator-native support for every SAT interaction type
 - Production-depth coverage across every skill bucket
+- Adaptive module routing (real digital SAT picks module 2 difficulty based on module 1 performance)
 
 ## Canonical references inside this repo
 

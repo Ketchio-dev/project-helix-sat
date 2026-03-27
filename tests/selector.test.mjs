@@ -54,6 +54,11 @@ describe('selectSessionItems', () => {
     assert.ok(new Set(result.map((item) => item.domain)).size >= 3);
   });
 
+  it('math module_simulation now surfaces at least one student-produced-response item when the bank supports it', () => {
+    const result = selectSessionItems(demoItems, [], 'module_simulation', 4, [], {}, { section: 'math' });
+    assert.ok(result.some((item) => item.item_format === 'grid_in'));
+  });
+
   it('recentItemIds filters out recently seen items', () => {
     const recentIds = demoItems.slice(0, 3).map((item) => item.itemId);
     const result = selectSessionItems(demoItems, [], 'diagnostic', 5, recentIds);

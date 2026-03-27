@@ -1,7 +1,3 @@
-
-> project-helix-sat@0.1.0 audit:helix
-> node scripts/audit-project-helix-sat.mjs
-
 # Project Helix SAT coverage audit
 
 ## Verdict
@@ -57,9 +53,9 @@
 - Exposed endpoints without UI/API-test usage: /api/session/review
 
 ## Next fixes
-- Keep adding explicit punctuation items plus broader organization coverage in Reading/Writing.
-- Continue deepening thin math areas, especially linear equations, circles, and trigonometry.
+- Keep deepening partial Reading/Writing blueprint lanes (organization, punctuation) before claiming broader coverage.
+- Continue deepening linear_equations_and_inequalities, nonlinear_functions, area_volume_and_lines, right_triangle_trigonometry in Math before claiming full blueprint alignment.
 - Expand grid-in / student-produced-response support beyond the current narrow math slice before claiming stronger Bluebook format realism.
 - Increase section-specific module item counts toward exam-realistic module shapes.
-- Wire and regression-test /api/session/review if per-session postmortems are part of the intended learner flow.
+- Wire and regression-test /api/session/review if they are part of the intended learner flow.
 
