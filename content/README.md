@@ -37,6 +37,51 @@ node scripts/generate-content.mjs --domain math --skill math_linear_equations --
 node scripts/generate-content.mjs --domain reading_writing --skill rw_words_in_context --count 2 --difficulty easy
 ```
 
+## Bluebook / Khan-aligned quality guardrails
+
+The prompt in `scripts/generate-content.mjs` should be treated as a digital-SAT guardrail, not a generic item writer. When reviewing or extending it, preserve these expectations: The slice-level review brief lives in `docs/quality/bluebook-khan-slice.md`.
+
+### Reading and Writing
+- Use short digital-SAT passages with enough density to support evidence-based elimination.
+- Keep questions grounded in College Board-style skills: words in context, structure/purpose, evidence, inference, transitions, synthesis, central ideas/details, and conventions.
+- Make distractors text-proximate and plausible for a named reason (`scope_mismatch`, `unsupported_inference`, `partial_truth`, etc.).
+- Do not require outside knowledge; the passage alone must support the answer.
+
+### Math
+- Keep setups concise and Bluebook-like: the math should be the challenge, not verbose story framing.
+- Use authentic SAT algebra, advanced math, data-analysis, geometry, and trig reasoning.
+- Make wrong answers arise from realistic student work (sign errors, partial completion, formula misuse, unit mistakes, graph misreads).
+- The current generator intentionally emits `single_select` only. Grid-in / student-produced-response realism is still a follow-up gap, so documentation and audits should stay honest about that limitation.
+
+### Cross-cutting requirements
+- Exactly 4 answer choices for every generated item.
+- Every wrong answer maps to a primary misconception tag and gets its own wrong-answer rationale.
+- Difficulty labels must match actual reasoning demand and estimated time.
+- Hint ladders must contain exactly 5 steps, ending with the correct answer plus the decisive reasoning.
+- Output must remain valid JSON shaped as `{ item, rationale }` pairs.
+
+## Current quality-upgrade priorities
+
+The latest coverage audit (`npm run audit:helix`) identifies these content gaps to address first:
+
+1. Missing explicit punctuation coverage in Reading/Writing.
+2. Thin organization coverage (`rw_transitions` currently carries that ontology mapping almost alone).
+3. Singleton math skills that need deeper coverage: `math_linear_equations`, `math_circles`, and `math_trigonometry`.
+4. Format realism is still bounded because the bank has no grid-in items yet.
+
+When generating or reviewing new content, prioritize those gaps before broadening already healthier skills.
+
+## Verification checklist
+
+After prompt or content changes:
+
+```bash
+npm run audit:helix
+npm run check
+```
+
+Use the audit output to confirm that documentation still matches the actual item bank and that new items improve the weakest blueprint areas rather than only adding more volume.
+
 ## Output Format
 
 Each generated item is stored as a pair: `{ item, rationale }` matching the schema in

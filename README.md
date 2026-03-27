@@ -46,6 +46,16 @@ curl -H 'Authorization: Bearer <token>' http://localhost:3000/api/dashboard/lear
 
 Tokens expire after 24 hours. Re-authenticate to obtain a fresh token.
 
+## SAT content quality snapshot
+
+Current audit status (`npm run audit:helix`):
+- Cross-section coverage is **credible for MVP**
+- Full blueprint coverage is still **incomplete**
+- Highest-priority content gaps are explicit punctuation coverage, deeper organization support, and thin math skills (`math_linear_equations`, `math_circles`, `math_trigonometry`)
+- The current content generator still emits `single_select` only, so SAT math format realism remains intentionally bounded
+
+See `docs/sat-coverage-audit.md` for the narrative audit and `content/README.md` for the content-generation guardrails used in this quality-upgrade slice. For the narrower review brief that defines this first upgrade slice, see `docs/quality/bluebook-khan-slice.md`.
+
 ## Guiding product decisions captured here
 1. Canonical content beats freeform generation.
 2. Error DNA is a first-class product asset.

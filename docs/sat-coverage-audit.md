@@ -22,6 +22,23 @@ Project Helix SAT **credibly covers both SAT Reading/Writing and Math as a proto
 - Module simulation flow balances sections 2 Reading/Writing + 2 Math, finishes successfully, and persists section breakdowns to dashboard/history
 - Session history records both timed-set and module-simulation outcomes
 
+### Documentation + tooling
+- `README.md` now reflects the current 44-item demo bank instead of the stale 11-item snapshot
+- `content/README.md` now documents the Bluebook/Khan-style generation guardrails and verification loop used in this slice
+- `docs/quality/bluebook-khan-slice.md` captures the scoped review checklist for this first quality-upgrade pass
+- `npm run audit:helix` provides a reproducible coverage snapshot for future updates
+
+## Weakest current coverage
+
+1. **Reading/Writing punctuation is still missing entirely.**
+   - The ontology audit still reports `reading_writing/standard_english_conventions/punctuation` as uncovered.
+2. **Organization coverage is real but thin.**
+   - `rw_transitions` provides only 2 mapped items for the broader organization bucket, which is too shallow for strong blueprint claims.
+3. **Three math skills are singleton lanes.**
+   - `math_linear_equations`, `math_circles`, and `math_trigonometry` each have only 1 item, so adaptivity and retake resistance are fragile.
+4. **Format realism is still intentionally bounded.**
+   - All 44 items are `single_select`; there are no grid-in / student-produced-response items yet.
+
 ## Major risks
 
 1. **All 47 items use the same `single_select` format.**
