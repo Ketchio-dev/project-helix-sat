@@ -1,7 +1,13 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-// SECURITY: When NODE_ENV === 'production', replace this secret with an environment variable before issuing tokens.
-const SECRET = 'helix-sat-dev-secret-change-in-production';
+const SECRET =
+  process.env.HELIX_AUTH_SECRET ||
+  (process.env.NODE_ENV === 'production' ? null : 'helix-sat-dev-secret-change-in-production');
+
+if (SECRET === null) {
+  throw new Error('HELIX_AUTH_SECRET environment variable is required in production');
+}
+
 const DEFAULT_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
 export function hashPassword(password) {

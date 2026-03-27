@@ -7,7 +7,7 @@ import { verifyToken } from './auth.mjs';
 function getAuthenticatedUserId(request) {
   // Dev fallback: demo header — grant admin so all routes work in dev/test
   const demoHeader = request.headers['x-demo-user-id'];
-  if (demoHeader) {
+  if (demoHeader && process.env.NODE_ENV !== 'production') {
     return { userId: demoHeader, role: 'admin' };
   }
   // Real auth: Bearer token
