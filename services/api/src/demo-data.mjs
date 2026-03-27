@@ -459,6 +459,25 @@ export function createDemoData() {
         tags: ['algebra', 'linear_inequality', 'distribution', 'medium'],
         estimatedTimeSec: 70,
       }),
+      math_linear_06: createItem({
+        itemId: 'math_linear_06',
+        section: 'math',
+        domain: 'algebra',
+        skill: 'math_linear_equations',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'A streaming service charges a one-time setup fee of $12 plus $7 per month. For which greatest whole number of months, m, will the total cost be at most $68?',
+        choices: [
+          { label: 'A', text: '7' },
+          { label: 'B', text: '8' },
+          { label: 'C', text: '9' },
+          { label: 'D', text: '10' },
+        ],
+        answerKey: 'B',
+        status: 'production',
+        tags: ['algebra', 'linear_inequality', 'word_problem', 'constraint_check', 'medium'],
+        estimatedTimeSec: 80,
+      }),
 
       math_stats_01: createItem({
         itemId: 'math_stats_01',
@@ -799,6 +818,25 @@ export function createDemoData() {
         tags: ['transitions', 'example', 'organization', 'medium'],
         estimatedTimeSec: 65,
       }),
+      rw_transition_05: createItem({
+        itemId: 'rw_transition_05',
+        section: 'reading_writing',
+        domain: 'expression_of_ideas',
+        skill: 'rw_transitions',
+        difficulty_band: 'hard',
+        item_format: 'single_select',
+        stem: 'Which choice completes the text with the most logical transition?',
+        passage: 'The district’s pilot signal system shortened bus travel times on two of the city’s busiest corridors. ______, transportation analysts noted that the pilot ran only on dry weekdays in September, so they recommended gathering winter data before expanding the system citywide.',
+        choices: [
+          { label: 'A', text: 'For example,' },
+          { label: 'B', text: 'Accordingly,' },
+          { label: 'C', text: 'Even so,' },
+          { label: 'D', text: 'Similarly,' },
+        ],
+        answerKey: 'C',
+        tags: ['transitions', 'qualified_concession', 'organization', 'hard'],
+        estimatedTimeSec: 75,
+      }),
 
       rw_punctuation_01: createItem({
         itemId: 'rw_punctuation_01',
@@ -1096,7 +1134,6 @@ export function createDemoData() {
         tags: ['advanced_math', 'quadratic_vertex', 'minimum_value', 'hard', 'grid_in'],
         estimatedTimeSec: 90,
       }),
-
       math_polynomial_01: createItem({
         itemId: 'math_polynomial_01',
         section: 'math',
@@ -1364,6 +1401,24 @@ export function createDemoData() {
         tags: ['trigonometry', 'inverse_tangent', 'real_world_context', 'hard'],
         estimatedTimeSec: 95,
       }),
+      math_trig_04: createItem({
+        itemId: 'math_trig_04',
+        section: 'math',
+        domain: 'geometry_and_trigonometry',
+        skill: 'math_trigonometry',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'From a point on level ground 24 feet from the base of a tree, the angle of elevation to the top of the tree is 35°. About how tall is the tree?',
+        choices: [
+          { label: 'A', text: '14 feet' },
+          { label: 'B', text: '17 feet' },
+          { label: 'C', text: '24 feet' },
+          { label: 'D', text: '34 feet' },
+        ],
+        answerKey: 'B',
+        tags: ['trigonometry', 'angle_of_elevation', 'real_world_context', 'medium'],
+        estimatedTimeSec: 80,
+      }),
     },
     rationales: {
       // ── READING AND WRITING RATIONALES ────────────────────────────────
@@ -1570,6 +1625,28 @@ export function createDemoData() {
           'The correct answer is A because 4 satisfies the inequality and the other values are greater than the upper bound.',
         ],
         misconception_tags: ['inequality_as_equation', 'incorrect_inequality_reversal'],
+      }),
+      math_linear_06: createRationale({
+        item_id: 'math_linear_06',
+        explanation: 'Write the inequality 12 + 7m ≤ 68. Subtract 12 to get 7m ≤ 56, then divide by 7 to get m ≤ 8. Therefore, the greatest whole number of months that keeps the total cost at or below $68 is 8.',
+        wrongRationales: {
+          A: 'A student who picks 7 likely solves the inequality correctly but then chooses a smaller value without checking the phrase “greatest whole number.” This happens when a student finds a possible value instead of the maximum allowable one.',
+          C: 'A student who picks 9 likely ignores the boundary created by “at most $68.” This happens when a student notices that 9 is close to 8 but does not test whether it pushes the total above the limit.',
+          D: 'A student who picks 10 likely subtracts 12 incorrectly or divides before isolating the monthly term. This happens when a student compresses multiple algebra steps and loses the cost constraint.',
+        },
+        misconceptionByChoice: {
+          A: 'fails_to_choose_maximum_valid_value',
+          C: 'boundary_condition_not_checked',
+          D: 'incorrect_isolation_with_context',
+        },
+        hint_ladder: [
+          'Turn the cost statement into an inequality: setup fee + monthly fee × months must be at most 68.',
+          'That gives 12 + 7m ≤ 68. Subtract 12 from both sides first.',
+          'You should reach 7m ≤ 56, so dividing by 7 gives m ≤ 8.',
+          'Because the question asks for the greatest whole number of months, choose the largest integer that still satisfies the inequality.',
+          'The correct answer is B because 8 months gives a total cost of $68, while 9 months would exceed the limit.',
+        ],
+        misconception_tags: ['boundary_condition_not_checked', 'fails_to_choose_maximum_valid_value'],
       }),
 
       math_stats_01: createRationale({
@@ -1940,6 +2017,28 @@ export function createDemoData() {
         ],
         misconception_tags: ['transition_logic_mismatch', 'example_vs_parallel_confusion'],
       }),
+      rw_transition_05: createRationale({
+        item_id: 'rw_transition_05',
+        explanation: 'The first sentence gives encouraging results, but the second sentence immediately qualifies those results by pointing out the pilot’s limits. The transition must therefore signal concession. “Even so,” best captures that move from success to caution.',
+        wrongRationales: {
+          A: 'A student who picks “For example,” likely mistakes the second sentence for an illustration of the first. This happens when a student notices related subject matter but misses that the second sentence is qualifying the evidence, not exemplifying it.',
+          B: 'A student who picks “Accordingly,” likely forces a cause-and-effect relationship between the improved travel times and the recommendation for more data. This happens when a student treats a cautionary follow-up as a straightforward result.',
+          D: 'A student who picks “Similarly,” likely assumes both sentences make the same kind of point. This happens when a student misses that the second sentence partly pushes back against the confidence created by the first.',
+        },
+        misconceptionByChoice: {
+          A: 'example_structure_misread',
+          B: 'causation_where_qualification_exists',
+          D: 'agreement_where_caution_exists',
+        },
+        hint_ladder: [
+          'Compare the direction of the two sentences: does the second strengthen the first, or qualify it?',
+          'The first sentence reports a success, but the second says the evidence is limited and more data are needed.',
+          'That means the transition should show concession, not example, similarity, or direct result.',
+          'Eliminate “For example,” and “Similarly,” first because the second sentence does not continue the same point.',
+          'The correct answer is C because “Even so,” signals that the caution stands despite the promising initial result.',
+        ],
+        misconception_tags: ['causation_where_qualification_exists', 'example_structure_misread'],
+      }),
 
       rw_punctuation_01: createRationale({
         item_id: 'rw_punctuation_01',
@@ -2288,7 +2387,6 @@ export function createDemoData() {
         ],
         misconception_tags: ['incomplete_square_adjustment', 'sign_error'],
       }),
-
       math_polynomial_01: createRationale({
         item_id: 'math_polynomial_01',
         explanation: 'Factor out x: x\u00B3 \u2212 x\u00B2 \u2212 6x = x(x\u00B2 \u2212 x \u2212 6). Factor the quadratic: x\u00B2 \u2212 x \u2212 6 = (x \u2212 3)(x + 2). The full factored form is x(x \u2212 3)(x + 2), so (x + 2) is a factor.',
@@ -2610,6 +2708,28 @@ export function createDemoData() {
           'The correct answer is B because 36.87° rounds to 37°.',
         ],
         misconception_tags: ['opposite_adjacent_swap', 'special_angle_guess'],
+      }),
+      math_trig_04: createRationale({
+        item_id: 'math_trig_04',
+        explanation: 'The situation forms a right triangle with adjacent side 24 and angle of elevation 35°. Use tangent: tan(35°) = height/24, so height = 24 tan(35°) ≈ 16.8 feet, which is about 17 feet.',
+        wrongRationales: {
+          A: 'A student who picks 14 feet likely uses an underestimate for tan(35°) or rounds too aggressively before multiplying. This happens when a student recognizes the need for tangent but handles the calculator step imprecisely.',
+          C: 'A student who picks 24 feet likely reports the horizontal distance instead of the vertical height. This happens when a student identifies the given adjacent side but does not relate it to the requested side.',
+          D: 'A student who picks 34 feet likely treats 24 as the opposite side or uses the reciprocal ratio. This happens when a student swaps the sides in the trig setup and produces a height that is far too large.',
+        },
+        misconceptionByChoice: {
+          A: 'premature_rounding_in_trig_estimate',
+          C: 'adjacent_reported_as_height',
+          D: 'ratio_setup_reversed',
+        },
+        hint_ladder: [
+          'Draw a right triangle: the tree is the vertical side, and the 24-foot ground distance is the horizontal side.',
+          'Because you know an angle and the adjacent side and need the opposite side, use tangent.',
+          'Set up tan(35°) = height/24, then multiply both sides by 24.',
+          'A calculator gives 24 tan(35°) ≈ 16.8, so round to the nearest foot.',
+          'The correct answer is B because the tree is about 17 feet tall.',
+        ],
+        misconception_tags: ['ratio_setup_reversed', 'adjacent_reported_as_height'],
       }),
 
       math_quadratic_01: createRationale({

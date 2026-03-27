@@ -404,6 +404,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
             sessionId: session.id,
             type: session.type,
             status: session.ended_at ? 'complete' : 'active',
+            section: session.section ?? null,
             startedAt: session.started_at,
             endedAt: session.ended_at ?? null,
             examMode: Boolean(session.exam_mode),

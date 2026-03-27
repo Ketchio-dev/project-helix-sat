@@ -122,6 +122,13 @@ function toDisplaySessionType(value) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function formatSectionName(section) {
+  if (!section) return '';
+  if (section === 'reading_writing') return 'Reading & Writing';
+  if (section === 'math') return 'Math';
+  return section.charAt(0).toUpperCase() + section.slice(1).replace(/_/g, ' ');
+}
+
 function isExamSessionType(value) {
   return value === 'timed_set' || value === 'module' || value === 'module_simulation';
 }
@@ -233,7 +240,9 @@ function getCurrentExamSummary() {
 function startSessionTimer() {
   clearSessionTimer();
   if (!isExamSessionType(state.currentSessionType)) return;
-  const label = toDisplaySessionType(state.currentSessionType);
+  const activeSection = state.activeSessionEnvelope?.session?.section;
+  const sectionSuffix = activeSection ? ` (${formatSectionName(activeSection)})` : '';
+  const label = toDisplaySessionType(state.currentSessionType) + sectionSuffix;
   const update = () => {
     const countdown = getCurrentCountdownState();
     if (!countdown) {
@@ -353,8 +362,9 @@ function renderSessionHistory(payload) {
   for (const session of sessions) {
     const card = node('article', { className: 'history-item' });
     const title = toDisplaySessionType(session.type ?? session.sessionType ?? 'session');
+    const sectionLabel = session.section ? ` (${formatSectionName(session.section)})` : '';
     const status = session.status ?? (session.endedAt || session.ended_at ? 'completed' : 'in progress');
-    card.append(node('strong', { text: `${title} — ${status}` }));
+    card.append(node('strong', { text: `${title}${sectionLabel} — ${status}` }));
 
     const details = [
       ['Started', formatDateTime(session.startedAt ?? session.started_at)],
@@ -367,6 +377,13 @@ function renderSessionHistory(payload) {
     const reflection = session.lastReflection ?? session.reflection ?? session.summary;
     if (reflection) {
       card.append(node('p', { className: 'muted', text: `Reflection: ${typeof reflection === 'string' ? reflection : reflection.response ?? reflection.note ?? JSON.stringify(reflection)}` }));
+    }
+
+    const isComplete = status === 'complete' || status === 'completed';
+    if (isComplete && session.sessionId) {
+      const reviewBtn = node('button', { className: 'secondary review-session-btn', text: 'Review Session' });
+      reviewBtn.addEventListener('click', () => loadSessionReview(session.sessionId));
+      card.append(reviewBtn);
     }
     stack.append(card);
   }
@@ -903,7 +920,9 @@ function handleSessionConflict(error, fallbackMessage) {
 function renderSessionProgress(progress) {
   if (!progress) return;
   state.currentSessionProgress = progress;
-  const sessionLabel = toDisplaySessionType(state.currentSessionType);
+  const activeSection = state.activeSessionEnvelope?.session?.section;
+  const sectionSuffix = activeSection ? ` (${formatSectionName(activeSection)})` : '';
+  const sessionLabel = toDisplaySessionType(state.currentSessionType) + sectionSuffix;
   const activeSummary = getCurrentExamSummary();
   if (progress.isComplete) {
     $('#diagnosticStatus').textContent = `${sessionLabel} complete: ${progress.answered}/${progress.total} items answered.`;
@@ -924,6 +943,69 @@ function renderSessionProgress(progress) {
 async function loadReviewRecommendations() {
   const review = await json('/api/review/recommendations');
   renderReview(review);
+}
+
+async function loadSessionReview(sessionId) {
+  try {
+    const review = await json(`/api/session/review?sessionId=${encodeURIComponent(sessionId)}`);
+    renderSessionReview(review);
+  } catch (error) {
+    const container = $('#sessionReviewDetail');
+    if (container) {
+      clear(container);
+      container.append(node('p', { className: 'muted', text: `Could not load review: ${error.message}` }));
+    }
+  }
+}
+
+function renderSessionReview(review) {
+  const container = $('#sessionReviewDetail');
+  if (!container) return;
+  clear(container);
+  const section = $('#sessionReviewSection');
+  if (section) section.style.display = 'block';
+
+  if (!review?.items?.length) {
+    container.append(node('p', { className: 'muted', text: 'No item-level review data available.' }));
+    return;
+  }
+
+  const session = review.session ?? {};
+  const progress = review.sessionProgress ?? {};
+  const sectionLabel = session.section ? formatSectionName(session.section) : null;
+  const typeLabel = toDisplaySessionType(session.type);
+
+  const header = node('div', { className: 'session-review-header' });
+  header.append(node('h3', { text: `${typeLabel}${sectionLabel ? ` — ${sectionLabel}` : ''} Review` }));
+  header.append(node('p', { className: 'muted', text: `${progress.answered ?? review.items.length}/${progress.total ?? review.items.length} answered · ${review.items.filter((i) => i.isCorrect).length} correct` }));
+  container.append(header);
+
+  const list = node('div', { className: 'stack' });
+  for (const [index, item] of review.items.entries()) {
+    const card = node('article', { className: `review-detail-item ${item.isCorrect ? 'correct' : item.isCorrect === false ? 'incorrect' : 'unanswered'}` });
+    const statusIcon = item.isCorrect ? '\u2713' : item.isCorrect === false ? '\u2717' : '\u2014';
+    card.append(node('strong', { text: `${statusIcon} Item ${index + 1}` }));
+
+    const details = [];
+    if (item.selectedAnswer) details.push(['Your answer', item.selectedAnswer]);
+    if (item.correctAnswer) details.push(['Correct answer', item.correctAnswer]);
+    if (item.itemFormat) details.push(['Format', item.itemFormat === 'grid_in' ? 'Student-produced response' : 'Multiple choice']);
+    if (details.length) card.append(kvRows(details));
+
+    if (!item.isCorrect && item.distractorTag) {
+      card.append(node('p', { className: 'notice', text: `Misconception: ${item.distractorTag.replace(/_/g, ' ')}` }));
+    }
+    if (item.rationale) {
+      card.append(node('p', { className: 'muted', text: item.rationale }));
+    }
+    list.append(card);
+  }
+  container.append(list);
+
+  if (review.projection) {
+    const proj = review.projection;
+    container.append(node('p', { className: 'notice', text: `Projected score band: ${proj.predicted_total_low}\u2013${proj.predicted_total_high}` }));
+  }
 }
 
 function showLogin() {

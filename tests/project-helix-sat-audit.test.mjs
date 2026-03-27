@@ -1,25 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { buildProjectHelixSatAudit } from '../packages/assessment/src/project-helix-sat-audit.mjs';
+import { buildProjectHelixSatAudit, formatProjectHelixSatAudit } from '../packages/assessment/src/project-helix-sat-audit.mjs';
 
 const ontology = JSON.parse(fs.readFileSync(new URL('../docs/ontology/skill-ontology.v1.json', import.meta.url), 'utf8'));
 const routerSource = fs.readFileSync(new URL('../services/api/src/router.mjs', import.meta.url), 'utf8');
 const appSource = fs.readFileSync(new URL('../apps/web/public/app.js', import.meta.url), 'utf8');
 const apiTestSource = fs.readFileSync(new URL('../tests/api.test.mjs', import.meta.url), 'utf8');
+const generatedAuditSnapshot = fs.readFileSync(new URL('../docs/audits/project-helix-sat-coverage.md', import.meta.url), 'utf8');
 
 test('project helix audit captures current MVP coverage and blueprint gaps', () => {
   const audit = buildProjectHelixSatAudit({ ontology, routerSource, appSource, apiTestSource });
 
-  assert.equal(audit.content.itemCount, 55);
-  assert.equal(audit.content.rationaleCount, 55);
+  assert.equal(audit.content.itemCount, 58);
+  assert.equal(audit.content.rationaleCount, 58);
   assert.deepEqual(audit.content.sectionCounts, {
-    math: 28,
-    reading_writing: 27,
+    math: 30,
+    reading_writing: 28,
   });
   assert.deepEqual(audit.content.itemFormatCounts, {
     grid_in: 5,
-    single_select: 50,
+    single_select: 53,
   });
 
   assert.equal(audit.verdict.crossSectionCoverage, 'credible_for_mvp');
@@ -35,7 +36,7 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   assert.deepEqual(audit.appFlow.routerMissing, []);
   assert.deepEqual(audit.appFlow.uiMissing, []);
   assert.deepEqual(audit.appFlow.apiTestMissing, []);
-  assert.deepEqual(audit.appFlow.exposedButUnused, ['/api/session/review']);
+  assert.deepEqual(audit.appFlow.exposedButUnused, []);
   assert.equal(audit.formatRealism.allSingleSelect, false);
   assert.equal(audit.formatRealism.hasMathGridIn, true);
   assert.equal(audit.formatRealism.mathGridInCount, 5);
@@ -50,6 +51,7 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   assert.equal(audit.sessions.moduleSimulation.timeLimitSec, 840);
   assert.equal(audit.sessions.sessionReview.blockedUntilCompletion, true);
   assert.ok(!audit.majorRisks.some((entry) => entry.includes('module simulation')));
-  assert.deepEqual(audit.majorRisks, ['Exposed endpoints without UI/API-test usage: /api/session/review']);
+  assert.deepEqual(audit.majorRisks, []);
   assert.ok(audit.nextFixes.some((entry) => entry.includes('narrow math slice')));
+  assert.equal(formatProjectHelixSatAudit(audit).trimEnd(), generatedAuditSnapshot.trimEnd());
 });

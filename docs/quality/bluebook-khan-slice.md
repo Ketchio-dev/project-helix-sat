@@ -9,12 +9,12 @@ This note tracks the **current fidelity slice** for Project Helix SAT for the cu
 
 ## Current baseline from the latest audit
 
-- 55 demo items total (`math=28`, `reading_writing=27`)
+- 58 demo items total (`math=30`, `reading_writing=28`)
 - 19 ontology skills tracked: 14 covered, 5 partial, 0 missing
 - No singleton-skill lanes remain
 - 5 hand-authored Math items now use `grid_in`
 - Module simulation is now section-separated and expanded to an 8-item block
-- `/api/session/review` is still exposed but underused
+- `/api/session/review` is wired into the web app via session history "Review Session" buttons
 
 ## What this slice improves
 
