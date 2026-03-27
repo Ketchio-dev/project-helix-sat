@@ -19,10 +19,17 @@
     },
     "total_minutes": {
       "type": "integer",
-      "minimum": 10
+      "minimum": 5
     },
     "planner_version": {
       "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "needs_diagnostic",
+        "active"
+      ]
     },
     "rationale_summary": {
       "type": "string"
@@ -43,6 +50,7 @@
           "block_type": {
             "type": "string",
             "enum": [
+              "diagnostic",
               "warmup",
               "drill",
               "review",
@@ -80,7 +88,10 @@
       }
     },
     "fallback_plan": {
-      "type": "object",
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "required": [
         "trigger",

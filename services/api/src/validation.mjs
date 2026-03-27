@@ -19,32 +19,35 @@ const responseSchemas = new Map([
 const requestSchemas = new Map([
   ['AttemptSubmitRequest', {
     type: 'object',
-    required: ['itemId', 'sessionId', 'selectedAnswer', 'confidenceLevel', 'mode', 'responseTimeMs'],
+    required: ['userId', 'itemId', 'sessionId', 'selectedAnswer', 'confidenceLevel', 'mode', 'responseTimeMs'],
     properties: {
+      userId: { type: 'string' },
       itemId: { type: 'string' },
       sessionId: { type: 'string' },
       selectedAnswer: { type: 'string' },
       confidenceLevel: { type: 'number' },
       mode: { type: 'string' },
-      responseTimeMs: { type: 'number' },
+      responseTimeMs: { type: 'integer', minimum: 0 },
     },
   }],
   ['ReflectionSubmitRequest', {
     type: 'object',
     required: ['response'],
     properties: {
+      userId: { type: 'string' },
       sessionId: { type: ['string', 'null'] },
       prompt: { type: 'string' },
-      response: { type: 'string' },
+      response: { type: 'string', minLength: 1 },
     },
   }],
   ['TeacherAssignmentRequest', {
     type: 'object',
     required: ['title', 'objective', 'minutes', 'focusSkill'],
     properties: {
+      userId: { type: 'string' },
       title: { type: 'string' },
       objective: { type: 'string' },
-      minutes: { type: 'number' },
+      minutes: { type: 'number', minimum: 1 },
       focusSkill: { type: 'string' },
       mode: { type: 'string' },
       rationale: { type: 'string' },
@@ -52,13 +55,14 @@ const requestSchemas = new Map([
   }],
   ['TutorHintRequest', {
     type: 'object',
-    required: ['itemId', 'mode'],
+    required: ['itemId'],
     properties: {
+      userId: { type: 'string' },
       itemId: { type: 'string' },
       sessionId: { type: ['string', 'null'] },
       mode: { type: 'string' },
-      requestedLevel: { type: 'integer' },
-      priorHintCount: { type: 'integer' },
+      requestedLevel: { type: 'integer', minimum: 0, maximum: 4 },
+      priorHintCount: { type: 'integer', minimum: 0 },
     },
   }],
 ]);

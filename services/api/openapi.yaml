@@ -31,18 +31,36 @@ paths:
   /api/diagnostic/start:
     post:
       summary: Start a diagnostic session
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyRequest'
       responses:
         '201':
           description: Diagnostic session created
   /api/timed-set/start:
     post:
       summary: Start a short timed set in exam mode
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyRequest'
       responses:
         '201':
           description: Timed set session created
   /api/module/start:
     post:
       summary: Start a single-module simulation in exam mode
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyRequest'
       responses:
         '201':
           description: Module simulation session created
@@ -52,6 +70,10 @@ paths:
       responses:
         '200':
           description: Daily plan response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyPlan'
   /api/dashboard/learner:
     get:
       summary: Fetch the learner dashboard aggregate
@@ -61,18 +83,36 @@ paths:
   /api/attempt/submit:
     post:
       summary: Submit a learner attempt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttemptSubmitRequest'
       responses:
         '200':
           description: Attempt accepted and learner-state update payload returned
   /api/timed-set/finish:
     post:
       summary: Finish the active timed set and return a pacing summary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionIdRequest'
       responses:
         '200':
           description: Timed set summary returned
   /api/module/finish:
     post:
       summary: Finish the active module simulation and return module results
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionIdRequest'
       responses:
         '200':
           description: Module simulation summary returned
@@ -108,44 +148,272 @@ paths:
           description: Teacher assignments payload
     post:
       summary: Save a teacher assignment draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherAssignmentRequest'
       responses:
         '200':
           description: Teacher assignment saved payload
   /api/reflection/submit:
     post:
       summary: Save a learner reflection tied to the current session or review loop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReflectionSubmitRequest'
       responses:
         '200':
           description: Reflection saved
   /api/tutor/hint:
     post:
       summary: Request a tutor hint grounded in canonical rationale
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TutorHintRequest'
       responses:
         '200':
           description: Structured hint response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TutorHintResponse'
   /api/projection/latest:
     get:
       summary: Fetch the latest projected score band
       responses:
         '200':
           description: Projected score response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScorePrediction'
   /api/projection:
     get:
       summary: Fetch the current projected score band
       responses:
         '200':
           description: Projected score response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScorePrediction'
   /api/error-dna:
     get:
       summary: Fetch the current Error DNA summary
       responses:
         '200':
           description: Error DNA tag counts for the authenticated learner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDnaResponse'
+  /api/session/review:
+    get:
+      summary: Fetch completed-session review details for answer-by-answer analysis
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session review payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionReviewResponse'
 components:
   schemas:
+    ScorePrediction:
+      $ref: ../../packages/schemas/scoring/score-prediction.schema.json
     DailyPlan:
       $ref: ../../packages/schemas/planning/daily-plan.schema.json
     TutorHintResponse:
       $ref: ../../packages/schemas/tutor/hint-response.schema.json
     EventEnvelope:
       $ref: ../../packages/schemas/events/event-envelope.schema.json
+    WeeklyReport:
+      $ref: ../../packages/schemas/reporting/weekly-report.schema.json
+    EmptyRequest:
+      type: object
+      additionalProperties: false
+    SessionIdRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - sessionId
+      properties:
+        sessionId:
+          type: string
+    AttemptSubmitRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - userId
+        - itemId
+        - sessionId
+        - selectedAnswer
+        - confidenceLevel
+        - mode
+        - responseTimeMs
+      properties:
+        userId:
+          type: string
+        itemId:
+          type: string
+        sessionId:
+          type: string
+        selectedAnswer:
+          type: string
+        confidenceLevel:
+          type: number
+        mode:
+          type: string
+        responseTimeMs:
+          type: integer
+          minimum: 0
+    ReflectionSubmitRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - response
+      properties:
+        userId:
+          type: string
+        sessionId:
+          type:
+            - string
+            - 'null'
+        prompt:
+          type: string
+        response:
+          type: string
+          minLength: 1
+    TeacherAssignmentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - objective
+        - minutes
+        - focusSkill
+      properties:
+        userId:
+          type: string
+        title:
+          type: string
+          minLength: 1
+        objective:
+          type: string
+          minLength: 1
+        minutes:
+          type: number
+          minimum: 1
+        focusSkill:
+          type: string
+          minLength: 1
+        mode:
+          type: string
+        rationale:
+          type: string
+    TutorHintRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - itemId
+      properties:
+        userId:
+          type: string
+        itemId:
+          type: string
+        sessionId:
+          type:
+            - string
+            - 'null'
+        mode:
+          type: string
+        requestedLevel:
+          type: integer
+          minimum: 0
+          maximum: 4
+        priorHintCount:
+          type: integer
+          minimum: 0
+    ErrorDnaMap:
+      type: object
+      additionalProperties:
+        type: integer
+        minimum: 0
+    ErrorDnaResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - errorDna
+      properties:
+        errorDna:
+          $ref: '#/components/schemas/ErrorDnaMap'
+    SessionReviewResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - session
+        - sessionProgress
+        - items
+        - projection
+        - plan
+        - errorDna
+      properties:
+        session:
+          type: object
+          additionalProperties: true
+        sessionProgress:
+          type: object
+          additionalProperties: true
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - itemId
+              - correctAnswer
+              - selectedAnswer
+              - isCorrect
+              - distractorTag
+              - rationale
+            properties:
+              itemId:
+                type: string
+              correctAnswer:
+                type: string
+              selectedAnswer:
+                type:
+                  - string
+                  - 'null'
+              isCorrect:
+                type:
+                  - boolean
+                  - 'null'
+              distractorTag:
+                type:
+                  - string
+                  - 'null'
+              rationale:
+                type:
+                  - string
+                  - 'null'
+        projection:
+          $ref: '#/components/schemas/ScorePrediction'
+        plan:
+          $ref: '#/components/schemas/DailyPlan'
+        errorDna:
+          $ref: '#/components/schemas/ErrorDnaMap'

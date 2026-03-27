@@ -101,8 +101,9 @@ export function createRouter({ store, webRoot }) {
 
       if (request.method === 'POST' && pathname === '/api/attempt/submit') {
         const body = await readJsonBody(request);
-        validateRequest('AttemptSubmitRequest', body);
-        return sendJson(response, 200, store.submitAttempt({ ...body, userId: authenticatedUserId }));
+        const payload = { ...body, userId: authenticatedUserId };
+        validateRequest('AttemptSubmitRequest', payload);
+        return sendJson(response, 200, store.submitAttempt(payload));
       }
 
       if (request.method === 'POST' && pathname === '/api/timed-set/finish') {
@@ -117,36 +118,39 @@ export function createRouter({ store, webRoot }) {
 
       if (request.method === 'POST' && pathname === '/api/tutor/hint') {
         const body = await readJsonBody(request);
-        validateRequest('TutorHintRequest', body);
-        const item = store.getItem(body.itemId);
-        const rationale = store.getRationale(body.itemId);
+        const payload = { ...body, userId: authenticatedUserId };
+        validateRequest('TutorHintRequest', payload);
+        const item = store.getItem(payload.itemId);
+        const rationale = store.getRationale(payload.itemId);
         const learnerState = store.getProfile(authenticatedUserId);
         if (!item || !rationale) return sendJson(response, 404, { error: 'Item not found' });
-        const enforcedMode = store.isHintBlockedByExamSession(authenticatedUserId, body.itemId, body.sessionId)
+        const enforcedMode = store.isHintBlockedByExamSession(authenticatedUserId, payload.itemId, payload.sessionId)
           ? 'exam'
-          : body.mode;
+          : payload.mode;
         const hint = createHintResponse({
           item,
           rationale,
           learnerState,
           errorDna: store.getErrorDna(authenticatedUserId),
           mode: enforcedMode,
-          requestedLevel: body.requestedLevel,
-          priorHintCount: body.priorHintCount ?? 0,
+          requestedLevel: payload.requestedLevel,
+          priorHintCount: payload.priorHintCount ?? 0,
         });
         return sendJson(response, 200, hint);
       }
 
       if (request.method === 'POST' && pathname === '/api/reflection/submit') {
         const body = await readJsonBody(request);
-        validateRequest('ReflectionSubmitRequest', body);
-        return sendJson(response, 200, store.submitReflection({ ...body, userId: authenticatedUserId }));
+        const payload = { ...body, userId: authenticatedUserId };
+        validateRequest('ReflectionSubmitRequest', payload);
+        return sendJson(response, 200, store.submitReflection(payload));
       }
 
       if (request.method === 'POST' && pathname === '/api/teacher/assignments') {
         const body = await readJsonBody(request);
-        validateRequest('TeacherAssignmentRequest', body);
-        return sendJson(response, 200, store.saveTeacherAssignment({ ...body, userId: authenticatedUserId }));
+        const payload = { ...body, userId: authenticatedUserId };
+        validateRequest('TeacherAssignmentRequest', payload);
+        return sendJson(response, 200, store.saveTeacherAssignment(payload));
       }
 
       if (request.method === 'GET' && pathname === '/api/session/review') {

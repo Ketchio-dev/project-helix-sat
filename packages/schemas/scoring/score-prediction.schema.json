@@ -13,6 +13,8 @@
     "math_high",
     "confidence",
     "readiness_indicator",
+    "momentum_score",
+    "status",
     "model_version"
   ],
   "properties": {
@@ -54,6 +56,7 @@
     "readiness_indicator": {
       "type": "string",
       "enum": [
+        "insufficient_evidence",
         "needs_foundation",
         "building",
         "approaching_goal",
@@ -64,6 +67,18 @@
       "type": "number",
       "minimum": 0,
       "maximum": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "insufficient_evidence",
+        "low_evidence",
+        "sufficient"
+      ]
+    },
+    "minimum_attempts_needed": {
+      "type": "integer",
+      "minimum": 0
     },
     "model_version": {
       "type": "string"
