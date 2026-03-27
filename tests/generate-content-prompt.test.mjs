@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPrompt } from '../scripts/generate-content.mjs';
+import { buildPrompt } from '../scripts/lib/generate-content-prompt.mjs';
 
 test('reading/writing prompt encodes official SAT passage window and paired-text guidance', () => {
   const prompt = buildPrompt('reading_writing', 'rw_cross_text_connections', 3, 'mixed');

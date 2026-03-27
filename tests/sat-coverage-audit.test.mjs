@@ -51,14 +51,14 @@ test('coverage audit: demo item bank spans both SAT sections and all top-level d
   const items = Object.values(data.items);
   const rationales = Object.values(data.rationales);
 
-  assert.equal(items.length, 47);
-  assert.equal(rationales.length, 47);
+  assert.equal(items.length, 50);
+  assert.equal(rationales.length, 50);
 
   const sections = countBy(items, (item) => item.section);
   assert.deepEqual(Object.keys(sections).sort(), ['math', 'reading_writing']);
   assert.equal(sections.reading_writing, 26);
-  assert.equal(sections.math, 21);
-  assert.ok(Math.abs(sections.reading_writing - sections.math) <= 6, 'section counts should stay within a modest skew');
+  assert.equal(sections.math, 24);
+  assert.ok(Math.abs(sections.reading_writing - sections.math) <= 4);
 
   for (const [section, expectedDomains] of Object.entries(expectedDomainsBySection)) {
     const sectionItems = items.filter((item) => item.section === section);
@@ -71,6 +71,10 @@ test('coverage audit: demo item bank spans both SAT sections and all top-level d
   assert.ok(items.every((item) => Array.isArray(item.choices) && item.choices.length === 4));
   assert.ok(items.every((item) => typeof item.answerKey === 'string' && item.answerKey.length === 1));
   assert.ok(rationales.every((rationale) => Array.isArray(rationale.hint_ladder) && rationale.hint_ladder.length >= 3));
+  assert.ok(items.some((item) => item.skill === 'rw_punctuation'));
+  assert.ok(items.filter((item) => item.skill === 'math_linear_equations').length >= 2);
+  assert.ok(items.filter((item) => item.skill === 'math_circles').length >= 2);
+  assert.ok(items.filter((item) => item.skill === 'math_trigonometry').length >= 2);
 });
 
 test('coverage audit: learner app flow exposes both sections through timed and module sessions', async () => {

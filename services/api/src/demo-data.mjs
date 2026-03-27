@@ -417,6 +417,26 @@ export function createDemoData() {
         tags: ['algebra', 'one_step_then_isolate', 'easy_start'],
         estimatedTimeSec: 45,
       }),
+
+      math_linear_04: createItem({
+        itemId: 'math_linear_04',
+        section: 'math',
+        domain: 'algebra',
+        skill: 'math_linear_equations',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'When 5(2x - 3) = 4x + 18, what is the value of x?',
+        choices: [
+          { label: 'A', text: '11/3' },
+          { label: 'B', text: '3/2' },
+          { label: 'C', text: '11/2' },
+          { label: 'D', text: '33/2' },
+        ],
+        answerKey: 'C',
+        tags: ['algebra', 'distribution', 'variable_isolation', 'medium'],
+        estimatedTimeSec: 75,
+      }),
+
       math_stats_01: createItem({
         itemId: 'math_stats_01',
         section: 'math',
@@ -716,23 +736,65 @@ export function createDemoData() {
         estimatedTimeSec: 60,
       }),
 
+
       rw_transition_03: createItem({
         itemId: 'rw_transition_03',
         section: 'reading_writing',
         domain: 'expression_of_ideas',
         skill: 'rw_transitions',
-        difficulty_band: 'medium',
+        difficulty_band: 'hard',
         item_format: 'single_select',
         stem: 'Which choice completes the text with the most logical transition?',
-        passage: 'Community historian Amina Rahman argues that oral-history archives preserve details traditional records often overlook. ______, she points to one interview in which a dockworker described how unofficial translation practices helped new arrivals navigate the port\'s hiring system.',
+        passage: 'Researchers expected the algae-based roof coating to reduce summer heat absorption dramatically. Field measurements from three buildings, however, showed only modest cooling during the hottest weeks. ______, the team noted that even small reductions could still matter in spring and fall, when lower baseline temperatures make energy savings easier to preserve indoors.',
         choices: [
-          { label: 'A', text: 'However,' },
-          { label: 'B', text: 'Similarly,' },
-          { label: 'C', text: 'For example,' },
+          { label: 'A', text: 'Nevertheless,' },
+          { label: 'B', text: 'For example,' },
+          { label: 'C', text: 'Similarly,' },
           { label: 'D', text: 'As a result,' },
         ],
+        answerKey: 'A',
+        tags: ['transitions', 'qualified_concession', 'hard'],
+        estimatedTimeSec: 80,
+      }),
+
+      rw_punctuation_01: createItem({
+        itemId: 'rw_punctuation_01',
+        section: 'reading_writing',
+        domain: 'standard_english_conventions',
+        skill: 'rw_punctuation',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+        passage: "Unlike the museum's earlier exhibit on maritime trade ______ places ship manifests beside sailors' letters so visitors can compare official records with personal accounts.",
+        choices: [
+          { label: 'A', text: ', the new installation' },
+          { label: 'B', text: 'the new installation' },
+          { label: 'C', text: '; the new installation' },
+          { label: 'D', text: ': the new installation' },
+        ],
+        answerKey: 'B',
+        tags: ['punctuation', 'modifier_to_main_clause', 'medium'],
+        estimatedTimeSec: 65,
+      }),
+
+
+      rw_punctuation_02: createItem({
+        itemId: 'rw_punctuation_02',
+        section: 'reading_writing',
+        domain: 'standard_english_conventions',
+        skill: 'rw_punctuation',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+        passage: 'The archivist rejected the first draft of the label for one reason ______ it implied that the recovered map had already been authenticated, even though testing was still under way.',
+        choices: [
+          { label: 'A', text: ',' },
+          { label: 'B', text: ';' },
+          { label: 'C', text: ':' },
+          { label: 'D', text: '—' },
+        ],
         answerKey: 'C',
-        tags: ['transitions', 'organization', 'example_support', 'medium'],
+        tags: ['punctuation', 'colon', 'medium'],
         estimatedTimeSec: 70,
       }),
 
@@ -754,46 +816,6 @@ export function createDemoData() {
         answerKey: 'D',
         tags: ['standard_english', 'sentence_boundaries', 'semicolon', 'hard'],
         estimatedTimeSec: 90,
-      }),
-
-      rw_punctuation_01: createItem({
-        itemId: 'rw_punctuation_01',
-        section: 'reading_writing',
-        domain: 'standard_english_conventions',
-        skill: 'rw_punctuation',
-        difficulty_band: 'medium',
-        item_format: 'single_select',
-        stem: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
-        passage: 'The committee\'s newest proposal ______ a pilot program that would convert two downtown parking spaces on each block into short-term loading zones ______ has drawn support from small-business owners who say deliveries currently snarl traffic.',
-        choices: [
-          { label: 'A', text: ', a pilot program that would convert two downtown parking spaces on each block into short-term loading zones,' },
-          { label: 'B', text: ', a pilot program that would convert two downtown parking spaces on each block into short-term loading zones;' },
-          { label: 'C', text: ' a pilot program that would convert two downtown parking spaces on each block into short-term loading zones,' },
-          { label: 'D', text: ': a pilot program that would convert two downtown parking spaces on each block into short-term loading zones,' },
-        ],
-        answerKey: 'A',
-        tags: ['standard_english', 'punctuation', 'nonessential_phrase', 'medium'],
-        estimatedTimeSec: 75,
-      }),
-
-      rw_punctuation_02: createItem({
-        itemId: 'rw_punctuation_02',
-        section: 'reading_writing',
-        domain: 'standard_english_conventions',
-        skill: 'rw_punctuation',
-        difficulty_band: 'easy',
-        item_format: 'single_select',
-        stem: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
-        passage: 'The mayor cited three reasons for delaying the vote ______ rising construction costs, unresolved permit questions, and continued opposition from nearby residents.',
-        choices: [
-          { label: 'A', text: ',' },
-          { label: 'B', text: ';' },
-          { label: 'C', text: ':' },
-          { label: 'D', text: '-' },
-        ],
-        answerKey: 'C',
-        tags: ['standard_english', 'punctuation', 'colon', 'easy_start'],
-        estimatedTimeSec: 55,
       }),
 
       rw_form_structure_01: createItem({
@@ -1201,6 +1223,44 @@ export function createDemoData() {
         tags: ['trigonometry', 'soh_cah_toa', 'right_triangle', 'medium'],
         estimatedTimeSec: 75,
       }),
+
+      math_circle_02: createItem({
+        itemId: 'math_circle_02',
+        section: 'math',
+        domain: 'geometry_and_trigonometry',
+        skill: 'math_circles',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'A sector of a circle with radius 10 has a central angle of 72°. What is the area of the sector? (Use π as needed.)',
+        choices: [
+          { label: 'A', text: '10π' },
+          { label: 'B', text: '20π' },
+          { label: 'C', text: '36π' },
+          { label: 'D', text: '72π' },
+        ],
+        answerKey: 'B',
+        tags: ['circles', 'sector_area', 'medium'],
+        estimatedTimeSec: 80,
+      }),
+
+      math_trig_02: createItem({
+        itemId: 'math_trig_02',
+        section: 'math',
+        domain: 'geometry_and_trigonometry',
+        skill: 'math_trigonometry',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'In a right triangle, tan θ = 3/4 and the hypotenuse has length 20. What is the length of the side adjacent to θ?',
+        choices: [
+          { label: 'A', text: '12' },
+          { label: 'B', text: '15' },
+          { label: 'C', text: '16' },
+          { label: 'D', text: '20' },
+        ],
+        answerKey: 'C',
+        tags: ['trigonometry', 'similar_triangles', 'right_triangle', 'medium'],
+        estimatedTimeSec: 80,
+      }),
     },
     rationales: {
       // ── READING AND WRITING RATIONALES ────────────────────────────────
@@ -1362,6 +1422,30 @@ export function createDemoData() {
         ],
         misconception_tags: ['inverse_operation_reversal', 'partial_completion'],
       }),
+
+      math_linear_04: createRationale({
+        item_id: 'math_linear_04',
+        explanation: 'Distribute first: 10x - 15 = 4x + 18. Subtract 4x from both sides to get 6x - 15 = 18. Add 15 to get 6x = 33, then divide by 6 to find x = 33/6 = 11/2.',
+        wrongRationales: {
+          A: 'A student who picks 11/3 likely divides 33 by the wrong coefficient after combining terms. This happens when a student loses track of the 6x created by 10x - 4x.',
+          B: 'A student who picks 3/2 likely distributes or combines constants incorrectly before isolating x. This happens when a student compresses multiple algebra steps and drops part of the expression.',
+          D: 'A student who picks 33/2 likely stops after reaching 2x = 33 or fails to combine the x-terms before dividing. This happens when a student performs only part of the isolation process.',
+        },
+        misconceptionByChoice: {
+          A: 'variable_isolation_error',
+          B: 'arithmetic_slip',
+          D: 'partial_completion',
+        },
+        hint_ladder: [
+          'Start by distributing the 5 across both terms inside the parentheses.',
+          'After distribution, collect all x-terms on one side and constants on the other.',
+          'You should reach 6x = 33 after simplifying.',
+          'Divide both sides by 6 and reduce the fraction if needed.',
+          'The correct answer is C because 5(2x - 3) = 4x + 18 simplifies to 6x = 33, so x = 11/2.',
+        ],
+        misconception_tags: ['variable_isolation_error', 'partial_completion'],
+      }),
+
       math_stats_01: createRationale({
         item_id: 'math_stats_01',
         explanation: '18 out of 30 simplifies to 3 out of 5, which equals 60%.',
@@ -1684,27 +1768,75 @@ export function createDemoData() {
         misconception_tags: ['agreement_where_opposition_exists', 'cumulative_misread_of_reversal'],
       }),
 
+
       rw_transition_03: createRationale({
         item_id: 'rw_transition_03',
-        explanation: 'The second sentence gives a specific interview that illustrates the broad claim in the first sentence. "For example" correctly introduces a concrete illustration of a general point.',
+        explanation: 'The second sentence reports a disappointing result, but the third sentence keeps a qualified positive takeaway. The transition must signal concession: despite the modest cooling, the team still sees a narrower use case. “Nevertheless” best matches that logic.',
         wrongRationales: {
-          A: 'A student who picks "However" likely invents a contrast that is not present. This happens when a student expects the second sentence to challenge the first, even though it supports the same idea.',
-          B: 'A student who picks "Similarly" likely treats the second sentence as a parallel claim rather than a concrete illustration. This happens when a student notices topical similarity but misses the example relationship.',
-          D: 'A student who picks "As a result" likely misreads the interview as a consequence of the claim. This happens when a student confuses supporting evidence with an outcome caused by the earlier sentence.',
+          B: 'A student who picks “For example” likely mistakes the third sentence for an illustration of the second. This happens when a student confuses a qualified conclusion with an example.',
+          C: 'A student who picks “Similarly” likely treats the third sentence as continuing the same idea. This happens when a student misses that the passage shifts from weak results to a qualified concession.',
+          D: 'A student who picks “As a result” likely sees a simple cause-and-effect chain. This happens when a student ignores that the third sentence partially pushes back against the disappointing measurement rather than following directly from it.',
         },
         misconceptionByChoice: {
-          A: 'contrast_invented_where_support_exists',
-          B: 'parallel_claim_instead_of_example',
-          D: 'example_misread_as_result',
+          B: 'transition_logic_mismatch',
+          C: 'transition_logic_mismatch',
+          D: 'transition_logic_mismatch',
         },
         hint_ladder: [
-          'Ask what the second sentence is doing: is it contrasting, repeating, giving a result, or offering an example?',
-          'The first sentence makes a general claim about oral-history archives; the second sentence supplies one interview that illustrates that claim.',
-          'Eliminate "However" because there is no contradiction and "As a result" because the interview is not a consequence.',
-          '"Similarly" would introduce another parallel idea, but the sentence instead narrows to one specific case.',
-          'The correct answer is C because "For example" properly signals that the dockworker interview is evidence supporting the broader claim.',
+          'Compare the direction of the second and third sentences.',
+          'The measurements were weaker than expected, but the team still identifies a possible benefit.',
+          'That means the transition should show concession, not example or simple continuation.',
+          'Eliminate “For example,” and “Similarly,” first; neither signals the pushback built into the final sentence.',
+          'The correct answer is A because “Nevertheless,” captures the move from disappointing data to a qualified remaining benefit.',
         ],
-        misconception_tags: ['contrast_invented_where_support_exists', 'parallel_claim_instead_of_example'],
+        misconception_tags: ['transition_logic_mismatch', 'partial_truth'],
+      }),
+
+      rw_punctuation_01: createRationale({
+        item_id: 'rw_punctuation_01',
+        explanation: "“Unlike the museum's earlier exhibit on maritime trade” is a modifying phrase, not an independent clause. The main clause begins with “the new installation places …,” so no punctuation should separate the modifier from its subject.",
+        wrongRationales: {
+          A: 'A student who picks the comma option likely overpunctuates after a long introductory comparison. This happens when a student inserts a pause that incorrectly separates the modifier from the subject.',
+          C: 'A student who picks the semicolon likely treats the opening phrase as a complete clause. This happens when a student uses semicolons where one side is not an independent clause.',
+          D: 'A student who picks the colon likely assumes the second half explains the first. This happens when a student uses a colon after a fragment rather than after a complete independent clause.',
+        },
+        misconceptionByChoice: {
+          A: 'grammar_rule_misapplication',
+          C: 'grammar_rule_misapplication',
+          D: 'grammar_rule_misapplication',
+        },
+        hint_ladder: [
+          'Find the complete sentence by identifying the subject and verb of the main clause.',
+          'The phrase beginning with “Unlike” only modifies the subject; it cannot stand alone as a sentence.',
+          'Because the main clause starts with “the new installation places,” no punctuation belongs between the modifier and that subject.',
+          'A semicolon or colon would require a full independent clause before the blank, which the sentence does not have.',
+          'The correct answer is B because the sentence is grammatical only when “the new installation” follows the modifier with no punctuation.',
+        ],
+        misconception_tags: ['grammar_rule_misapplication', 'sentence_boundaries'],
+      }),
+
+
+      rw_punctuation_02: createRationale({
+        item_id: 'rw_punctuation_02',
+        explanation: 'The clause before the blank is complete: “The archivist rejected the first draft of the label for one reason.” A colon correctly introduces the explanation that follows.',
+        wrongRationales: {
+          A: 'A student who picks the comma likely treats the explanation as a simple continuation. This happens when a student uses a weak separator where a stronger punctuation mark is needed after a complete clause.',
+          B: 'A student who picks the semicolon likely sees two related independent clauses. This happens when a student misses that the second clause explains the “one reason” named in the first clause, making a colon the better fit.',
+          D: 'A student who picks the dash likely treats the explanation as an interruption or afterthought. This happens when a student uses a dash for emphasis even though the sentence is setting up a formal explanation.',
+        },
+        misconceptionByChoice: {
+          A: 'grammar_rule_misapplication',
+          B: 'grammar_rule_misapplication',
+          D: 'tone_purpose_confusion',
+        },
+        hint_ladder: [
+          'Read the clause before the blank and ask whether it forms a complete sentence.',
+          'Because the sentence promises “one reason,” the punctuation after that clause should introduce an explanation.',
+          'A comma is too weak, and a semicolon links equal clauses without signaling explanation.',
+          'A dash could add emphasis, but the sentence is written in a formal explanatory style.',
+          "The correct answer is C because a colon properly introduces the explanation of the archivist's reason.",
+        ],
+        misconception_tags: ['grammar_rule_misapplication', 'tone_purpose_confusion'],
       }),
 
       rw_boundary_02: createRationale({
@@ -1728,52 +1860,6 @@ export function createDemoData() {
           'The correct answer is D because a semicolon correctly joins the two related independent clauses.',
         ],
         misconception_tags: ['comma_splice_acceptance', 'conjunctive_adverb_as_conjunction'],
-      }),
-
-      rw_punctuation_01: createRationale({
-        item_id: 'rw_punctuation_01',
-        explanation: 'The phrase "a pilot program that would convert two downtown parking spaces on each block into short-term loading zones" renames "proposal" and is not essential to identifying it. A nonessential appositive should be set off with commas on both sides.',
-        wrongRationales: {
-          B: 'A student who picks the semicolon version likely confuses an appositive with a new independent clause. This happens when a student sees a long phrase and assumes it can be separated with sentence-boundary punctuation even though the phrase is not a complete sentence.',
-          C: 'A student who picks the no-opening-comma version likely notices the appositive ends but not where it begins. This happens when a student punctuates only one side of a nonessential phrase instead of bracketing the whole interruption.',
-          D: 'A student who picks the colon version likely treats the appositive like a list or explanation that follows a complete clause. This happens when a student overlooks that "The committee\'s newest proposal" is not a complete clause before the inserted phrase.',
-        },
-        misconceptionByChoice: {
-          B: 'appositive_as_independent_clause',
-          C: 'one_sided_nonessential_punctuation',
-          D: 'colon_after_incomplete_clause',
-        },
-        hint_ladder: [
-          'Identify the function of the long phrase after "proposal" — does it rename the proposal or add a new sentence?',
-          'Because the phrase renames "proposal," it is an appositive, not an independent clause.',
-          'Nonessential appositives need matching punctuation on both sides, so eliminate choices with only one comma or a semicolon.',
-          'A colon works only after a complete clause, but "The committee\'s newest proposal" is not complete in this sentence structure.',
-          'The correct answer is A because commas properly set off the nonessential appositive phrase.',
-        ],
-        misconception_tags: ['appositive_as_independent_clause', 'one_sided_nonessential_punctuation'],
-      }),
-
-      rw_punctuation_02: createRationale({
-        item_id: 'rw_punctuation_02',
-        explanation: 'The clause before the blank is complete and introduces the three reasons that follow. A colon is the standard punctuation mark for introducing a list after a complete clause.',
-        wrongRationales: {
-          A: 'A student who picks the comma likely treats any pause before a list as acceptable punctuation. This happens when a student uses a comma where stronger introductory punctuation is required.',
-          B: 'A student who picks the semicolon likely confuses a list introduction with a sentence boundary. This happens when a student uses a semicolon even though what follows is not an independent clause.',
-          D: 'A student who picks the dash likely reaches for informal emphasis rather than the clearest conventional mark. This happens when a student notices that something important follows but misses that a colon is the standard choice for a straightforward list.',
-        },
-        misconceptionByChoice: {
-          A: 'comma_before_list',
-          B: 'semicolon_before_nonclause_list',
-          D: 'dash_instead_of_colon',
-        },
-        hint_ladder: [
-          'Read the words before the blank: do they form a complete clause that sets up what comes next?',
-          '"The mayor cited three reasons for delaying the vote" is a complete idea and clearly introduces a list.',
-          'A comma is too weak and a semicolon requires another independent clause, which the list is not.',
-          'A dash can add dramatic emphasis, but for a standard list introduction after a complete clause, a colon is the clearest conventional choice.',
-          'The correct answer is C because the colon properly introduces the three reasons that follow.',
-        ],
-        misconception_tags: ['comma_before_list', 'semicolon_before_nonclause_list'],
       }),
 
       rw_form_structure_01: createRationale({
@@ -2259,6 +2345,53 @@ export function createDemoData() {
           'The correct answer is B because cos \u03B8 = adjacent/hypotenuse = 12/13.',
         ],
         misconception_tags: ['sin_computed_instead_of_cos', 'ratio_inverted_to_secant'],
+      }),
+
+
+      math_circle_02: createRationale({
+        item_id: 'math_circle_02',
+        explanation: 'Sector area = (central angle / 360°) × πr² = (72/360) × π × 10² = (1/5) × 100π = 20π.',
+        wrongRationales: {
+          A: 'A student who picks 10π likely halves the correct sector area after simplifying the fraction incorrectly. This happens when a student miscomputes 72/360 as 1/10 instead of 1/5.',
+          C: 'A student who picks 36π likely uses the central angle as 36% of the circle instead of 20%. This happens when a student reduces 72/360 inaccurately.',
+          D: 'A student who picks 72π likely multiplies the angle by π without applying the area formula. This happens when a student notices the angle but skips scaling the full circle area correctly.',
+        },
+        misconceptionByChoice: {
+          A: 'wrong_fraction_reduction',
+          C: 'wrong_fraction_reduction',
+          D: 'wrong_formula_recall',
+        },
+        hint_ladder: [
+          'Write the sector-area formula before substituting numbers.',
+          'The full area is π(10²) = 100π.',
+          'Now take 72/360 of that full area; simplify 72/360 first.',
+          'Because 72/360 = 1/5, the sector area is one-fifth of 100π.',
+          'The correct answer is B because (1/5) × 100π = 20π.',
+        ],
+        misconception_tags: ['wrong_formula_recall', 'wrong_fraction_reduction'],
+      }),
+
+      math_trig_02: createRationale({
+        item_id: 'math_trig_02',
+        explanation: "If tan θ = 3/4, then the triangle's side lengths are proportional to 3 (opposite), 4 (adjacent), and 5 (hypotenuse). A hypotenuse of 20 means the scale factor is 4, so the adjacent side is 4 × 4 = 16.",
+        wrongRationales: {
+          A: 'A student who picks 12 likely scales the opposite side instead of the adjacent side. This happens when a student remembers tan = 3/4 but answers with the 3-part rather than the 4-part.',
+          B: 'A student who picks 15 likely uses the unscaled 3-4-5 triple inconsistently. This happens when a student knows the hypotenuse relates to 5 but chooses a side length that does not preserve the ratio.',
+          D: 'A student who picks 20 likely reports the hypotenuse instead of the adjacent side. This happens when a student identifies the wrong side after setting up the trig ratio.',
+        },
+        misconceptionByChoice: {
+          A: 'wrong_element_from_ratio',
+          B: 'ratio_scale_error',
+          D: 'wrong_element_from_ratio',
+        },
+        hint_ladder: [
+          'Interpret tan θ = 3/4 as opposite/adjacent = 3/4.',
+          'That means the triangle matches a 3-4-5 pattern before scaling.',
+          'If the hypotenuse is 20 instead of 5, every side length is multiplied by 4.',
+          'Scale the adjacent side, which corresponds to the “4” in the 3-4-5 ratio.',
+          'The correct answer is C because the adjacent side is 4 × 4 = 16.',
+        ],
+        misconception_tags: ['wrong_element_from_ratio', 'ratio_scale_error'],
       }),
 
       math_quadratic_01: createRationale({
