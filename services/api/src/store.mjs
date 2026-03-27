@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword, createToken, needsPasswordRehash } from '
 import { HttpError } from './http-utils.mjs';
 import { generateDailyPlan } from '../../../packages/assessment/src/daily-plan-generator.mjs';
 import { selectSessionItems } from '../../../packages/assessment/src/item-selector.mjs';
+import { generateCurriculumPath } from '../../../packages/curriculum/src/path-generator.mjs';
 import { projectScoreBand } from '../../../packages/scoring/src/score-predictor.mjs';
 import { updateErrorDna, updateLearnerSkillState } from '../../../packages/assessment/src/learner-state.mjs';
 import { createEvent } from '../../../packages/telemetry/src/events.mjs';
@@ -826,6 +827,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       const profile = api.getProfile(userId);
       const projection = api.getProjection(userId);
       const skillStates = [...api.getSkillStates(userId)];
+      const curriculumPath = api.getCurriculumPath(userId);
       const sessionHistory = api.getSessionHistory(userId, 10);
       const review = api.getReviewRecommendations(userId);
       const revisitQueue = api.getReviewRevisitQueue(userId, { includeFuture: true });
@@ -880,6 +882,12 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       if (retryLead?.skill) {
         recommendedFocus.push(`Run the scheduled retry/revisit loop for ${formatSkillLabel(retryLead.skill)}.`);
       }
+      if (curriculumPath.anchorSkill?.label) {
+        recommendedFocus.push(`Keep ${curriculumPath.anchorSkill.label} as the anchor skill until the current mastery gate is met.`);
+      }
+      if (curriculumPath.supportSkill?.label) {
+        recommendedFocus.push(`Use ${curriculumPath.supportSkill.label} as the prerequisite support lane when the anchor stalls.`);
+      }
       for (const block of api.getPlan(userId).blocks?.slice(0, 2) ?? []) {
         recommendedFocus.push(block.objective);
       }
@@ -907,6 +915,20 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           ? `Cluster support around ${topTrap.label.toLowerCase()} and monitor whether the next retry loop sticks.`
           : `Collect one more completed session before narrowing the weekly intervention focus.`,
       };
+    },
+
+    getCurriculumPath(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const learnerProfile = state.learnerProfiles[userId];
+      if (!learnerProfile) {
+        throw new HttpError(404, 'Unknown learner');
+      }
+
+      return generateCurriculumPath({
+        profile: learnerProfile,
+        skillStates: api.getSkillStates(userId),
+        reviewQueue: api.getReviewRevisitQueue(userId, { includeFuture: true }),
+      });
     },
 
     getSessionHistory(learnerId = DEMO_USER_ID, limit = 5) {
@@ -1406,6 +1428,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         profile: api.getProfile(userId),
         projection: api.getProjection(userId),
         projectionEvidence: api.getProjectionEvidence(userId),
+        curriculumPath: api.getCurriculumPath(userId),
         weeklyDigest: api.getWeeklyDigest(userId),
         plan: api.getPlan(userId),
         planExplanation: api.getPlanExplanation(userId),

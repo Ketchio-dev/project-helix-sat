@@ -912,6 +912,67 @@ test('api returns a weekly digest with strengths, risks, and focus after learner
   });
 });
 
+test('api returns a curriculum path with anchor, support, and 14-day focuses', async () => {
+  await withServer(async (baseUrl) => {
+    const registered = await registerSession(baseUrl, {
+      name: 'Curriculum Path Student',
+      email: nextUniqueEmail('curriculum-path-student'),
+      password: 'pass1234',
+    });
+
+    await fetch(`${baseUrl}/api/goal-profile`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({
+        targetScore: 1460,
+        targetTestDate: '2026-10-10',
+        dailyMinutes: 40,
+        selfReportedWeakArea: 'algebra',
+      }),
+    });
+
+    const initialPath = await fetch(`${baseUrl}/api/curriculum/path`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.equal(initialPath.horizonDays, 14);
+    assert.equal(initialPath.dailyFocuses.length, 14);
+    assert.ok(initialPath.anchorSkill);
+
+    const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+
+    const firstItem = diagnostic.items[0];
+    await fetch(`${baseUrl}/api/attempt/submit`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({
+        itemId: firstItem.itemId,
+        ...buildAttemptAnswer(firstItem.itemId),
+        sessionId: diagnostic.session.id,
+        mode: 'learn',
+        confidenceLevel: 3,
+        responseTimeMs: 35000,
+      }),
+    }).then((res) => res.json());
+
+    const updatedPath = await fetch(`${baseUrl}/api/curriculum/path`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.equal(updatedPath.horizonDays, 14);
+    assert.ok(updatedPath.anchorSkill.stage !== 'unseen');
+    assert.ok(updatedPath.revisitCadence.length >= 1);
+
+    const dashboard = await fetch(`${baseUrl}/api/dashboard/learner`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.ok(dashboard.curriculumPath);
+    assert.equal(dashboard.curriculumPath.horizonDays, 14);
+  });
+});
+
 test('api starts a retry loop from review recommendations and schedules a revisit', async () => {
   await withServer(async (baseUrl) => {
     const registered = await registerSession(baseUrl, {

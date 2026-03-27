@@ -1,0 +1,803 @@
+{
+  "version": "1.0.0",
+  "horizon_days": 14,
+  "default_revisit_days": [
+    1,
+    3,
+    7,
+    14
+  ],
+  "skills": [
+    {
+      "skill_id": "rw_central_ideas_and_details",
+      "section": "reading_writing",
+      "domain": "information_and_ideas",
+      "label": "Central Ideas and Details",
+      "objectives": [
+        "Identify the controlling idea of a short passage",
+        "Separate core support from tempting but secondary details"
+      ],
+      "prereq_ids": [],
+      "unlocks": [
+        "rw_command_of_evidence"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.8,
+        "timed_mastery_min": 0.67,
+        "confidence_calibration_min": 0.55
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_rw_central_ideas_and_details_v1",
+        "worked_example_ids": [
+          "we_rw_central_ideas_1",
+          "we_rw_central_ideas_2"
+        ],
+        "retry_set_id": "retry_rw_central_ideas_and_details_v1",
+        "transfer_set_id": "transfer_rw_central_ideas_and_details_v1"
+      }
+    },
+    {
+      "skill_id": "rw_inferences",
+      "section": "reading_writing",
+      "domain": "information_and_ideas",
+      "label": "Inferences",
+      "objectives": [
+        "Draw only the conclusion the text fully earns",
+        "Choose support that matches the exact inference instead of a nearby idea"
+      ],
+      "prereq_ids": [
+        "rw_central_ideas_and_details"
+      ],
+      "unlocks": [
+        "rw_command_of_evidence"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.78,
+        "timed_mastery_min": 0.65,
+        "confidence_calibration_min": 0.55
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_rw_inferences_v1",
+        "worked_example_ids": [
+          "we_rw_inferences_1",
+          "we_rw_inferences_2"
+        ],
+        "retry_set_id": "retry_rw_inferences_v1",
+        "transfer_set_id": "transfer_rw_inferences_v1"
+      }
+    },
+    {
+      "skill_id": "rw_command_of_evidence",
+      "section": "reading_writing",
+      "domain": "information_and_ideas",
+      "label": "Command of Evidence",
+      "objectives": [
+        "Select the line or quantitative detail that best supports a claim",
+        "Use paired evidence to confirm rather than decorate an answer"
+      ],
+      "prereq_ids": [
+        "rw_central_ideas_and_details",
+        "rw_inferences"
+      ],
+      "unlocks": [
+        "rw_cross_text_connections"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.8,
+        "timed_mastery_min": 0.68,
+        "confidence_calibration_min": 0.58
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_rw_command_of_evidence_v1",
+        "worked_example_ids": [
+          "we_rw_evidence_1",
+          "we_rw_evidence_2"
+        ],
+        "retry_set_id": "retry_rw_command_of_evidence_v1",
+        "transfer_set_id": "transfer_rw_command_of_evidence_v1"
+      }
+    },
+    {
+      "skill_id": "rw_words_in_context",
+      "section": "reading_writing",
+      "domain": "craft_and_structure",
+      "label": "Words in Context",
+      "objectives": [
+        "Match a word choice to the local sentence meaning",
+        "Use tone and precision instead of dictionary familiarity"
+      ],
+      "prereq_ids": [
+        "rw_central_ideas_and_details"
+      ],
+      "unlocks": [
+        "rw_text_structure_and_purpose"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.79,
+        "timed_mastery_min": 0.66,
+        "confidence_calibration_min": 0.56
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_rw_words_in_context_v1",
+        "worked_example_ids": [
+          "we_rw_words_1",
+          "we_rw_words_2"
+        ],
+        "retry_set_id": "retry_rw_words_in_context_v1",
+        "transfer_set_id": "transfer_rw_words_in_context_v1"
+      }
+    },
+    {
+      "skill_id": "rw_text_structure_and_purpose",
+      "section": "reading_writing",
+      "domain": "craft_and_structure",
+      "label": "Text Structure and Purpose",
+      "objectives": [
+        "Name what a sentence or paragraph is doing in context",
+        "Distinguish author purpose from topic summary"
+      ],
+      "prereq_ids": [
+        "rw_central_ideas_and_details",
+        "rw_words_in_context"
+      ],
+      "unlocks": [
+        "rw_cross_text_connections"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.8,
+        "timed_mastery_min": 0.68,
+        "confidence_calibration_min": 0.58
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_rw_text_structure_v1",
+        "worked_example_ids": [
+          "we_rw_structure_1",
+          "we_rw_structure_2"
+        ],
+        "retry_set_id": "retry_rw_text_structure_and_purpose_v1",
+        "transfer_set_id": "transfer_rw_text_structure_and_purpose_v1"
+      }
+    },
+    {
+      "skill_id": "rw_cross_text_connections",
+      "section": "reading_writing",
+      "domain": "craft_and_structure",
+      "label": "Cross-Text Connections",
+      "objectives": [
+        "Track agreement, contrast, and synthesis across paired texts",
+        "Anchor every comparison in a specific claim from each source"
+      ],
+      "prereq_ids": [
+        "rw_command_of_evidence",
+        "rw_text_structure_and_purpose"
+      ],
+      "unlocks": [
+        "rw_rhetorical_synthesis"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.79,
+        "timed_mastery_min": 0.66,
+        "confidence_calibration_min": 0.58
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_rw_cross_text_v1",
+        "worked_example_ids": [
+          "we_rw_cross_text_1",
+          "we_rw_cross_text_2"
+        ],
+        "retry_set_id": "retry_rw_cross_text_connections_v1",
+        "transfer_set_id": "transfer_rw_cross_text_connections_v1"
+      }
+    },
+    {
+      "skill_id": "rw_rhetorical_synthesis",
+      "section": "reading_writing",
+      "domain": "expression_of_ideas",
+      "label": "Rhetorical Synthesis",
+      "objectives": [
+        "Select only the notes that satisfy the writing goal",
+        "Ignore tempting facts that do not advance the assigned purpose"
+      ],
+      "prereq_ids": [
+        "rw_central_ideas_and_details"
+      ],
+      "unlocks": [
+        "rw_transitions"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.8,
+        "timed_mastery_min": 0.68,
+        "confidence_calibration_min": 0.58
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_rw_rhetorical_synthesis_v1",
+        "worked_example_ids": [
+          "we_rw_rhetorical_1",
+          "we_rw_rhetorical_2"
+        ],
+        "retry_set_id": "retry_rw_rhetorical_synthesis_v1",
+        "transfer_set_id": "transfer_rw_rhetorical_synthesis_v1"
+      }
+    },
+    {
+      "skill_id": "rw_transitions",
+      "section": "reading_writing",
+      "domain": "expression_of_ideas",
+      "label": "Transitions and Organization",
+      "objectives": [
+        "Choose the transition that matches the sentence-to-sentence logic",
+        "Repair paragraph flow without changing the paragraph meaning"
+      ],
+      "prereq_ids": [
+        "rw_rhetorical_synthesis",
+        "rw_text_structure_and_purpose"
+      ],
+      "unlocks": [
+        "rw_sentence_boundaries"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.78,
+        "timed_mastery_min": 0.65,
+        "confidence_calibration_min": 0.55
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_rw_transitions_v1",
+        "worked_example_ids": [
+          "we_rw_transitions_1",
+          "we_rw_transitions_2"
+        ],
+        "retry_set_id": "retry_rw_transitions_v1",
+        "transfer_set_id": "transfer_rw_transitions_v1"
+      }
+    },
+    {
+      "skill_id": "rw_sentence_boundaries",
+      "section": "reading_writing",
+      "domain": "standard_english_conventions",
+      "label": "Sentence Boundaries",
+      "objectives": [
+        "Separate independent clauses with the right boundary mark",
+        "Spot comma splices, run-ons, and fragments before choosing punctuation"
+      ],
+      "prereq_ids": [
+        "rw_transitions"
+      ],
+      "unlocks": [
+        "rw_form_structure_sense",
+        "rw_punctuation"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.82,
+        "timed_mastery_min": 0.7,
+        "confidence_calibration_min": 0.58
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_rw_sentence_boundaries_v1",
+        "worked_example_ids": [
+          "we_rw_sentence_boundaries_1",
+          "we_rw_sentence_boundaries_2"
+        ],
+        "retry_set_id": "retry_rw_sentence_boundaries_v1",
+        "transfer_set_id": "transfer_rw_sentence_boundaries_v1"
+      }
+    },
+    {
+      "skill_id": "rw_form_structure_sense",
+      "section": "reading_writing",
+      "domain": "standard_english_conventions",
+      "label": "Form, Structure, and Sense",
+      "objectives": [
+        "Maintain agreement and grammatical form across the sentence",
+        "Choose the wording that preserves clarity and logical sense"
+      ],
+      "prereq_ids": [
+        "rw_sentence_boundaries"
+      ],
+      "unlocks": [
+        "rw_punctuation"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.82,
+        "timed_mastery_min": 0.69,
+        "confidence_calibration_min": 0.58
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_rw_form_structure_sense_v1",
+        "worked_example_ids": [
+          "we_rw_form_structure_1",
+          "we_rw_form_structure_2"
+        ],
+        "retry_set_id": "retry_rw_form_structure_sense_v1",
+        "transfer_set_id": "transfer_rw_form_structure_sense_v1"
+      }
+    },
+    {
+      "skill_id": "rw_punctuation",
+      "section": "reading_writing",
+      "domain": "standard_english_conventions",
+      "label": "Punctuation",
+      "objectives": [
+        "Use commas, dashes, colons, and semicolons for the exact relationship",
+        "Match punctuation choice to sentence structure instead of rhythm alone"
+      ],
+      "prereq_ids": [
+        "rw_sentence_boundaries",
+        "rw_form_structure_sense"
+      ],
+      "unlocks": [],
+      "mastery_gate": {
+        "mastery_min": 0.82,
+        "timed_mastery_min": 0.7,
+        "confidence_calibration_min": 0.6
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_rw_punctuation_v1",
+        "worked_example_ids": [
+          "we_rw_punctuation_1",
+          "we_rw_punctuation_2"
+        ],
+        "retry_set_id": "retry_rw_punctuation_v1",
+        "transfer_set_id": "transfer_rw_punctuation_v1"
+      }
+    },
+    {
+      "skill_id": "math_linear_equations",
+      "section": "math",
+      "domain": "algebra",
+      "label": "Linear Equations",
+      "objectives": [
+        "Isolate the target variable without losing sign or structure",
+        "Translate a word setup into a solvable linear equation"
+      ],
+      "prereq_ids": [],
+      "unlocks": [
+        "math_systems_of_linear_equations",
+        "math_linear_functions"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.8,
+        "timed_mastery_min": 0.67,
+        "confidence_calibration_min": 0.55
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_math_linear_equations_v1",
+        "worked_example_ids": [
+          "we_math_linear_eq_1",
+          "we_math_linear_eq_2"
+        ],
+        "retry_set_id": "retry_math_linear_equations_v1",
+        "transfer_set_id": "transfer_math_linear_equations_v1"
+      }
+    },
+    {
+      "skill_id": "math_systems_of_linear_equations",
+      "section": "math",
+      "domain": "algebra",
+      "label": "Systems of Linear Equations",
+      "objectives": [
+        "Use substitution or elimination without dropping constraints",
+        "Interpret the meaning of the ordered-pair solution in context"
+      ],
+      "prereq_ids": [
+        "math_linear_equations"
+      ],
+      "unlocks": [
+        "math_linear_functions"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.79,
+        "timed_mastery_min": 0.66,
+        "confidence_calibration_min": 0.56
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_math_systems_v1",
+        "worked_example_ids": [
+          "we_math_systems_1",
+          "we_math_systems_2"
+        ],
+        "retry_set_id": "retry_math_systems_of_linear_equations_v1",
+        "transfer_set_id": "transfer_math_systems_of_linear_equations_v1"
+      }
+    },
+    {
+      "skill_id": "math_linear_functions",
+      "section": "math",
+      "domain": "algebra",
+      "label": "Linear Functions",
+      "objectives": [
+        "Interpret slope and intercept from tables, graphs, and equations",
+        "Switch between representations without losing the rate meaning"
+      ],
+      "prereq_ids": [
+        "math_linear_equations"
+      ],
+      "unlocks": [
+        "math_statistics_probability"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.8,
+        "timed_mastery_min": 0.67,
+        "confidence_calibration_min": 0.56
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_math_linear_functions_v1",
+        "worked_example_ids": [
+          "we_math_linear_functions_1",
+          "we_math_linear_functions_2"
+        ],
+        "retry_set_id": "retry_math_linear_functions_v1",
+        "transfer_set_id": "transfer_math_linear_functions_v1"
+      }
+    },
+    {
+      "skill_id": "math_nonlinear_equations",
+      "section": "math",
+      "domain": "advanced_math",
+      "label": "Nonlinear Equations",
+      "objectives": [
+        "Manipulate quadratic and radical relationships carefully",
+        "Check domain restrictions before accepting a solution"
+      ],
+      "prereq_ids": [
+        "math_linear_equations"
+      ],
+      "unlocks": [
+        "math_quadratic_functions",
+        "math_polynomial_rational"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.78,
+        "timed_mastery_min": 0.64,
+        "confidence_calibration_min": 0.56
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_math_nonlinear_equations_v1",
+        "worked_example_ids": [
+          "we_math_nonlinear_eq_1",
+          "we_math_nonlinear_eq_2"
+        ],
+        "retry_set_id": "retry_math_nonlinear_equations_v1",
+        "transfer_set_id": "transfer_math_nonlinear_equations_v1"
+      }
+    },
+    {
+      "skill_id": "math_quadratic_functions",
+      "section": "math",
+      "domain": "advanced_math",
+      "label": "Quadratic Functions",
+      "objectives": [
+        "Read quadratic structure from standard, factored, and vertex form",
+        "Connect graph features to equation meaning under time pressure"
+      ],
+      "prereq_ids": [
+        "math_nonlinear_equations"
+      ],
+      "unlocks": [
+        "math_polynomial_rational"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.79,
+        "timed_mastery_min": 0.66,
+        "confidence_calibration_min": 0.56
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_math_quadratic_functions_v1",
+        "worked_example_ids": [
+          "we_math_quadratics_1",
+          "we_math_quadratics_2"
+        ],
+        "retry_set_id": "retry_math_quadratic_functions_v1",
+        "transfer_set_id": "transfer_math_quadratic_functions_v1"
+      }
+    },
+    {
+      "skill_id": "math_polynomial_rational",
+      "section": "math",
+      "domain": "advanced_math",
+      "label": "Polynomial and Rational Expressions",
+      "objectives": [
+        "Factor, simplify, and compare algebraic structure accurately",
+        "Avoid illegal cancellation and unsupported simplification moves"
+      ],
+      "prereq_ids": [
+        "math_nonlinear_equations",
+        "math_quadratic_functions"
+      ],
+      "unlocks": [],
+      "mastery_gate": {
+        "mastery_min": 0.79,
+        "timed_mastery_min": 0.66,
+        "confidence_calibration_min": 0.57
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_math_polynomial_rational_v1",
+        "worked_example_ids": [
+          "we_math_poly_1",
+          "we_math_poly_2"
+        ],
+        "retry_set_id": "retry_math_polynomial_rational_v1",
+        "transfer_set_id": "transfer_math_polynomial_rational_v1"
+      }
+    },
+    {
+      "skill_id": "math_ratios_rates",
+      "section": "math",
+      "domain": "problem_solving_and_data_analysis",
+      "label": "Ratios, Rates, and Proportions",
+      "objectives": [
+        "Set up proportion relationships from context",
+        "Track units so percent and rate conversions stay consistent"
+      ],
+      "prereq_ids": [
+        "math_linear_equations"
+      ],
+      "unlocks": [
+        "math_statistics_probability"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.8,
+        "timed_mastery_min": 0.67,
+        "confidence_calibration_min": 0.55
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_math_ratios_rates_v1",
+        "worked_example_ids": [
+          "we_math_ratios_1",
+          "we_math_ratios_2"
+        ],
+        "retry_set_id": "retry_math_ratios_rates_v1",
+        "transfer_set_id": "transfer_math_ratios_rates_v1"
+      }
+    },
+    {
+      "skill_id": "math_statistics_probability",
+      "section": "math",
+      "domain": "problem_solving_and_data_analysis",
+      "label": "Statistics and Probability",
+      "objectives": [
+        "Read distribution summaries and two-variable relationships correctly",
+        "Choose the probability model or summary statistic that matches the question"
+      ],
+      "prereq_ids": [
+        "math_ratios_rates",
+        "math_linear_functions"
+      ],
+      "unlocks": [],
+      "mastery_gate": {
+        "mastery_min": 0.79,
+        "timed_mastery_min": 0.65,
+        "confidence_calibration_min": 0.56
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_math_statistics_probability_v1",
+        "worked_example_ids": [
+          "we_math_stats_1",
+          "we_math_stats_2"
+        ],
+        "retry_set_id": "retry_math_statistics_probability_v1",
+        "transfer_set_id": "transfer_math_statistics_probability_v1"
+      }
+    },
+    {
+      "skill_id": "math_area_and_perimeter",
+      "section": "math",
+      "domain": "geometry_and_trigonometry",
+      "label": "Area and Perimeter",
+      "objectives": [
+        "Choose the right area or perimeter formula for the shape at hand",
+        "Translate composite-shape wording into a clean diagram and target quantity"
+      ],
+      "prereq_ids": [
+        "math_linear_equations"
+      ],
+      "unlocks": [
+        "math_circles",
+        "math_trigonometry"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.79,
+        "timed_mastery_min": 0.65,
+        "confidence_calibration_min": 0.55
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_math_area_perimeter_v1",
+        "worked_example_ids": [
+          "we_math_area_1",
+          "we_math_area_2"
+        ],
+        "retry_set_id": "retry_math_area_and_perimeter_v1",
+        "transfer_set_id": "transfer_math_area_and_perimeter_v1"
+      }
+    },
+    {
+      "skill_id": "math_circles",
+      "section": "math",
+      "domain": "geometry_and_trigonometry",
+      "label": "Circles",
+      "objectives": [
+        "Use circle relationships, area, arc, and angle facts correctly",
+        "Connect radius-diameter structure to the exact quantity being asked"
+      ],
+      "prereq_ids": [
+        "math_area_and_perimeter"
+      ],
+      "unlocks": [
+        "math_trigonometry"
+      ],
+      "mastery_gate": {
+        "mastery_min": 0.79,
+        "timed_mastery_min": 0.65,
+        "confidence_calibration_min": 0.56
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_math_circles_v1",
+        "worked_example_ids": [
+          "we_math_circles_1",
+          "we_math_circles_2"
+        ],
+        "retry_set_id": "retry_math_circles_v1",
+        "transfer_set_id": "transfer_math_circles_v1"
+      }
+    },
+    {
+      "skill_id": "math_trigonometry",
+      "section": "math",
+      "domain": "geometry_and_trigonometry",
+      "label": "Right Triangle Trigonometry",
+      "objectives": [
+        "Match sine, cosine, or tangent to the right ratio in context",
+        "Use special triangles and angle meaning without ratio reversal"
+      ],
+      "prereq_ids": [
+        "math_area_and_perimeter"
+      ],
+      "unlocks": [],
+      "mastery_gate": {
+        "mastery_min": 0.78,
+        "timed_mastery_min": 0.64,
+        "confidence_calibration_min": 0.55
+      },
+      "revisit_days": [
+        1,
+        3,
+        7,
+        14
+      ],
+      "lesson_assets": {
+        "teach_card_id": "teach_math_trigonometry_v1",
+        "worked_example_ids": [
+          "we_math_trig_1",
+          "we_math_trig_2"
+        ],
+        "retry_set_id": "retry_math_trigonometry_v1",
+        "transfer_set_id": "transfer_math_trigonometry_v1"
+      }
+    }
+  ]
+}

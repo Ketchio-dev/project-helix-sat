@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CurriculumPath",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "generatedAt",
+    "horizonDays",
+    "anchorSkill",
+    "supportSkill",
+    "maintenanceSkill",
+    "nextUnlock",
+    "recoveryPath",
+    "revisitCadence",
+    "weeklyAllocation",
+    "dailyFocuses"
+  ],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "horizonDays": { "type": "integer", "minimum": 1 },
+    "anchorSkill": { "$ref": "#/definitions/CurriculumSkillProgress" },
+    "supportSkill": { "type": ["object", "null"], "$ref": "#/definitions/CurriculumSkillProgress" },
+    "maintenanceSkill": { "type": ["object", "null"], "$ref": "#/definitions/CurriculumSkillProgress" },
+    "nextUnlock": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["skillId", "label", "reason"],
+      "properties": {
+        "skillId": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "recoveryPath": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trigger", "adjustment", "nextCheckInDays"],
+      "properties": {
+        "trigger": { "type": "string", "minLength": 1 },
+        "adjustment": { "type": "string", "minLength": 1 },
+        "nextCheckInDays": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "revisitCadence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["skillId", "label", "dueInDays", "reason", "source"],
+        "properties": {
+          "skillId": { "type": ["string", "null"] },
+          "label": { "type": "string", "minLength": 1 },
+          "dueInDays": { "type": "integer", "minimum": 0 },
+          "reason": { "type": "string", "minLength": 1 },
+          "source": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "weeklyAllocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchorShare", "supportShare", "maintenanceShare"],
+      "properties": {
+        "anchorShare": { "type": "number", "minimum": 0, "maximum": 1 },
+        "supportShare": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maintenanceShare": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "dailyFocuses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dayOffset", "date", "focusType", "skillId", "label", "stage", "objective", "sessionKind"],
+        "properties": {
+          "dayOffset": { "type": "integer", "minimum": 0 },
+          "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "focusType": { "enum": ["anchor", "support", "maintenance"] },
+          "skillId": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "stage": { "enum": ["unseen", "diagnosing", "foundation_repair", "controlled_practice", "mixed_practice", "timed_transfer", "retention_watch", "mastered"] },
+          "objective": { "type": "string", "minLength": 1 },
+          "sessionKind": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "CurriculumSkillProgress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skillId", "label", "section", "domain", "objectives", "stage", "stageRank", "mastery", "timedMastery", "retentionRisk", "confidenceCalibration", "attemptsCount", "masteryGate", "revisitDays", "prereqIds", "unlocks", "lessonAssets"],
+      "properties": {
+        "skillId": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "section": { "enum": ["reading_writing", "math"] },
+        "domain": { "type": "string", "minLength": 1 },
+        "objectives": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+        "stage": { "enum": ["unseen", "diagnosing", "foundation_repair", "controlled_practice", "mixed_practice", "timed_transfer", "retention_watch", "mastered"] },
+        "stageRank": { "type": "integer", "minimum": 0 },
+        "mastery": { "type": "number", "minimum": 0, "maximum": 1 },
+        "timedMastery": { "type": "number", "minimum": 0, "maximum": 1 },
+        "retentionRisk": { "type": "number", "minimum": 0, "maximum": 1 },
+        "confidenceCalibration": { "type": "number", "minimum": 0, "maximum": 1 },
+        "attemptsCount": { "type": "integer", "minimum": 0 },
+        "masteryGate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["met", "checks"],
+          "properties": {
+            "met": { "type": "boolean" },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["key", "target", "actual", "met"],
+                "properties": {
+                  "key": { "enum": ["mastery", "timed_mastery", "confidence_calibration"] },
+                  "target": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "actual": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "met": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "revisitDays": { "type": "array", "items": { "type": "integer", "minimum": 1 }, "minItems": 1 },
+        "prereqIds": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "unlocks": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "lessonAssets": { "type": "object", "additionalProperties": true }
+      }
+    }
+  }
+}

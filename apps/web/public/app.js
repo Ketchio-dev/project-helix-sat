@@ -412,6 +412,68 @@ function renderPlanExplanation(explanation) {
   }
 }
 
+function renderCurriculumPath(path) {
+  const container = $('#curriculumPath');
+  if (!container) return;
+  clear(container);
+
+  if (!path?.anchorSkill) {
+    container.append(node('p', { className: 'muted', text: 'Complete a diagnostic to unlock the first curriculum path.' }));
+    return;
+  }
+
+  const highlights = node('div', { className: 'grid two compact-grid' });
+  const cards = [
+    ['Anchor skill', path.anchorSkill],
+    ['Support lane', path.supportSkill],
+    ['Maintenance lane', path.maintenanceSkill],
+  ];
+
+  for (const [title, skill] of cards) {
+    const card = node('article', { className: 'review-item' });
+    card.append(node('strong', { text: title }));
+    if (!skill) {
+      card.append(node('p', { className: 'muted', text: 'Not set yet.' }));
+    } else {
+      card.append(node('p', { text: `${skill.label} · ${skill.stage.replaceAll('_', ' ')}` }));
+      card.append(node('p', { className: 'muted', text: skill.objectives?.[0] ?? 'No objective yet.' }));
+      card.append(node('span', { className: 'muted', text: `Mastery ${Math.round((skill.mastery ?? 0) * 100)}% · timed ${Math.round((skill.timedMastery ?? 0) * 100)}%` }));
+    }
+    highlights.append(card);
+  }
+  container.append(highlights);
+
+  if (path.nextUnlock) {
+    container.append(node('p', { className: 'notice', text: `Next unlock: ${path.nextUnlock.label} — ${path.nextUnlock.reason}` }));
+  }
+
+  if (path.recoveryPath) {
+    const recovery = node('div', { className: 'stack' });
+    recovery.append(node('p', { className: 'muted', text: 'Recovery path' }));
+    recovery.append(node('p', { text: path.recoveryPath.trigger }));
+    recovery.append(node('p', { className: 'muted', text: path.recoveryPath.adjustment }));
+    container.append(recovery);
+  }
+
+  if (Array.isArray(path.revisitCadence) && path.revisitCadence.length) {
+    container.append(node('p', { className: 'muted', text: 'Revisit cadence' }));
+    const revisitList = node('ul', { className: 'list compact' });
+    for (const revisit of path.revisitCadence.slice(0, 4)) {
+      revisitList.append(node('li', { text: `${revisit.label} in ${revisit.dueInDays} day${revisit.dueInDays === 1 ? '' : 's'} — ${revisit.reason}` }));
+    }
+    container.append(revisitList);
+  }
+
+  if (Array.isArray(path.dailyFocuses) && path.dailyFocuses.length) {
+    container.append(node('p', { className: 'muted', text: 'Next 4 study days' }));
+    const focusList = node('ul', { className: 'list compact' });
+    for (const focus of path.dailyFocuses.slice(0, 4)) {
+      focusList.append(node('li', { text: `${focus.date}: ${focus.label} (${focus.focusType}) — ${focus.objective}` }));
+    }
+    container.append(focusList);
+  }
+}
+
 function focusGoalSetup() {
   const section = $('#goalSetupSection');
   section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1553,6 +1615,7 @@ async function loadDashboard() {
     renderProjection(dashboard.projection, dashboard.projectionEvidence);
     renderPlan(dashboard.plan);
     renderPlanExplanation(dashboard.planExplanation);
+    renderCurriculumPath(dashboard.curriculumPath);
     renderErrorDna(dashboard.errorDnaSummary);
     renderWhatChanged(dashboard.whatChanged);
     renderWeeklyDigest(weeklyDigest ?? dashboard.weeklyDigest ?? null);

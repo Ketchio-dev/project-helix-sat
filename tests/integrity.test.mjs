@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { createStore } from '../services/api/src/store.mjs';
 import { projectScoreBand } from '../packages/scoring/src/score-predictor.mjs';
 import { generateDailyPlan } from '../packages/assessment/src/daily-plan-generator.mjs';
+import { generateCurriculumPath } from '../packages/curriculum/src/path-generator.mjs';
+import { inferSkillStage, getCurriculumSkill } from '../packages/curriculum/src/mastery-gates.mjs';
 import { createEvent } from '../packages/telemetry/src/events.mjs';
 
 const DEMO_USER_ID = 'demo-student';
@@ -124,6 +126,75 @@ describe('integrity: daily plan — needs_diagnostic for empty skillStates', () 
       errorDna: {},
     });
     assert.equal(result.status, 'needs_diagnostic');
+  });
+});
+
+describe('integrity: curriculum stage inference', () => {
+  it('maps weak skill snapshots into repair/practice stages and stable snapshots into mastered', () => {
+    const linearSkill = getCurriculumSkill('math_linear_equations');
+    assert.equal(inferSkillStage(null, linearSkill), 'unseen');
+    assert.equal(inferSkillStage({
+      skill_id: 'math_linear_equations',
+      mastery: 0.35,
+      timed_mastery: 0.3,
+      careless_risk: 0.6,
+      retention_risk: 0.4,
+      confidence_calibration: 0.4,
+      attempts_count: 3,
+    }, linearSkill), 'foundation_repair');
+    assert.equal(inferSkillStage({
+      skill_id: 'math_linear_equations',
+      mastery: 0.9,
+      timed_mastery: 0.84,
+      careless_risk: 0.12,
+      retention_risk: 0.15,
+      confidence_calibration: 0.7,
+      attempts_count: 8,
+    }, linearSkill), 'mastered');
+  });
+});
+
+describe('integrity: curriculum path generator', () => {
+  it('produces a 14-day path with anchor/support/revisit data', () => {
+    const path = generateCurriculumPath({
+      profile: {
+        self_reported_weak_area: 'algebra',
+      },
+      skillStates: [
+        {
+          skill_id: 'math_linear_equations',
+          mastery: 0.42,
+          timed_mastery: 0.31,
+          confidence_calibration: 0.44,
+          retention_risk: 0.52,
+          careless_risk: 0.48,
+          attempts_count: 4,
+        },
+        {
+          skill_id: 'math_linear_functions',
+          mastery: 0.61,
+          timed_mastery: 0.51,
+          confidence_calibration: 0.5,
+          retention_risk: 0.36,
+          careless_risk: 0.22,
+          attempts_count: 6,
+        },
+      ],
+      reviewQueue: [
+        {
+          skill: 'math_linear_equations',
+          dueAt: new Date().toISOString(),
+          status: 'revisit_due',
+        },
+      ],
+    });
+
+    assert.equal(path.horizonDays, 14);
+    assert.equal(path.anchorSkill.skillId, 'math_linear_equations');
+    assert.ok(path.supportSkill);
+    assert.ok(path.revisitCadence.length >= 1);
+    assert.equal(path.dailyFocuses.length, 14);
+    assert.ok(path.recoveryPath.adjustment.includes('retry loop'));
   });
 });
 
