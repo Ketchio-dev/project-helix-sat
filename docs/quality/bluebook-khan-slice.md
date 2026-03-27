@@ -1,70 +1,77 @@
 # Bluebook / Khan quality-upgrade slice
 
-This note defines the **first quality-upgrade slice** for Project Helix SAT content work. It is intentionally narrower than a full SAT fidelity spec: the goal is to improve the weakest content realism and coverage gaps without overclaiming parity with the official exam.
+This note defines the **next fidelity slice** for Project Helix SAT after commit `4b91720`. The goal is still not full SAT replication. The goal is to close the two most visible realism gaps without breaking the existing learner flow:
 
-## What this slice is trying to improve
+1. add the smallest safe end-to-end math grid-in / student-produced-response slice,
+2. make module simulation section-separated so it looks less unlike the digital SAT,
+3. keep audits, tests, and docs explicit about what still remains incomplete.
 
-1. Make the generator prompt behave more like a digital-SAT item-writing brief than a generic quiz generator.
-2. Keep audits honest about current coverage holes.
-3. Improve the weakest current content lanes first instead of adding random new volume.
-4. Preserve `npm run check` and the existing learner flows while quality improves.
+## Current baseline from the latest audit
 
-## What this slice is not promising yet
+- 50 demo items total (`math=24`, `reading_writing=26`)
+- 19 ontology skills tracked: 14 covered, 5 partial, 0 missing
+- No singleton-skill lanes remain
+- All current items are still `single_select`
+- Module simulation is still a 4-item mixed-section block
+- `/api/session/review` is still exposed but underused
 
-- Full official-exam replication
-- Grid-in / student-produced-response math items
-- Full-module or full-test blueprint fidelity
-- Large-scale content depth across every skill
+## What this slice should improve
 
-## Working guardrails
+### Format realism
+- Introduce one credible math grid-in / student-produced-response path end to end.
+- Keep the slice intentionally small: one supported interaction pattern is better than broad but brittle pseudo-support.
+- Do not overclaim generator support if the new format is still demo-bank-only.
+
+### Module realism
+- Move module simulation toward section separation.
+- The learner should be able to tell whether a module is Reading/Writing or Math without inferring it from a mixed item list.
+- Summary, history, and restore flows should keep telling the same section-specific story.
+
+### Audit honesty
+- Docs must describe the shipped behavior, not the hoped-for future state.
+- If grid-in support is minimal, say that it is minimal.
+- If module simulation is still shorter than a real exam module, keep that limitation visible.
+
+## Guardrails
 
 ### Reading and Writing
-- Passages should feel like short digital-SAT texts: compact, information-dense, and answerable from the passage alone.
-- Questions should target the current ontology skills rather than drifting into generic reading comprehension.
-- Wrong answers should be tempting for distinct reasons, not because they are vague or sloppy.
-- Difficulty should come from reasoning precision, nuance, and evidence selection rather than trivia or obscure background knowledge.
+- Keep passages compact, evidence-based, and screen-native.
+- Preserve ontology-targeted skills instead of drifting into generic comprehension.
+- Keep distractors plausible for named reasons, not because they are vague.
 
 ### Math
-- Setups should stay concise and SAT-like; extra story text should not create fake difficulty.
-- Wrong answers should come from realistic work students might actually show: sign slips, partial completion, wrong formula choice, unit confusion, graph misread, or constraint neglect.
-- Format realism should be described honestly: the current bank is still multiple choice only.
-- The first math upgrades should strengthen weak coverage before broadening already healthy algebra or advanced-math lanes.
+- Keep stems concise and SAT-like.
+- For grid-in support, prefer predictable validation and review behavior over UI cleverness.
+- Wrong answers and rationales should still model realistic student work, even if the UI supports more than one response type.
 
-### Cross-cutting quality rules
-- Every item must remain unambiguously answerable.
-- Rationales, misconception tags, and hint ladders are first-class assets, not optional metadata.
-- New documentation should match the actual audited bank, not an aspirational future state.
-- If docs and audits disagree, regenerate the audit and update the docs before merging.
-
-## First priorities from the current audit
-
-### Highest-priority Reading/Writing gaps
-- Missing punctuation coverage
-- Thin organization coverage
-
-### Highest-priority Math gaps
-- `math_linear_equations`
-- `math_circles`
-- `math_trigonometry`
-
-### Realism gaps to keep visible
-- All items are still `single_select`
-- Module simulation is still much smaller than a real exam module
-- `/api/session/review` is exposed but not yet part of a strong end-to-end learner path
+### Cross-cutting rules
+- No new dependencies.
+- Preserve existing session restore/history/dashboard flows.
+- Preserve `npm run check`.
+- Keep remaining gaps explicit in docs and audit output.
 
 ## Review checklist for this slice
 
-Before merging a content-quality change, confirm all of the following:
+Before merging, confirm all of the following:
 
-- The change improves an audited weak spot or documents a real current limitation.
-- The repo does not newly overclaim SAT fidelity.
-- `content/README.md`, `docs/sat-coverage-audit.md`, and any top-level summary still agree.
-- `npm run audit:helix` still tells the same story as the docs.
+- A minimal math grid-in / student-produced-response item works end to end without regressing existing `single_select` behavior.
+- Module simulation no longer presents itself as a mixed-section mini-set.
+- `npm run audit:helix` and `docs/audits/project-helix-sat-coverage.md` agree.
+- Refresh `docs/audits/project-helix-sat-coverage.md` from `node scripts/audit-project-helix-sat.mjs` output instead of hand-editing the snapshot.
+- `docs/sat-coverage-audit.md` matches the same story as the generated audit.
+- `content/README.md` still describes the real generation/runtime contract.
 - `npm run check` stays green.
+
+## Still not promised after this slice
+
+- Full official-exam replication
+- Full-length SAT module sizing
+- Broad generator-native support for every SAT interaction type
+- Production-depth coverage across every skill bucket
 
 ## Canonical references inside this repo
 
-- `content/README.md` — generator usage + guardrails
-- `docs/sat-coverage-audit.md` — narrative audit and weak-coverage summary
+- `content/README.md` — generation contract + guardrails
+- `docs/sat-coverage-audit.md` — narrative audit and current risk summary
 - `docs/audits/project-helix-sat-coverage.md` — generated audit snapshot
-- `scripts/generate-content.mjs` — prompt and validation logic
+- `packages/assessment/src/project-helix-sat-audit.mjs` — audit logic

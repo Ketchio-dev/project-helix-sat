@@ -51,7 +51,7 @@ The prompt in `scripts/generate-content.mjs` should be treated as a digital-SAT 
 - Keep setups concise and Bluebook-like: the math should be the challenge, not verbose story framing.
 - Use authentic SAT algebra, advanced math, data-analysis, geometry, and trig reasoning.
 - Make wrong answers arise from realistic student work (sign errors, partial completion, formula misuse, unit mistakes, graph misreads).
-- The current generator intentionally emits `single_select` only. Grid-in / student-produced-response realism is still a follow-up gap, so documentation and audits should stay honest about that limitation.
+- The current generator intentionally emits `single_select` only. If the app adds a hand-authored grid-in / student-produced-response slice before generator support broadens, documentation and audits must call that scope out explicitly instead of implying full format parity.
 
 ### Cross-cutting requirements
 - Exactly 4 answer choices for every generated item.
@@ -62,12 +62,12 @@ The prompt in `scripts/generate-content.mjs` should be treated as a digital-SAT 
 
 ## Current quality-upgrade priorities
 
-The latest coverage audit (`npm run audit:helix`) identifies these content gaps to address first:
+The latest coverage audit (`npm run audit:helix`) identifies these priorities:
 
-1. Missing explicit punctuation coverage in Reading/Writing.
-2. Thin organization coverage (`rw_transitions` currently carries that ontology mapping almost alone).
-3. Singleton math skills that need deeper coverage: `math_linear_equations`, `math_circles`, and `math_trigonometry`.
-4. Format realism is still bounded because the bank has no grid-in items yet.
+1. Keep strengthening partial blueprint lanes, especially Reading/Writing organization plus thin math coverage in linear equations, nonlinear functions, area/volume/lines, and right-triangle trigonometry.
+2. Add the smallest safe grid-in / student-produced-response slice before making stronger SAT Math format-realism claims.
+3. Make module simulation less unlike the digital SAT by separating sections instead of using one short mixed block.
+4. Keep `/api/session/review`, docs, and audit output honest about what is and is not fully wired yet.
 
 When generating or reviewing new content, prioritize those gaps before broadening already healthier skills.
 

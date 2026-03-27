@@ -2,66 +2,68 @@
 
 ## Verdict
 
-Project Helix SAT **credibly covers both SAT Reading/Writing and Math as a prototype vertical slice**, and the Reading/Writing blueprint is now materially stronger, but **the overall SAT blueprint is still incomplete at production depth**.
+Project Helix SAT **credibly covers both SAT Reading/Writing and Math as a prototype vertical slice**, but the product still **falls short of stronger Bluebook-style fidelity claims** because format realism and module structure remain intentionally narrow.
 
 ## Evidence gathered
 
 ### Demo item bank
-- 47 demo items total
-- 26 Reading/Writing items, 21 Math items
+- 50 demo items total
+- 26 Reading/Writing items, 24 Math items
 - All 8 top-level SAT domains represented
   - Reading/Writing: craft and structure (7), information and ideas (8), expression of ideas (5), standard English conventions (6)
-  - Math: algebra (7), advanced math (6), problem solving and data analysis (4), geometry and trigonometry (4)
-- 47/47 items have canonical rationales and hint ladders
-- 22 distinct skill buckets are represented across the item bank
-- Reading/Writing punctuation is now explicitly covered, and organization is no longer a partial skill in the audit
+  - Math: algebra (8), advanced math (6), problem solving and data analysis (4), geometry and trigonometry (6)
+- 50/50 items have canonical rationales and hint ladders
+- 19 ontology skills are tracked in the audit: 14 covered, 5 partial, 0 missing
+- There are no singleton-skill lanes anymore, but five blueprint areas are still explicitly partial:
+  - organization
+  - linear equations and inequalities
+  - nonlinear functions
+  - area, volume, and lines
+  - right-triangle trigonometry
 
 ### App flow
 - Learner dashboard loads profile, plan, review recommendations, and latest session summaries
 - Timed set flow starts, records answers, finishes, and persists a timed summary to the dashboard
-- Module simulation flow balances sections 2 Reading/Writing + 2 Math, finishes successfully, and persists section breakdowns to dashboard/history
-- Session history records both timed-set and module-simulation outcomes
+- Module simulation flow still runs as a short 4-item mixed-section exam block and persists section/domain breakdowns to dashboard/history
+- Session history records timed-set and module-simulation outcomes
+- Session review remains completion-gated, but `/api/session/review` is still not part of a stronger end-to-end learner path
 
 ### Documentation + tooling
-- `README.md` now reflects the current 44-item demo bank instead of the stale 11-item snapshot
-- `content/README.md` now documents the Bluebook/Khan-style generation guardrails and verification loop used in this slice
-- `docs/quality/bluebook-khan-slice.md` captures the scoped review checklist for this first quality-upgrade pass
-- `npm run audit:helix` provides a reproducible coverage snapshot for future updates
+- `npm run audit:helix` reproduces the current coverage snapshot
+- `docs/audits/project-helix-sat-coverage.md` should stay aligned with the latest generated audit output
+- `content/README.md` and this file should stay conservative until the app genuinely supports richer SAT item formats and section-shaped modules
 
 ## Weakest current coverage
 
-1. **Reading/Writing punctuation is still missing entirely.**
-   - The ontology audit still reports `reading_writing/standard_english_conventions/punctuation` as uncovered.
-2. **Organization coverage is real but thin.**
-   - `rw_transitions` provides only 2 mapped items for the broader organization bucket, which is too shallow for strong blueprint claims.
-3. **Three math skills are singleton lanes.**
-   - `math_linear_equations`, `math_circles`, and `math_trigonometry` each have only 1 item, so adaptivity and retake resistance are fragile.
-4. **Format realism is still intentionally bounded.**
-   - All 44 items are `single_select`; there are no grid-in / student-produced-response items yet.
-
-## Major risks
-
-1. **All 47 items use the same `single_select` format.**
-   - This is enough for a prototype, but not enough to claim robust SAT Math coverage because there are no student-produced-response / grid-in style items and no richer interaction patterns.
-2. **Skill depth is shallow.**
-   - Several math skills still have only 1-3 items, which is enough to prove wiring but not enough for stable adaptivity, retake resistance, or strong diagnostic confidence.
-3. **Test-core realism is still thin.**
-   - Module simulation remains only 4 mixed-section items, so exam realism is still meaningfully below a real SAT module.
+1. **Format realism is still bounded.**
+   - All 50 items are still `single_select`.
+   - The app/audit path still has no end-to-end math grid-in / student-produced-response slice.
+2. **Module simulation is still unlike a real digital SAT module.**
+   - It remains a 4-item mixed-section block (`math=2`, `reading_writing=2`) instead of a section-separated module.
+3. **Five blueprint lanes remain partial rather than fully stable.**
+   - Reading/Writing organization is present but still thin.
+   - Math linear equations, nonlinear functions, area/volume/lines, and right-triangle trigonometry still need more depth.
 4. **Some shipped endpoints are still underused.**
    - `/api/session/review` is exposed by the API but still lacks UI and API-test usage.
 
+## Major risks
+
+1. **The product still uses one visible item interaction pattern.**
+   - That is acceptable for a prototype, but it is not enough to support stronger Bluebook-style math realism claims.
+2. **Module simulation still compresses structure too aggressively.**
+   - Four mixed-section items are good enough to prove wiring, but not good enough to feel like a true SAT module.
+3. **Coverage is broader than before but still not deep everywhere.**
+   - Partial blueprint lanes are no longer missing, yet they remain too shallow for stronger adaptivity or retake-resistance claims.
+4. **Review tooling is only partially surfaced.**
+   - The API exposes per-session review, but the learner journey still does not emphasize it end to end.
+
 ## Recommended next fixes
 
-1. Deepen thin math skills first:
-   - Linear equations and inequalities
-   - Circles / area-volume-lines
-   - Right-triangle trigonometry
-2. Add missing high-signal SAT formats:
-   - Math student-produced response/grid-in items
-   - More varied Reading/Writing passage structures
-3. Raise minimum depth on thin skills to at least 4 items per skill before making stronger coverage claims.
-4. Wire and regression-test `/api/session/review` if per-session postmortems are part of the intended learner flow.
+1. Add the smallest safe end-to-end math grid-in / student-produced-response slice.
+2. Make module simulation section-separated and raise its item shape closer to a real module.
+3. Keep deepening the five partial blueprint lanes before making stronger coverage claims.
+4. Wire and regression-test `/api/session/review` if post-session review is part of the intended learner workflow.
 
 ## Bottom line
 
-Today the product demonstrates a believable **two-section SAT prototype** with improved Reading/Writing blueprint coverage and real learner-flow coverage in both sections. It is strong enough for a stronger demo/audit pass, but not yet strong enough for a full-fidelity SAT coverage claim.
+Today the product is a believable **two-section SAT prototype** with strong wiring across content, sessions, and dashboards. The next fidelity slice should focus on **format realism and module structure**, while keeping audits and docs explicit about what still is not Bluebook-parity yet.
