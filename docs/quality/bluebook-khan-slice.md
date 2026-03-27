@@ -1,6 +1,6 @@
 # Bluebook / Khan quality-upgrade slice
 
-This note defines the **next fidelity slice** for Project Helix SAT after commit `4b91720`. The goal is still not full SAT replication. The goal is to close the two most visible realism gaps without breaking the existing learner flow:
+This note tracks the **current fidelity slice** for Project Helix SAT after commit `e49840e`. The goal is still not full SAT replication. The goal of the current slice is to close the most visible realism gaps without breaking the existing learner flow:
 
 1. add the smallest safe end-to-end math grid-in / student-produced-response slice,
 2. make module simulation section-separated so it looks less unlike the digital SAT,
@@ -11,19 +11,19 @@ This note defines the **next fidelity slice** for Project Helix SAT after commit
 - 50 demo items total (`math=24`, `reading_writing=26`)
 - 19 ontology skills tracked: 14 covered, 5 partial, 0 missing
 - No singleton-skill lanes remain
-- All current items are still `single_select`
-- Module simulation is still a 4-item mixed-section block
+- 3 hand-authored Math items now use `grid_in`
+- Module simulation is now section-separated, but it is still only a 4-item block
 - `/api/session/review` is still exposed but underused
 
 ## What this slice should improve
 
 ### Format realism
-- Introduce one credible math grid-in / student-produced-response path end to end.
-- Keep the slice intentionally small: one supported interaction pattern is better than broad but brittle pseudo-support.
-- Do not overclaim generator support if the new format is still demo-bank-only.
+- Keep the current hand-authored math grid-in / student-produced-response slice working end to end.
+- The slice is still intentionally small: three supported math numeric-entry items are better than broad but brittle pseudo-support.
+- Do not overclaim generator support while the richer format is still demo-bank-only.
 
 ### Module realism
-- Move module simulation toward section separation.
+- Keep module simulation section-separated.
 - The learner should be able to tell whether a module is Reading/Writing or Math without inferring it from a mixed item list.
 - Summary, history, and restore flows should keep telling the same section-specific story.
 
@@ -54,7 +54,7 @@ This note defines the **next fidelity slice** for Project Helix SAT after commit
 
 Before merging, confirm all of the following:
 
-- A minimal math grid-in / student-produced-response item works end to end without regressing existing `single_select` behavior.
+- Multiple math grid-in / student-produced-response items work end to end without regressing existing `single_select` behavior.
 - Module simulation no longer presents itself as a mixed-section mini-set.
 - `npm run audit:helix` and `docs/audits/project-helix-sat-coverage.md` agree.
 - Refresh `docs/audits/project-helix-sat-coverage.md` from `node scripts/audit-project-helix-sat.mjs` output instead of hand-editing the snapshot.

@@ -18,8 +18,8 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
     reading_writing: 26,
   });
   assert.deepEqual(audit.content.itemFormatCounts, {
-    grid_in: 1,
-    single_select: 49,
+    grid_in: 3,
+    single_select: 47,
   });
 
   assert.equal(audit.verdict.crossSectionCoverage, 'credible_for_mvp');
@@ -38,7 +38,7 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   assert.deepEqual(audit.appFlow.exposedButUnused, ['/api/session/review']);
   assert.equal(audit.formatRealism.allSingleSelect, false);
   assert.equal(audit.formatRealism.hasMathGridIn, true);
-  assert.equal(audit.formatRealism.mathGridInCount, 1);
+  assert.equal(audit.formatRealism.mathGridInCount, 3);
 
   assert.equal(audit.sessions.diagnostic.itemCount, 3);
   assert.equal(audit.sessions.timedSet.itemCount, 3);
@@ -49,5 +49,5 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   });
   assert.equal(audit.sessions.sessionReview.blockedUntilCompletion, true);
   assert.ok(audit.majorRisks.some((entry) => entry.includes('4 math items')));
-  assert.ok(audit.nextFixes.some((entry) => entry.includes('minimal math slice')));
+  assert.ok(audit.nextFixes.some((entry) => entry.includes('current narrow math slice')));
 });

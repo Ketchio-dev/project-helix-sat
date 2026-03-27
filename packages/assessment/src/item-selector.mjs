@@ -178,12 +178,45 @@ function selectTimedSetItems(items, count, weaknessMap, skillOrder, exposureCoun
     .slice(0, count);
 }
 
+function selectModuleItemsWithBreadth(items, count) {
+  const selected = [];
+  const usedItemIds = new Set();
+  const usedDomains = new Set();
+  const usedSkills = new Set();
+
+  for (const item of items) {
+    if (selected.length === count) return selected;
+    if (usedDomains.has(item.domain)) continue;
+    selected.push(item);
+    usedItemIds.add(item.itemId);
+    usedDomains.add(item.domain);
+    usedSkills.add(item.skill);
+  }
+
+  for (const item of items) {
+    if (selected.length === count) return selected;
+    if (usedItemIds.has(item.itemId) || usedSkills.has(item.skill)) continue;
+    selected.push(item);
+    usedItemIds.add(item.itemId);
+    usedSkills.add(item.skill);
+  }
+
+  for (const item of items) {
+    if (selected.length === count) return selected;
+    if (usedItemIds.has(item.itemId)) continue;
+    selected.push(item);
+    usedItemIds.add(item.itemId);
+  }
+
+  return selected;
+}
+
 function selectModuleItems(items, count, skillOrder, exposureCounts = {}, options = {}) {
   if (options.section) {
-    return items
+    const sectionItems = items
       .filter((item) => item.section === options.section)
-      .sort((left, right) => compareModule(left, right, skillOrder, exposureCounts))
-      .slice(0, count);
+      .sort((left, right) => compareModule(left, right, skillOrder, exposureCounts));
+    return selectModuleItemsWithBreadth(sectionItems, count);
   }
 
   const perSectionTarget = Math.floor(count / 2);
@@ -193,10 +226,10 @@ function selectModuleItems(items, count, skillOrder, exposureCounts = {}, option
   for (const section of ['reading_writing', 'math']) {
     const sectionItems = items
       .filter((item) => item.section === section)
-      .sort((left, right) => compareModule(left, right, skillOrder, exposureCounts))
-      .slice(0, perSectionTarget);
+      .sort((left, right) => compareModule(left, right, skillOrder, exposureCounts));
+    const breadthSelection = selectModuleItemsWithBreadth(sectionItems, perSectionTarget);
 
-    for (const item of sectionItems) {
+    for (const item of breadthSelection) {
       if (used.has(item.itemId)) continue;
       selected.push(item);
       used.add(item.itemId);

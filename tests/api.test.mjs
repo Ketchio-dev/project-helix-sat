@@ -110,7 +110,7 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
       headers: authHeaders,
       body: JSON.stringify({
         itemId: diagnostic.items[0].itemId,
-        selectedAnswer: 'A',
+        ...buildAttemptAnswer(diagnostic.items[0].itemId),
         sessionId: diagnostic.session.id,
         mode: 'learn',
         confidenceLevel: 4,
@@ -170,7 +170,7 @@ test('api rejects items that do not belong to the active session', async () => {
       headers: authHeaders,
       body: JSON.stringify({
         itemId: 'math_stats_01',
-        selectedAnswer: 'A',
+        ...buildAttemptAnswer('math_stats_01'),
         sessionId: diagnostic.session.id,
         mode: 'learn',
         confidenceLevel: 2,
@@ -390,9 +390,12 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
     assert.equal(moduleSimulation.items.length, 4);
     assert.ok(moduleSimulation.currentItem);
     assert.equal(moduleSimulation.moduleSummary.sessionId, moduleSimulation.session.id);
-    const gridInItem = moduleSimulation.items.find((item) => item.item_format === 'grid_in');
-    assert.ok(gridInItem);
-    assert.equal(gridInItem.responseValidation.acceptedResponses, undefined);
+    assert.ok(new Set(moduleSimulation.items.map((item) => item.skill)).size >= 3);
+    assert.ok(new Set(moduleSimulation.items.map((item) => item.domain)).size >= 3);
+    const gridInItems = moduleSimulation.items.filter((item) => item.item_format === 'grid_in');
+    if (gridInItems.length >= 1) {
+      assert.equal(gridInItems[0].responseValidation.acceptedResponses, undefined);
+    }
 
     const examHint = await fetch(`${baseUrl}/api/tutor/hint`, {
       method: 'POST',
@@ -472,7 +475,7 @@ test('api returns session history for the authenticated learner', async () => {
       headers: authHeaders,
       body: JSON.stringify({
         itemId: diagnostic.items[0].itemId,
-        selectedAnswer: 'A',
+        ...buildAttemptAnswer(diagnostic.items[0].itemId),
         sessionId: diagnostic.session.id,
         mode: 'learn',
         confidenceLevel: 3,
@@ -608,7 +611,7 @@ test('store rejects attempts after exam time expires and returns a resumable sum
     store.submitAttempt({
       userId: 'demo-student',
       itemId: moduleSimulation.items[0].itemId,
-      selectedAnswer: 'B',
+      ...buildAttemptAnswer(moduleSimulation.items[0].itemId),
       sessionId: moduleSimulation.session.id,
       mode: 'exam',
       confidenceLevel: 3,
@@ -648,7 +651,7 @@ test('api restores unfinished exam sessions across server restart when file pers
         headers: authHeaders,
         body: JSON.stringify({
           itemId: timedSet.currentItem.itemId,
-          selectedAnswer: 'A',
+          ...buildAttemptAnswer(timedSet.currentItem.itemId),
           sessionId,
           mode: 'exam',
           confidenceLevel: 3,
@@ -696,7 +699,7 @@ test('api restores unfinished diagnostic sessions across server restart when fil
         headers: authHeaders,
         body: JSON.stringify({
           itemId: diagnostic.currentItem.itemId,
-          selectedAnswer: 'A',
+          ...buildAttemptAnswer(diagnostic.currentItem.itemId),
           sessionId,
           mode: 'learn',
           confidenceLevel: 4,

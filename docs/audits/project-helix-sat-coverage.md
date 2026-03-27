@@ -1,3 +1,7 @@
+
+> project-helix-sat@0.1.0 audit:helix
+> node scripts/audit-project-helix-sat.mjs
+
 # Project Helix SAT coverage audit
 
 ## Verdict
@@ -9,7 +13,7 @@
 - Rationales: 50
 - Sections: math=24, reading_writing=26
 - Domains: math:advanced_math=6, math:algebra=8, math:geometry_and_trigonometry=6, math:problem_solving_and_data_analysis=4, reading_writing:craft_and_structure=7, reading_writing:expression_of_ideas=5, reading_writing:information_and_ideas=8, reading_writing:standard_english_conventions=6
-- Formats: single_select=50
+- Formats: grid_in=3, single_select=47
 
 ## Blueprint alignment
 - Ontology skills: 19
@@ -31,9 +35,9 @@
 - none
 
 ## Format realism
-- All items single_select: true
-- Math grid-in coverage present: false
-- Math grid-in count: 0
+- All items single_select: false
+- Math grid-in coverage present: true
+- Math grid-in count: 3
 
 ## App flow evidence
 - Router missing core endpoints: none
@@ -44,19 +48,18 @@
 ## Session shapes
 - Diagnostic: 3 items (math=1, reading_writing=2)
 - Timed set: 3 items, examMode=true, timeLimitSec=210
-- Module simulation: 4 items, examMode=true, timeLimitSec=420, sections=math=2, reading_writing=2
+- Module simulation: 4 items, examMode=true, timeLimitSec=420, sections=math=4
 - Session review gated until completion: true
 
 ## Major risks
-- All current items still use the same single_select format, so Bluebook-style format realism remains constrained even after this slice.
-- Math still lacks any grid-in / student-produced-response item shape, which keeps SAT format realism intentionally incomplete.
-- Module simulation is only 4 mixed-section items, so it does not resemble full SAT module length or section isolation.
+- Math still has only 3 grid-in / student-produced-response items, so format-realism coverage remains narrow.
+- Module simulation is only 4 math items, so it still falls well short of exam-realistic module length.
 - Exposed endpoints without UI/API-test usage: /api/session/review
 
 ## Next fixes
 - Keep adding explicit punctuation items plus broader organization coverage in Reading/Writing.
 - Continue deepening thin math areas, especially linear equations, circles, and trigonometry.
-- Teach the app and audit path about grid-in / student-produced-response items before claiming stronger Bluebook format realism.
-- Separate module simulations by section and increase item counts toward exam-realistic module shapes.
+- Expand grid-in / student-produced-response support beyond the current narrow math slice before claiming stronger Bluebook format realism.
+- Increase section-specific module item counts toward exam-realistic module shapes.
 - Wire and regression-test /api/session/review if per-session postmortems are part of the intended learner flow.
 

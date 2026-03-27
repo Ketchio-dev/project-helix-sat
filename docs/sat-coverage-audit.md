@@ -24,7 +24,7 @@ Project Helix SAT **credibly covers both SAT Reading/Writing and Math as a proto
 ### App flow
 - Learner dashboard loads profile, plan, review recommendations, and latest session summaries
 - Timed set flow starts, records answers, finishes, and persists a timed summary to the dashboard
-- Module simulation flow still runs as a short 4-item mixed-section exam block and persists section/domain breakdowns to dashboard/history
+- Module simulation flow now runs as a short 4-item section-specific exam block and persists section/domain breakdowns to dashboard/history
 - Session history records timed-set and module-simulation outcomes
 - Session review remains completion-gated, but `/api/session/review` is still not part of a stronger end-to-end learner path
 
@@ -36,10 +36,10 @@ Project Helix SAT **credibly covers both SAT Reading/Writing and Math as a proto
 ## Weakest current coverage
 
 1. **Format realism is still bounded.**
-   - All 50 items are still `single_select`.
-   - The app/audit path still has no end-to-end math grid-in / student-produced-response slice.
+   - 3 Math items now use `grid_in`, but the rest of the bank still uses `single_select`.
+   - The app/audit path has a real numeric-entry slice now, but it is still small and hand-authored.
 2. **Module simulation is still unlike a real digital SAT module.**
-   - It remains a 4-item mixed-section block (`math=2`, `reading_writing=2`) instead of a section-separated module.
+   - It is now section-separated, but it remains only a 4-item block (`math=4` or `reading_writing=4`) instead of a real module-length section.
 3. **Five blueprint lanes remain partial rather than fully stable.**
    - Reading/Writing organization is present but still thin.
    - Math linear equations, nonlinear functions, area/volume/lines, and right-triangle trigonometry still need more depth.
@@ -49,9 +49,9 @@ Project Helix SAT **credibly covers both SAT Reading/Writing and Math as a proto
 ## Major risks
 
 1. **The product still uses one visible item interaction pattern.**
-   - That is acceptable for a prototype, but it is not enough to support stronger Bluebook-style math realism claims.
+   - The bank now has a small numeric-entry slice, but most shipped items still use the same multiple-choice interaction pattern.
 2. **Module simulation still compresses structure too aggressively.**
-   - Four mixed-section items are good enough to prove wiring, but not good enough to feel like a true SAT module.
+   - Four section-specific items are good enough to prove wiring, but not good enough to feel like a true SAT module.
 3. **Coverage is broader than before but still not deep everywhere.**
    - Partial blueprint lanes are no longer missing, yet they remain too shallow for stronger adaptivity or retake-resistance claims.
 4. **Review tooling is only partially surfaced.**
@@ -59,8 +59,8 @@ Project Helix SAT **credibly covers both SAT Reading/Writing and Math as a proto
 
 ## Recommended next fixes
 
-1. Add the smallest safe end-to-end math grid-in / student-produced-response slice.
-2. Make module simulation section-separated and raise its item shape closer to a real module.
+1. Expand the current 3-item math grid-in / student-produced-response slice into a broader numeric-entry lane.
+2. Raise section-specific module length and blueprint shape closer to a real module.
 3. Keep deepening the five partial blueprint lanes before making stronger coverage claims.
 4. Wire and regression-test `/api/session/review` if post-session review is part of the intended learner workflow.
 

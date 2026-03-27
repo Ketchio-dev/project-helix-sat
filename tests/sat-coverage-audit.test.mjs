@@ -87,7 +87,8 @@ test('coverage audit: demo item bank spans both SAT sections and all top-level d
   )));
   assert.ok(items.every((item) => typeof item.answerKey === 'string' && item.answerKey.length >= 1));
   assert.ok(rationales.every((rationale) => Array.isArray(rationale.hint_ladder) && rationale.hint_ladder.length >= 3));
-  assert.ok(items.some((item) => item.item_format === 'grid_in' && item.section === 'math'));
+  const mathGridInItems = items.filter((item) => item.item_format === 'grid_in' && item.section === 'math');
+  assert.equal(mathGridInItems.length, 3);
   assert.ok(items.some((item) => item.skill === 'rw_punctuation'));
   assert.ok(items.filter((item) => item.skill === 'math_linear_equations').length >= 2);
   assert.ok(items.filter((item) => item.skill === 'math_circles').length >= 2);
@@ -148,6 +149,8 @@ test('coverage audit: learner app flow exposes both sections through timed and m
     const moduleSections = countBy(moduleSimulation.items, (item) => item.section);
     assert.equal(moduleSimulation.items.length, 4);
     assert.deepEqual(moduleSections, { math: 4 });
+    assert.ok(new Set(moduleSimulation.items.map((item) => item.skill)).size >= 3);
+    assert.ok(new Set(moduleSimulation.items.map((item) => item.domain)).size >= 3);
 
     let finalModuleAttempt = null;
     for (const item of moduleSimulation.items) {

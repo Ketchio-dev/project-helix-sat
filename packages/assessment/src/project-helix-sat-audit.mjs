@@ -282,8 +282,8 @@ export function buildProjectHelixSatAudit({ ontology, routerSource, appSource, a
     ...(!formatRealism.hasMathGridIn
       ? ['Math still lacks any grid-in / student-produced-response item shape, which keeps SAT format realism intentionally incomplete.']
       : []),
-    ...(formatRealism.mathGridInCount > 0 && formatRealism.mathGridInCount < 2
-      ? ['Math has only one grid-in / student-produced-response item, so format-realism coverage is still thin.']
+    ...(formatRealism.mathGridInCount > 0 && formatRealism.mathGridInCount < 4
+      ? [`Math still has only ${formatRealism.mathGridInCount} grid-in / student-produced-response items, so format-realism coverage remains narrow.`]
       : []),
     ...(sessions.moduleSimulation.itemCount < 8
       ? [`Module simulation is only ${sessions.moduleSimulation.itemCount} ${sessions.moduleSimulation.section ?? 'single-section'} items, so it still falls well short of exam-realistic module length.`]
@@ -296,7 +296,7 @@ export function buildProjectHelixSatAudit({ ontology, routerSource, appSource, a
   const nextFixes = [
     'Keep adding explicit punctuation items plus broader organization coverage in Reading/Writing.',
     'Continue deepening thin math areas, especially linear equations, circles, and trigonometry.',
-    'Expand grid-in / student-produced-response support beyond the current minimal math slice before claiming stronger Bluebook format realism.',
+    'Expand grid-in / student-produced-response support beyond the current narrow math slice before claiming stronger Bluebook format realism.',
     'Increase section-specific module item counts toward exam-realistic module shapes.',
     'Wire and regression-test /api/session/review if per-session postmortems are part of the intended learner flow.',
   ];

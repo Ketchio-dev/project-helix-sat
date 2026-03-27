@@ -48,6 +48,12 @@ describe('selectSessionItems', () => {
     assert.equal(mathCount, 4);
   });
 
+  it('module_simulation favors section breadth when alternatives exist', () => {
+    const result = selectSessionItems(demoItems, [], 'module_simulation', 4, [], {}, { section: 'math' });
+    assert.ok(new Set(result.map((item) => item.skill)).size >= 3);
+    assert.ok(new Set(result.map((item) => item.domain)).size >= 3);
+  });
+
   it('recentItemIds filters out recently seen items', () => {
     const recentIds = demoItems.slice(0, 3).map((item) => item.itemId);
     const result = selectSessionItems(demoItems, [], 'diagnostic', 5, recentIds);
