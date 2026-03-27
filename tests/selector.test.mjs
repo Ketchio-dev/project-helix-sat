@@ -60,8 +60,8 @@ describe('selectSessionItems', () => {
   });
 
   it('larger math module_simulation blocks surface multiple student-produced-response items when the bank supports them', () => {
-    const result = selectSessionItems(demoItems, [], 'module_simulation', 8, [], {}, { section: 'math' });
-    assert.equal(result.length, 8);
+    const result = selectSessionItems(demoItems, [], 'module_simulation', 10, [], {}, { section: 'math' });
+    assert.equal(result.length, 10);
     assert.ok(result.filter((item) => item.item_format === 'grid_in').length >= 2);
   });
 

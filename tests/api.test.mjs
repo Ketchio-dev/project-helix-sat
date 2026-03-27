@@ -471,9 +471,9 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
     assert.equal(moduleSimulation.session.type, 'module_simulation');
     assert.equal(moduleSimulation.session.exam_mode, true);
     assert.equal(moduleSimulation.session.section, 'math');
-    assert.equal(moduleSimulation.timing.timeLimitSec, 840);
+    assert.equal(moduleSimulation.timing.timeLimitSec, 1050);
     assert.equal(moduleSimulation.timing.recommendedPaceSec, 105);
-    assert.equal(moduleSimulation.items.length, 8);
+    assert.equal(moduleSimulation.items.length, 10);
     assert.ok(moduleSimulation.currentItem);
     assert.equal(moduleSimulation.moduleSummary.sessionId, moduleSimulation.session.id);
     assert.ok(new Set(moduleSimulation.items.map((item) => item.skill)).size >= 6);

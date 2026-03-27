@@ -763,6 +763,26 @@ export function createDemoData() {
         estimatedTimeSec: 110,
       }),
 
+      rw_cross_text_03: createItem({
+        itemId: 'rw_cross_text_03',
+        section: 'reading_writing',
+        domain: 'craft_and_structure',
+        skill: 'rw_cross_text_connections',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'Which statement best captures how Text 2 would respond to the conclusion in Text 1?',
+        passage: 'Text 1: Ecologist Naomi Velasquez argues that reintroducing beavers to drought-prone watersheds is one of the fastest ways to improve stream resilience because beaver ponds slow runoff and raise local water tables. Text 2: Hydrologist Ethan Brooks agrees that beaver activity can restore wetland habitat, but he notes that in heavily urbanized watersheds, culverts and flood-control channels can limit how much additional water storage those ponds actually provide.',
+        choices: [
+          { label: 'A', text: 'Text 2 would reject the claim that beaver ponds affect water movement in any watershed.' },
+          { label: 'B', text: 'Text 2 would argue that beaver reintroduction is useful in some settings but less transformative in engineered urban systems.' },
+          { label: 'C', text: 'Text 2 would claim that drought-prone watersheds should prioritize new reservoirs over habitat restoration.' },
+          { label: 'D', text: 'Text 2 would agree that beaver reintroduction works only when local water tables are already high.' },
+        ],
+        answerKey: 'B',
+        tags: ['cross_text', 'ecology', 'qualification'],
+        estimatedTimeSec: 95,
+      }),
+
       rw_rhetoric_01: createItem({
         itemId: 'rw_rhetoric_01',
         section: 'reading_writing',
@@ -801,6 +821,26 @@ export function createDemoData() {
         answerKey: 'A',
         tags: ['rhetorical_synthesis', 'counterargument', 'hard'],
         estimatedTimeSec: 105,
+      }),
+
+      rw_rhetoric_03: createItem({
+        itemId: 'rw_rhetoric_03',
+        section: 'reading_writing',
+        domain: 'expression_of_ideas',
+        skill: 'rw_rhetorical_synthesis',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'The student wants to emphasize that the museum exhibit drew both local visitors and tourists. Which choice most effectively uses relevant information from the notes to accomplish this goal?',
+        passage: 'A student is drafting a paragraph about a new maritime museum exhibit.\n• The exhibit attracted 18,000 visitors in its first three months.\n• Forty-six percent of visitors reported living within 25 miles of the museum.\n• Thirty-nine percent of visitors said they traveled from another state or country.\n• Weekend attendance was higher than weekday attendance throughout the opening quarter.',
+        choices: [
+          { label: 'A', text: 'The exhibit was popular, drawing 18,000 visitors during its first three months and especially strong weekend crowds.' },
+          { label: 'B', text: 'In its first three months, the exhibit attracted a mixed audience: nearly half of visitors were local, while almost two-fifths traveled from outside the state or country.' },
+          { label: 'C', text: 'Weekend attendance at the exhibit exceeded weekday attendance throughout the opening quarter.' },
+          { label: 'D', text: 'Most visitors to the museum exhibit lived close enough to make a day trip without traveling.' },
+        ],
+        answerKey: 'B',
+        tags: ['rhetorical_synthesis', 'audience_emphasis', 'medium'],
+        estimatedTimeSec: 90,
       }),
 
       rw_transition_02: createItem({
@@ -1350,6 +1390,26 @@ export function createDemoData() {
         estimatedTimeSec: 65,
       }),
 
+      math_stats_03: createItem({
+        itemId: 'math_stats_03',
+        section: 'math',
+        domain: 'problem_solving_and_data_analysis',
+        skill: 'math_statistics_probability',
+        difficulty_band: 'medium',
+        item_format: 'grid_in',
+        stem: 'A data set contains the numbers 12, 15, 15, 18, and x. If the mean of the five numbers is 16, what is the value of x? Enter your answer as an integer.',
+        choices: [],
+        answerKey: '20',
+        responseValidation: {
+          kind: 'grid_in',
+          acceptedResponses: ['20'],
+          placeholder: 'e.g. 20',
+          instructions: 'Enter an integer with no units.',
+        },
+        tags: ['statistics', 'mean', 'missing_value', 'grid_in', 'medium'],
+        estimatedTimeSec: 70,
+      }),
+
       math_geometry_02: createItem({
         itemId: 'math_geometry_02',
         section: 'math',
@@ -1445,6 +1505,26 @@ export function createDemoData() {
         answerKey: 'B',
         tags: ['circles', 'sector_area', 'medium'],
         estimatedTimeSec: 80,
+      }),
+
+      math_circle_03: createItem({
+        itemId: 'math_circle_03',
+        section: 'math',
+        domain: 'geometry_and_trigonometry',
+        skill: 'math_circles',
+        difficulty_band: 'medium',
+        item_format: 'grid_in',
+        stem: 'A circle is inscribed in a square, and the circle\'s diameter is 12. What is the area of the square? Enter your answer as an integer.',
+        choices: [],
+        answerKey: '144',
+        responseValidation: {
+          kind: 'grid_in',
+          acceptedResponses: ['144'],
+          placeholder: 'e.g. 144',
+          instructions: 'Enter an integer with no units.',
+        },
+        tags: ['circles', 'inscribed_figure', 'diameter_to_side', 'grid_in', 'medium'],
+        estimatedTimeSec: 70,
       }),
 
       math_trig_02: createItem({
@@ -2024,6 +2104,29 @@ export function createDemoData() {
         misconception_tags: ['acknowledgment_as_full_support', 'stock_framing_misapplication'],
       }),
 
+      rw_cross_text_03: createRationale({
+        item_id: 'rw_cross_text_03',
+        explanation: 'Text 1 presents beaver reintroduction as a fast way to improve watershed resilience. Text 2 agrees that beavers can help restore wetlands, but adds that urban drainage infrastructure can cap how much extra water storage those ponds provide. So Text 2 qualifies the claim by limiting where the effect is strongest.',
+        wrongRationales: {
+          A: 'A student who picks A likely treats Text 2’s limitation as total rejection. This happens when a student ignores the part of Text 2 that agrees beaver activity can restore habitat.',
+          C: 'A student who picks C likely imports an unsupported policy preference. This happens when a student answers with a plausible-sounding alternative rather than the actual relationship between the texts.',
+          D: 'A student who picks D likely reverses the causal logic in Text 1. This happens when a student confuses an effect of beaver ponds (raising water tables) with a prerequisite for them to help.',
+        },
+        misconceptionByChoice: {
+          A: 'qualification_overread_as_rejection',
+          C: 'unsupported_policy_substitution',
+          D: 'effect_mistaken_for_requirement',
+        },
+        hint_ladder: [
+          'Text 1 says beaver ponds improve resilience by slowing runoff and raising water tables.',
+          'Text 2 does not deny that benefit; it adds a condition about heavily engineered urban watersheds.',
+          'Look for a choice that keeps the benefit but narrows how universal or dramatic it is.',
+          'Choices A, C, and D all go beyond what Text 2 actually says.',
+          'The correct answer is B because Text 2 treats beaver reintroduction as helpful but less transformative where infrastructure limits storage.',
+        ],
+        misconception_tags: ['qualification_overread_as_rejection', 'unsupported_policy_substitution'],
+      }),
+
       rw_rhetoric_01: createRationale({
         item_id: 'rw_rhetoric_01',
         explanation: 'The task requires emphasizing both the study\u2019s duration (ten years) and its sample size (1,200 participants). Only Choice B explicitly names both features and connects them to the study\u2019s conclusions.',
@@ -2068,6 +2171,29 @@ export function createDemoData() {
           'The correct answer is A because it uses the weak correlation and null studies from the notes to argue the relationship is not strong or universal.',
         ],
         misconception_tags: ['restating_claim_as_counter', 'invented_methodological_critique'],
+      }),
+
+      rw_rhetoric_03: createRationale({
+        item_id: 'rw_rhetoric_03',
+        explanation: 'The goal is to emphasize that the exhibit attracted both nearby and far-traveling visitors. Choice B does that by pairing the local figure (46%) with the out-of-state or international figure (39%), directly highlighting the mixed audience.',
+        wrongRationales: {
+          A: 'A student who picks A likely chooses the broad summary because it sounds positive. This happens when a student mentions attendance totals and weekends but omits the specific contrast between local and traveling visitors.',
+          C: 'A student who picks C likely fixates on the weekend-attendance note. This happens when a student selects a true detail that does not match the rhetorical goal of showing audience mix.',
+          D: 'A student who picks D likely overstates the local share as a majority. This happens when a student mistakes 46% for “most,” ignoring that the prompt requires both local and tourist attendance.',
+        },
+        misconceptionByChoice: {
+          A: 'relevant_stats_omitted',
+          C: 'goal_detail_mismatch',
+          D: 'plurality_overstated_as_majority',
+        },
+        hint_ladder: [
+          'Read the rhetorical goal carefully: you must show the exhibit appealed to both local and traveling visitors.',
+          'Which notes speak directly to where visitors came from?',
+          'The strongest sentence should include both the local percentage and the traveled-from-afar percentage.',
+          'Weekend attendance and total attendance are true, but they do not establish the contrast the student wants.',
+          'The correct answer is B because it directly shows the exhibit drew both local visitors and tourists.',
+        ],
+        misconception_tags: ['relevant_stats_omitted', 'goal_detail_mismatch'],
       }),
 
       rw_transition_02: createRationale({
@@ -2714,6 +2840,29 @@ export function createDemoData() {
         misconception_tags: ['incomplete_complement_red_only', 'incomplete_complement_green_only'],
       }),
 
+      math_stats_03: createRationale({
+        item_id: 'math_stats_03',
+        explanation: 'If the mean of 5 numbers is 16, then their total is 5 × 16 = 80. The known numbers add to 12 + 15 + 15 + 18 = 60, so x = 80 − 60 = 20.',
+        wrongRationales: {
+          '16': 'A student who enters 16 likely copies the mean instead of solving for the missing value. This happens when a student notices the mean but does not convert it into the total of the full data set.',
+          '20.0': 'A student who enters 20.0 has the right value but may not notice the integer-only expectation. This happens when a student solves correctly but overlooks the response-format instruction.',
+          '64': 'A student who enters 64 likely mistakes the total or subtracts in the wrong place. This happens when a student identifies 80 as the total but does not isolate the missing part cleanly.',
+        },
+        misconceptionByChoice: {
+          '16': 'mean_repeated_as_missing_value',
+          '20.0': 'format_instruction_overlooked',
+          '64': 'total_confused_with_missing_part',
+        },
+        hint_ladder: [
+          'Start with the definition of mean: total ÷ number of values = 16.',
+          'Multiply 16 by 5 to find the total of all five numbers.',
+          'Add the four known numbers, then compare that sum to the required total.',
+          'The missing value is whatever amount brings the known sum up to 80.',
+          'The correct answer is 20 because 60 + 20 = 80.',
+        ],
+        misconception_tags: ['mean_repeated_as_missing_value', 'total_confused_with_missing_part'],
+      }),
+
       math_geometry_02: createRationale({
         item_id: 'math_geometry_02',
         explanation: 'Area of triangle = (1/2)(14)(9) = 63 cm\u00B2. The square has the same area: s\u00B2 = 63, so s = \u221A63.',
@@ -2828,6 +2977,29 @@ export function createDemoData() {
           'The correct answer is B because (1/5) × 100π = 20π.',
         ],
         misconception_tags: ['wrong_formula_recall', 'wrong_fraction_reduction'],
+      }),
+
+      math_circle_03: createRationale({
+        item_id: 'math_circle_03',
+        explanation: 'For an inscribed circle, the square’s side length equals the circle’s diameter. If the diameter is 12, then the square’s side is 12 and its area is 12² = 144.',
+        wrongRationales: {
+          '12': 'A student who enters 12 likely gives the side length instead of the area. This happens when a student correctly matches diameter to side but stops one step too early.',
+          '36': 'A student who enters 36 likely uses the radius as the side length. This happens when a student divides the diameter by 2 and then squares the wrong measure.',
+          '288': 'A student who enters 288 likely doubles the correct area after finding 12². This happens when a student confuses area with a perimeter-style “two sides” calculation.',
+        },
+        misconceptionByChoice: {
+          '12': 'side_reported_instead_of_area',
+          '36': 'radius_used_instead_of_diameter',
+          '288': 'area_doubled_without_reason',
+        },
+        hint_ladder: [
+          'In a square with an inscribed circle, the circle touches all four sides.',
+          'That means the circle’s diameter is exactly the same as the square’s side length.',
+          'So the side length is 12. Now convert side length to area by squaring it.',
+          'Do not stop at 12 or switch to the radius unless the problem asks for it.',
+          'The correct answer is 144 because 12 × 12 = 144.',
+        ],
+        misconception_tags: ['side_reported_instead_of_area', 'radius_used_instead_of_diameter'],
       }),
 
       math_trig_02: createRationale({

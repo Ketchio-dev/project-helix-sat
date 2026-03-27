@@ -76,13 +76,13 @@ test('coverage audit: demo item bank spans both SAT sections and all top-level d
   const items = Object.values(data.items);
   const rationales = Object.values(data.rationales);
 
-  assert.equal(items.length, 62);
-  assert.equal(rationales.length, 62);
+  assert.equal(items.length, 66);
+  assert.equal(rationales.length, 66);
 
   const sections = countBy(items, (item) => item.section);
   assert.deepEqual(Object.keys(sections).sort(), ['math', 'reading_writing']);
-  assert.equal(sections.reading_writing, 29);
-  assert.equal(sections.math, 33);
+  assert.equal(sections.reading_writing, 31);
+  assert.equal(sections.math, 35);
   assert.ok(Math.abs(sections.reading_writing - sections.math) <= 4);
 
   for (const [section, expectedDomains] of Object.entries(expectedDomainsBySection)) {
@@ -101,7 +101,7 @@ test('coverage audit: demo item bank spans both SAT sections and all top-level d
   assert.ok(items.every((item) => typeof item.answerKey === 'string' && item.answerKey.length >= 1));
   assert.ok(rationales.every((rationale) => Array.isArray(rationale.hint_ladder) && rationale.hint_ladder.length >= 3));
   const mathGridInItems = items.filter((item) => item.item_format === 'grid_in' && item.section === 'math');
-  assert.equal(mathGridInItems.length, 5);
+  assert.equal(mathGridInItems.length, 7);
   assert.ok(items.some((item) => item.skill === 'rw_punctuation'));
   assert.ok(items.filter((item) => item.skill === 'rw_transitions').length >= 6);
   assert.ok(items.filter((item) => item.skill === 'math_linear_equations').length >= 5);
@@ -162,9 +162,9 @@ test('coverage audit: learner app flow exposes both sections through timed and m
     }).then((res) => res.json());
 
     const moduleSections = countBy(moduleSimulation.items, (item) => item.section);
-    assert.equal(moduleSimulation.items.length, 8);
-    assert.equal(moduleSimulation.timing.timeLimitSec, 840);
-    assert.deepEqual(moduleSections, { math: 8 });
+    assert.equal(moduleSimulation.items.length, 10);
+    assert.equal(moduleSimulation.timing.timeLimitSec, 1050);
+    assert.deepEqual(moduleSections, { math: 10 });
     assert.ok(new Set(moduleSimulation.items.map((item) => item.skill)).size >= 6);
     assert.ok(new Set(moduleSimulation.items.map((item) => item.domain)).size >= 4);
     assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 2);

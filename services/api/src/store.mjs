@@ -1703,7 +1703,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         ...api.getAttempts(userId).slice(-8).map((attempt) => attempt.item_id),
         ...api.getActiveSessions(userId).flatMap((session) => api.getSessionItems(session.id).map((entry) => entry.item_id)),
       ])];
-      const moduleItemCount = 8;
+      const moduleItemCount = 10;
       const recommendedPaceSec = 105;
       const moduleItems = selectSessionItems(
         Object.values(state.items),
