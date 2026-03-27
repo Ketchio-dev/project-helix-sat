@@ -1,19 +1,20 @@
-# SAT coverage audit (2026-03-26)
+# SAT coverage audit (2026-03-27)
 
 ## Verdict
 
-Project Helix SAT **credibly covers both SAT Reading/Writing and Math as a prototype vertical slice**, but **does not yet credibly cover the full SAT blueprint at production depth**.
+Project Helix SAT **credibly covers both SAT Reading/Writing and Math as a prototype vertical slice**, and the Reading/Writing blueprint is now materially stronger, but **the overall SAT blueprint is still incomplete at production depth**.
 
 ## Evidence gathered
 
 ### Demo item bank
-- 44 demo items total
-- 23 Reading/Writing items, 21 Math items
+- 47 demo items total
+- 26 Reading/Writing items, 21 Math items
 - All 8 top-level SAT domains represented
-  - Reading/Writing: craft and structure (7), information and ideas (8), expression of ideas (4), standard English conventions (4)
+  - Reading/Writing: craft and structure (7), information and ideas (8), expression of ideas (5), standard English conventions (6)
   - Math: algebra (7), advanced math (6), problem solving and data analysis (4), geometry and trigonometry (4)
-- 44/44 items have canonical rationales and hint ladders
-- 21 distinct skill buckets are represented across the item bank
+- 47/47 items have canonical rationales and hint ladders
+- 22 distinct skill buckets are represented across the item bank
+- Reading/Writing punctuation is now explicitly covered, and organization is no longer a partial skill in the audit
 
 ### App flow
 - Learner dashboard loads profile, plan, review recommendations, and latest session summaries
@@ -23,24 +24,27 @@ Project Helix SAT **credibly covers both SAT Reading/Writing and Math as a proto
 
 ## Major risks
 
-1. **All 44 items use the same `single_select` format.**
+1. **All 47 items use the same `single_select` format.**
    - This is enough for a prototype, but not enough to claim robust SAT Math coverage because there are no student-produced-response / grid-in style items and no richer interaction patterns.
 2. **Skill depth is shallow.**
-   - Many skills have only 1-2 items, which is enough to prove wiring but not enough for stable adaptivity, retake resistance, or strong diagnostic confidence.
-3. **Blueprint traceability is loose.**
-   - Item skill IDs and ontology skill names do not always line up one-to-one, making coverage claims harder to audit automatically.
-4. **Repo messaging is stale in places.**
-   - The current README still describes an 11-item library, which understates the current 44-item demo bank and weakens audit clarity.
+   - Several math skills still have only 1-3 items, which is enough to prove wiring but not enough for stable adaptivity, retake resistance, or strong diagnostic confidence.
+3. **Test-core realism is still thin.**
+   - Module simulation remains only 4 mixed-section items, so exam realism is still meaningfully below a real SAT module.
+4. **Some shipped endpoints are still underused.**
+   - `/api/session/review` is exposed by the API but still lacks UI and API-test usage.
 
 ## Recommended next fixes
 
-1. Add missing high-signal SAT formats first:
+1. Deepen thin math skills first:
+   - Linear equations and inequalities
+   - Circles / area-volume-lines
+   - Right-triangle trigonometry
+2. Add missing high-signal SAT formats:
    - Math student-produced response/grid-in items
    - More varied Reading/Writing passage structures
-2. Raise minimum depth on thin skills to at least 4 items per skill before making stronger coverage claims.
-3. Normalize ontology skill names and demo item skill IDs so CI can produce a trustworthy coverage matrix automatically.
-4. Refresh top-level product docs/README counts so the repo narrative matches the shipped demo bank and test surface.
+3. Raise minimum depth on thin skills to at least 4 items per skill before making stronger coverage claims.
+4. Wire and regression-test `/api/session/review` if per-session postmortems are part of the intended learner flow.
 
 ## Bottom line
 
-Today the product demonstrates a believable **two-section SAT prototype** with real learner flow coverage in both Reading/Writing and Math. It is strong enough for a demo/audit pass, but not yet strong enough for a full-fidelity SAT coverage claim.
+Today the product demonstrates a believable **two-section SAT prototype** with improved Reading/Writing blueprint coverage and real learner-flow coverage in both sections. It is strong enough for a stronger demo/audit pass, but not yet strong enough for a full-fidelity SAT coverage claim.

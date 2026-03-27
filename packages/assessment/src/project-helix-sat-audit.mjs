@@ -29,7 +29,7 @@ const ONTOLOGY_SKILL_ALIASES = {
     organization: ['rw_transitions'],
     sentence_boundaries: ['rw_sentence_boundaries'],
     form_structure_and_sense: ['rw_form_structure_sense'],
-    punctuation: [],
+    punctuation: ['rw_punctuation'],
   },
   math: {
     linear_equations_and_inequalities: ['math_linear_equations'],
@@ -44,7 +44,6 @@ const ONTOLOGY_SKILL_ALIASES = {
 };
 
 const SEMANTIC_GAP_SKILLS = new Set([
-  'reading_writing:organization',
   'math:linear_equations_and_inequalities',
   'math:nonlinear_functions',
   'math:area_volume_and_lines',
@@ -246,7 +245,6 @@ export function buildProjectHelixSatAudit({ ontology, routerSource, appSource, a
   ];
 
   const nextFixes = [
-    'Add explicit punctuation items plus broader organization coverage in Reading/Writing.',
     'Deepen thin math areas with at least one additional item each for linear equations, circles, and trigonometry.',
     'Separate module simulations by section and increase item counts toward exam-realistic module shapes.',
     'Wire and regression-test /api/session/review if per-session postmortems are part of the intended learner flow.',

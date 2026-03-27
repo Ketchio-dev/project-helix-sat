@@ -716,6 +716,26 @@ export function createDemoData() {
         estimatedTimeSec: 60,
       }),
 
+      rw_transition_03: createItem({
+        itemId: 'rw_transition_03',
+        section: 'reading_writing',
+        domain: 'expression_of_ideas',
+        skill: 'rw_transitions',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'Which choice completes the text with the most logical transition?',
+        passage: 'Community historian Amina Rahman argues that oral-history archives preserve details traditional records often overlook. ______, she points to one interview in which a dockworker described how unofficial translation practices helped new arrivals navigate the port\'s hiring system.',
+        choices: [
+          { label: 'A', text: 'However,' },
+          { label: 'B', text: 'Similarly,' },
+          { label: 'C', text: 'For example,' },
+          { label: 'D', text: 'As a result,' },
+        ],
+        answerKey: 'C',
+        tags: ['transitions', 'organization', 'example_support', 'medium'],
+        estimatedTimeSec: 70,
+      }),
+
       rw_boundary_02: createItem({
         itemId: 'rw_boundary_02',
         section: 'reading_writing',
@@ -734,6 +754,46 @@ export function createDemoData() {
         answerKey: 'D',
         tags: ['standard_english', 'sentence_boundaries', 'semicolon', 'hard'],
         estimatedTimeSec: 90,
+      }),
+
+      rw_punctuation_01: createItem({
+        itemId: 'rw_punctuation_01',
+        section: 'reading_writing',
+        domain: 'standard_english_conventions',
+        skill: 'rw_punctuation',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+        passage: 'The committee\'s newest proposal ______ a pilot program that would convert two downtown parking spaces on each block into short-term loading zones ______ has drawn support from small-business owners who say deliveries currently snarl traffic.',
+        choices: [
+          { label: 'A', text: ', a pilot program that would convert two downtown parking spaces on each block into short-term loading zones,' },
+          { label: 'B', text: ', a pilot program that would convert two downtown parking spaces on each block into short-term loading zones;' },
+          { label: 'C', text: ' a pilot program that would convert two downtown parking spaces on each block into short-term loading zones,' },
+          { label: 'D', text: ': a pilot program that would convert two downtown parking spaces on each block into short-term loading zones,' },
+        ],
+        answerKey: 'A',
+        tags: ['standard_english', 'punctuation', 'nonessential_phrase', 'medium'],
+        estimatedTimeSec: 75,
+      }),
+
+      rw_punctuation_02: createItem({
+        itemId: 'rw_punctuation_02',
+        section: 'reading_writing',
+        domain: 'standard_english_conventions',
+        skill: 'rw_punctuation',
+        difficulty_band: 'easy',
+        item_format: 'single_select',
+        stem: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+        passage: 'The mayor cited three reasons for delaying the vote ______ rising construction costs, unresolved permit questions, and continued opposition from nearby residents.',
+        choices: [
+          { label: 'A', text: ',' },
+          { label: 'B', text: ';' },
+          { label: 'C', text: ':' },
+          { label: 'D', text: '-' },
+        ],
+        answerKey: 'C',
+        tags: ['standard_english', 'punctuation', 'colon', 'easy_start'],
+        estimatedTimeSec: 55,
       }),
 
       rw_form_structure_01: createItem({
@@ -1624,6 +1684,29 @@ export function createDemoData() {
         misconception_tags: ['agreement_where_opposition_exists', 'cumulative_misread_of_reversal'],
       }),
 
+      rw_transition_03: createRationale({
+        item_id: 'rw_transition_03',
+        explanation: 'The second sentence gives a specific interview that illustrates the broad claim in the first sentence. "For example" correctly introduces a concrete illustration of a general point.',
+        wrongRationales: {
+          A: 'A student who picks "However" likely invents a contrast that is not present. This happens when a student expects the second sentence to challenge the first, even though it supports the same idea.',
+          B: 'A student who picks "Similarly" likely treats the second sentence as a parallel claim rather than a concrete illustration. This happens when a student notices topical similarity but misses the example relationship.',
+          D: 'A student who picks "As a result" likely misreads the interview as a consequence of the claim. This happens when a student confuses supporting evidence with an outcome caused by the earlier sentence.',
+        },
+        misconceptionByChoice: {
+          A: 'contrast_invented_where_support_exists',
+          B: 'parallel_claim_instead_of_example',
+          D: 'example_misread_as_result',
+        },
+        hint_ladder: [
+          'Ask what the second sentence is doing: is it contrasting, repeating, giving a result, or offering an example?',
+          'The first sentence makes a general claim about oral-history archives; the second sentence supplies one interview that illustrates that claim.',
+          'Eliminate "However" because there is no contradiction and "As a result" because the interview is not a consequence.',
+          '"Similarly" would introduce another parallel idea, but the sentence instead narrows to one specific case.',
+          'The correct answer is C because "For example" properly signals that the dockworker interview is evidence supporting the broader claim.',
+        ],
+        misconception_tags: ['contrast_invented_where_support_exists', 'parallel_claim_instead_of_example'],
+      }),
+
       rw_boundary_02: createRationale({
         item_id: 'rw_boundary_02',
         explanation: 'Both sides of the blank are independent clauses. A semicolon correctly joins two independent clauses without a coordinating conjunction.',
@@ -1645,6 +1728,52 @@ export function createDemoData() {
           'The correct answer is D because a semicolon correctly joins the two related independent clauses.',
         ],
         misconception_tags: ['comma_splice_acceptance', 'conjunctive_adverb_as_conjunction'],
+      }),
+
+      rw_punctuation_01: createRationale({
+        item_id: 'rw_punctuation_01',
+        explanation: 'The phrase "a pilot program that would convert two downtown parking spaces on each block into short-term loading zones" renames "proposal" and is not essential to identifying it. A nonessential appositive should be set off with commas on both sides.',
+        wrongRationales: {
+          B: 'A student who picks the semicolon version likely confuses an appositive with a new independent clause. This happens when a student sees a long phrase and assumes it can be separated with sentence-boundary punctuation even though the phrase is not a complete sentence.',
+          C: 'A student who picks the no-opening-comma version likely notices the appositive ends but not where it begins. This happens when a student punctuates only one side of a nonessential phrase instead of bracketing the whole interruption.',
+          D: 'A student who picks the colon version likely treats the appositive like a list or explanation that follows a complete clause. This happens when a student overlooks that "The committee\'s newest proposal" is not a complete clause before the inserted phrase.',
+        },
+        misconceptionByChoice: {
+          B: 'appositive_as_independent_clause',
+          C: 'one_sided_nonessential_punctuation',
+          D: 'colon_after_incomplete_clause',
+        },
+        hint_ladder: [
+          'Identify the function of the long phrase after "proposal" — does it rename the proposal or add a new sentence?',
+          'Because the phrase renames "proposal," it is an appositive, not an independent clause.',
+          'Nonessential appositives need matching punctuation on both sides, so eliminate choices with only one comma or a semicolon.',
+          'A colon works only after a complete clause, but "The committee\'s newest proposal" is not complete in this sentence structure.',
+          'The correct answer is A because commas properly set off the nonessential appositive phrase.',
+        ],
+        misconception_tags: ['appositive_as_independent_clause', 'one_sided_nonessential_punctuation'],
+      }),
+
+      rw_punctuation_02: createRationale({
+        item_id: 'rw_punctuation_02',
+        explanation: 'The clause before the blank is complete and introduces the three reasons that follow. A colon is the standard punctuation mark for introducing a list after a complete clause.',
+        wrongRationales: {
+          A: 'A student who picks the comma likely treats any pause before a list as acceptable punctuation. This happens when a student uses a comma where stronger introductory punctuation is required.',
+          B: 'A student who picks the semicolon likely confuses a list introduction with a sentence boundary. This happens when a student uses a semicolon even though what follows is not an independent clause.',
+          D: 'A student who picks the dash likely reaches for informal emphasis rather than the clearest conventional mark. This happens when a student notices that something important follows but misses that a colon is the standard choice for a straightforward list.',
+        },
+        misconceptionByChoice: {
+          A: 'comma_before_list',
+          B: 'semicolon_before_nonclause_list',
+          D: 'dash_instead_of_colon',
+        },
+        hint_ladder: [
+          'Read the words before the blank: do they form a complete clause that sets up what comes next?',
+          '"The mayor cited three reasons for delaying the vote" is a complete idea and clearly introduces a list.',
+          'A comma is too weak and a semicolon requires another independent clause, which the list is not.',
+          'A dash can add dramatic emphasis, but for a standard list introduction after a complete clause, a colon is the clearest conventional choice.',
+          'The correct answer is C because the colon properly introduces the three reasons that follow.',
+        ],
+        misconception_tags: ['comma_before_list', 'semicolon_before_nonclause_list'],
       }),
 
       rw_form_structure_01: createRationale({

@@ -11,22 +11,24 @@ const apiTestSource = fs.readFileSync(new URL('../tests/api.test.mjs', import.me
 test('project helix audit captures current MVP coverage and blueprint gaps', () => {
   const audit = buildProjectHelixSatAudit({ ontology, routerSource, appSource, apiTestSource });
 
-  assert.equal(audit.content.itemCount, 44);
-  assert.equal(audit.content.rationaleCount, 44);
+  assert.equal(audit.content.itemCount, 47);
+  assert.equal(audit.content.rationaleCount, 47);
   assert.deepEqual(audit.content.sectionCounts, {
     math: 21,
-    reading_writing: 23,
+    reading_writing: 26,
   });
+  assert.equal(audit.content.skillCounts.rw_punctuation, 2);
+  assert.equal(audit.content.skillCounts.rw_transitions, 3);
 
   assert.equal(audit.verdict.crossSectionCoverage, 'credible_for_mvp');
   assert.equal(audit.verdict.blueprintCoverage, 'incomplete');
 
   assert.equal(audit.ontologyCoverage.totalSkills, 19);
-  assert.equal(audit.ontologyCoverage.coveredSkills, 13);
-  assert.equal(audit.ontologyCoverage.partialSkills, 5);
-  assert.equal(audit.ontologyCoverage.missingSkills.length, 1);
-  assert.equal(audit.ontologyCoverage.missingSkills[0].skill, 'punctuation');
-  assert.ok(audit.ontologyCoverage.partialSkillDetails.some((entry) => entry.skill === 'organization'));
+  assert.equal(audit.ontologyCoverage.coveredSkills, 15);
+  assert.equal(audit.ontologyCoverage.partialSkills, 4);
+  assert.equal(audit.ontologyCoverage.missingSkills.length, 0);
+  assert.ok(!audit.ontologyCoverage.partialSkillDetails.some((entry) => entry.skill === 'organization'));
+  assert.ok(!audit.majorRisks.some((entry) => entry.includes('punctuation')));
 
   assert.deepEqual(audit.appFlow.routerMissing, []);
   assert.deepEqual(audit.appFlow.uiMissing, []);

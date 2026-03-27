@@ -10,8 +10,8 @@ Adaptive SAT Intelligence Platform — an AI-powered SAT prep app with adaptive 
 - **Adaptive item selection** — selector-based engine with exposure tracking and skill targeting
 - **Contract-enforced API** — OpenAPI + JSON schemas aligned with runtime, request validation via middleware
 - **Cold-start handling** — `insufficient_evidence` and `needs_diagnostic` states for new learners
-- **Content library** — 11 items across 8 skills with full rationales
-- **Test suite** — 64 tests passing (`node --test`)
+- **Content library** — demo item bank spanning both SAT sections with canonical rationales and hint ladders
+- **Test suite** — automated regression coverage via `npm test` and `npm run check`
 - **Login UI** — web shell with credential entry and localStorage token persistence
 
 ## Quick Start
@@ -91,7 +91,7 @@ tests/
 
 ## Validation
 
-Run the full test suite (64 tests):
+Run the full test suite:
 ```bash
 node --test
 ```
