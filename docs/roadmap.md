@@ -36,3 +36,15 @@
 - Org seats and assignments
 - Score-delta planner upgrades
 - Error DNA visualization
+
+## Current product-completion focus
+
+Before broadening Phase 4 surfaces, prioritize learner-product completion:
+- first-15-minute activation
+- post-session conviction
+- review-as-remediation
+- visible personalization
+- SAT fidelity and content depth
+- retention through automatic next actions
+
+See `docs/product-completion-milestones.md` for the concrete milestone and issue tree.
