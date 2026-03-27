@@ -76,13 +76,13 @@ test('coverage audit: demo item bank spans both SAT sections and all top-level d
   const items = Object.values(data.items);
   const rationales = Object.values(data.rationales);
 
-  assert.equal(items.length, 66);
-  assert.equal(rationales.length, 66);
+  assert.equal(items.length, 70);
+  assert.equal(rationales.length, 70);
 
   const sections = countBy(items, (item) => item.section);
   assert.deepEqual(Object.keys(sections).sort(), ['math', 'reading_writing']);
-  assert.equal(sections.reading_writing, 31);
-  assert.equal(sections.math, 35);
+  assert.equal(sections.reading_writing, 33);
+  assert.equal(sections.math, 37);
   assert.ok(Math.abs(sections.reading_writing - sections.math) <= 4);
 
   for (const [section, expectedDomains] of Object.entries(expectedDomainsBySection)) {
@@ -101,10 +101,11 @@ test('coverage audit: demo item bank spans both SAT sections and all top-level d
   assert.ok(items.every((item) => typeof item.answerKey === 'string' && item.answerKey.length >= 1));
   assert.ok(rationales.every((rationale) => Array.isArray(rationale.hint_ladder) && rationale.hint_ladder.length >= 3));
   const mathGridInItems = items.filter((item) => item.item_format === 'grid_in' && item.section === 'math');
-  assert.equal(mathGridInItems.length, 7);
+  assert.equal(mathGridInItems.length, 8);
   assert.ok(items.some((item) => item.skill === 'rw_punctuation'));
-  assert.ok(items.filter((item) => item.skill === 'rw_transitions').length >= 6);
+  assert.ok(items.filter((item) => item.skill === 'rw_transitions').length >= 8);
   assert.ok(items.filter((item) => item.skill === 'math_linear_equations').length >= 5);
+  assert.ok(items.filter((item) => item.skill === 'math_quadratic_functions').length >= 6);
   assert.ok(items.filter((item) => item.skill === 'math_circles').length >= 2);
   assert.ok(items.filter((item) => item.skill === 'math_trigonometry').length >= 5);
 });

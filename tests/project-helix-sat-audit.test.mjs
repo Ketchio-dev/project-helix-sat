@@ -12,25 +12,26 @@ const generatedAuditSnapshot = fs.readFileSync(new URL('../docs/audits/project-h
 test('project helix audit captures current MVP coverage and blueprint gaps', () => {
   const audit = buildProjectHelixSatAudit({ ontology, routerSource, appSource, apiTestSource });
 
-  assert.equal(audit.content.itemCount, 66);
-  assert.equal(audit.content.rationaleCount, 66);
+  assert.equal(audit.content.itemCount, 70);
+  assert.equal(audit.content.rationaleCount, 70);
   assert.deepEqual(audit.content.sectionCounts, {
-    math: 35,
-    reading_writing: 31,
+    math: 37,
+    reading_writing: 33,
   });
   assert.deepEqual(audit.content.itemFormatCounts, {
-    grid_in: 7,
-    single_select: 59,
+    grid_in: 8,
+    single_select: 62,
   });
 
   assert.equal(audit.verdict.crossSectionCoverage, 'credible_for_mvp');
   assert.equal(audit.verdict.blueprintCoverage, 'incomplete');
 
   assert.equal(audit.ontologyCoverage.totalSkills, 19);
-  assert.equal(audit.ontologyCoverage.coveredSkills, 14);
-  assert.equal(audit.ontologyCoverage.partialSkills, 5);
+  assert.equal(audit.ontologyCoverage.coveredSkills, 16);
+  assert.equal(audit.ontologyCoverage.partialSkills, 3);
   assert.equal(audit.ontologyCoverage.missingSkills.length, 0);
-  assert.ok(audit.ontologyCoverage.partialSkillDetails.some((entry) => entry.skill === 'organization'));
+  assert.ok(audit.ontologyCoverage.skills.some((entry) => entry.skill === 'organization' && entry.status === 'covered'));
+  assert.ok(audit.ontologyCoverage.skills.some((entry) => entry.skill === 'nonlinear_functions' && entry.status === 'covered'));
   assert.ok(audit.ontologyCoverage.partialSkillDetails.some((entry) => entry.skill === 'right_triangle_trigonometry'));
 
   assert.deepEqual(audit.appFlow.routerMissing, []);
@@ -39,7 +40,7 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   assert.deepEqual(audit.appFlow.exposedButUnused, []);
   assert.equal(audit.formatRealism.allSingleSelect, false);
   assert.equal(audit.formatRealism.hasMathGridIn, true);
-  assert.equal(audit.formatRealism.mathGridInCount, 7);
+  assert.equal(audit.formatRealism.mathGridInCount, 8);
 
   assert.equal(audit.sessions.diagnostic.itemCount, 13);
   assert.deepEqual(audit.sessions.diagnostic.sectionCounts, {
@@ -55,9 +56,8 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   assert.equal(audit.sessions.moduleSimulation.timeLimitSec, 1050);
   assert.equal(audit.sessions.sessionReview.blockedUntilCompletion, true);
   assert.ok(audit.majorRisks.some((entry) => entry.includes('partial')), 'should flag partial blueprint skills as a risk');
-  assert.ok(audit.majorRisks.some((entry) => entry.includes('grid-in')), 'should flag narrow grid-in coverage as a risk');
   assert.ok(audit.majorRisks.some((entry) => entry.includes('Module simulation')), 'should flag module simulation length as a risk');
-  assert.equal(audit.majorRisks.length, 3);
+  assert.equal(audit.majorRisks.length, 2);
   assert.ok(audit.nextFixes.some((entry) => entry.includes('Continue deepening linear_equations_and_inequalities')));
   assert.equal(formatProjectHelixSatAudit(audit).trimEnd(), generatedAuditSnapshot.trimEnd());
 });

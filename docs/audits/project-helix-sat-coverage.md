@@ -5,25 +5,23 @@
 - Blueprint coverage: incomplete
 
 ## Content coverage
-- Items: 66
-- Rationales: 66
-- Sections: math=35, reading_writing=31
-- Domains: math:advanced_math=8, math:algebra=11, math:geometry_and_trigonometry=11, math:problem_solving_and_data_analysis=5, reading_writing:craft_and_structure=8, reading_writing:expression_of_ideas=9, reading_writing:information_and_ideas=8, reading_writing:standard_english_conventions=6
-- Formats: grid_in=7, single_select=59
+- Items: 70
+- Rationales: 70
+- Sections: math=37, reading_writing=33
+- Domains: math:advanced_math=10, math:algebra=11, math:geometry_and_trigonometry=11, math:problem_solving_and_data_analysis=5, reading_writing:craft_and_structure=8, reading_writing:expression_of_ideas=11, reading_writing:information_and_ideas=8, reading_writing:standard_english_conventions=6
+- Formats: grid_in=8, single_select=62
 
 ## Blueprint alignment
 - Ontology skills: 19
-- Covered: 14
-- Partial: 5
+- Covered: 16
+- Partial: 3
 - Missing: 0
 
 ### Missing skills
 - none
 
 ### Partial skills
-- reading_writing/expression_of_ideas/organization (6 mapped items)
 - math/algebra/linear_equations_and_inequalities (5 mapped items)
-- math/advanced_math/nonlinear_functions (4 mapped items)
 - math/geometry_and_trigonometry/area_volume_and_lines (6 mapped items)
 - math/geometry_and_trigonometry/right_triangle_trigonometry (5 mapped items)
 
@@ -33,7 +31,7 @@
 ## Format realism
 - All items single_select: false
 - Math grid-in coverage present: true
-- Math grid-in count: 7
+- Math grid-in count: 8
 
 ## App flow evidence
 - Router missing core endpoints: none
@@ -48,10 +46,8 @@
 - Session review gated until completion: true
 
 ## Major risks
-- 5 blueprint skill(s) still marked partial — full coverage requires more depth before stronger alignment claims.
-- Math has only 7 grid-in / student-produced-response items — format realism remains a narrow hand-authored slice.
+- 3 blueprint skill(s) still marked partial — full coverage requires more depth before stronger alignment claims.
 - Module simulation is 10 math items — real SAT modules are 22–27 items, so the current shape is still much shorter than exam-realistic.
 
 ## Next fixes
-- Keep deepening partial Reading/Writing blueprint lanes (organization) with stronger hand-authored items or improved generation constraints before claiming broader coverage.
-- Continue deepening linear_equations_and_inequalities, nonlinear_functions, area_volume_and_lines, right_triangle_trigonometry in Math with hand-authored depth or materially stronger prompt guidance before claiming full blueprint alignment.
+- Continue deepening linear_equations_and_inequalities, area_volume_and_lines, right_triangle_trigonometry in Math with hand-authored depth or materially stronger prompt guidance before claiming full blueprint alignment.

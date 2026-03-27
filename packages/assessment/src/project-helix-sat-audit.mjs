@@ -44,9 +44,7 @@ const ONTOLOGY_SKILL_ALIASES = {
 };
 
 const SEMANTIC_GAP_SKILLS = new Set([
-  'reading_writing:organization',
   'math:linear_equations_and_inequalities',
-  'math:nonlinear_functions',
   'math:area_volume_and_lines',
   'math:right_triangle_trigonometry',
 ]);
