@@ -86,7 +86,7 @@ function compareByItemId(left, right) {
   return left.itemId.localeCompare(right.itemId);
 }
 
-function compareDiagnostic(left, right, skillOrder) {
+function compareDiagnostic(left, right, skillOrder, exposureCounts = {}) {
   const difficultyDelta = getDifficultyOrder(left) - getDifficultyOrder(right);
   if (difficultyDelta !== 0) return difficultyDelta;
 
@@ -97,21 +97,26 @@ function compareDiagnostic(left, right, skillOrder) {
   const sectionDelta = getSectionOrder(left) - getSectionOrder(right);
   if (sectionDelta !== 0) return sectionDelta;
 
+  const exposureDelta = (exposureCounts[left.itemId] || 0) - (exposureCounts[right.itemId] || 0);
+  if (exposureDelta !== 0) return exposureDelta;
+
   return compareByItemId(left, right);
 }
 
-function getTimedSetScore(item, weaknessMap) {
+function getTimedSetScore(item, weaknessMap, exposureCounts = {}) {
   const weakness = weaknessMap.get(item.skill) ?? 0.4;
   const difficultyBonus = item.difficulty_band === 'medium'
     ? 0.14
     : item.difficulty_band === 'easy'
       ? 0.1
       : -0.18;
-  return weakness + difficultyBonus;
+  const exposure = exposureCounts[item.itemId] || 0;
+  const exposurePenalty = 0.1 * Math.min(exposure, 5);
+  return weakness + difficultyBonus - exposurePenalty;
 }
 
-function compareTimed(left, right, weaknessMap, skillOrder) {
-  const scoreDelta = getTimedSetScore(right, weaknessMap) - getTimedSetScore(left, weaknessMap);
+function compareTimed(left, right, weaknessMap, skillOrder, exposureCounts = {}) {
+  const scoreDelta = getTimedSetScore(right, weaknessMap, exposureCounts) - getTimedSetScore(left, weaknessMap, exposureCounts);
   if (scoreDelta !== 0) return scoreDelta;
 
   const leftSkill = skillOrder.get(left.skill) ?? Number.MAX_SAFE_INTEGER;
@@ -124,7 +129,7 @@ function compareTimed(left, right, weaknessMap, skillOrder) {
   return compareByItemId(left, right);
 }
 
-function compareModule(left, right, skillOrder) {
+function compareModule(left, right, skillOrder, exposureCounts = {}) {
   const leftSkill = skillOrder.get(left.skill) ?? Number.MAX_SAFE_INTEGER;
   const rightSkill = skillOrder.get(right.skill) ?? Number.MAX_SAFE_INTEGER;
   if (leftSkill !== rightSkill) return leftSkill - rightSkill;
@@ -132,10 +137,13 @@ function compareModule(left, right, skillOrder) {
   const difficultyDelta = getDifficultyOrder(left) - getDifficultyOrder(right);
   if (difficultyDelta !== 0) return difficultyDelta;
 
+  const exposureDelta = (exposureCounts[left.itemId] || 0) - (exposureCounts[right.itemId] || 0);
+  if (exposureDelta !== 0) return exposureDelta;
+
   return compareByItemId(left, right);
 }
 
-function selectDiagnosticItems(items, count, skillOrder) {
+function selectDiagnosticItems(items, count, skillOrder, exposureCounts = {}) {
   const skills = uniqueSkills([], items).sort((left, right) => {
     const leftRank = skillOrder.get(left) ?? Number.MAX_SAFE_INTEGER;
     const rightRank = skillOrder.get(right) ?? Number.MAX_SAFE_INTEGER;
@@ -148,7 +156,7 @@ function selectDiagnosticItems(items, count, skillOrder) {
   for (const skill of skills) {
     const candidate = items
       .filter((item) => item.skill === skill && !used.has(item.itemId))
-      .sort((left, right) => compareDiagnostic(left, right, skillOrder))[0];
+      .sort((left, right) => compareDiagnostic(left, right, skillOrder, exposureCounts))[0];
 
     if (!candidate) continue;
 
@@ -159,18 +167,18 @@ function selectDiagnosticItems(items, count, skillOrder) {
 
   const remaining = items
     .filter((item) => !used.has(item.itemId))
-    .sort((left, right) => compareDiagnostic(left, right, skillOrder));
+    .sort((left, right) => compareDiagnostic(left, right, skillOrder, exposureCounts));
 
   return selected.concat(remaining).slice(0, count);
 }
 
-function selectTimedSetItems(items, count, weaknessMap, skillOrder) {
+function selectTimedSetItems(items, count, weaknessMap, skillOrder, exposureCounts = {}) {
   return [...items]
-    .sort((left, right) => compareTimed(left, right, weaknessMap, skillOrder))
+    .sort((left, right) => compareTimed(left, right, weaknessMap, skillOrder, exposureCounts))
     .slice(0, count);
 }
 
-function selectModuleItems(items, count, skillOrder) {
+function selectModuleItems(items, count, skillOrder, exposureCounts = {}) {
   const perSectionTarget = Math.floor(count / 2);
   const selected = [];
   const used = new Set();
@@ -178,7 +186,7 @@ function selectModuleItems(items, count, skillOrder) {
   for (const section of ['reading_writing', 'math']) {
     const sectionItems = items
       .filter((item) => item.section === section)
-      .sort((left, right) => compareModule(left, right, skillOrder))
+      .sort((left, right) => compareModule(left, right, skillOrder, exposureCounts))
       .slice(0, perSectionTarget);
 
     for (const item of sectionItems) {
@@ -192,12 +200,12 @@ function selectModuleItems(items, count, skillOrder) {
 
   const remaining = items
     .filter((item) => !used.has(item.itemId))
-    .sort((left, right) => compareModule(left, right, skillOrder));
+    .sort((left, right) => compareModule(left, right, skillOrder, exposureCounts));
 
   return selected.concat(remaining).slice(0, count);
 }
 
-export function selectSessionItems(items, skillStates = [], sessionType = 'diagnostic', count = 3, recentItemIds = []) {
+export function selectSessionItems(items, skillStates = [], sessionType = 'diagnostic', count = 3, recentItemIds = [], exposureCounts = {}) {
   if (!Array.isArray(items) || count <= 0) return [];
 
   const recentIds = new Set(recentItemIds.filter(Boolean));
@@ -210,12 +218,12 @@ export function selectSessionItems(items, skillStates = [], sessionType = 'diagn
   );
 
   if (sessionType === 'module_simulation') {
-    return selectModuleItems(shuffledCandidates, count, skillMetadata.order);
+    return selectModuleItems(shuffledCandidates, count, skillMetadata.order, exposureCounts);
   }
 
   if (sessionType === 'timed_set') {
-    return selectTimedSetItems(shuffledCandidates, count, skillMetadata.weakness, skillMetadata.order);
+    return selectTimedSetItems(shuffledCandidates, count, skillMetadata.weakness, skillMetadata.order, exposureCounts);
   }
 
-  return selectDiagnosticItems(shuffledCandidates, count, skillMetadata.order);
+  return selectDiagnosticItems(shuffledCandidates, count, skillMetadata.order, exposureCounts);
 }

@@ -775,6 +775,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         'timed_set',
         3,
         recentItemIds,
+        state.itemExposure,
       );
       if (timedSetItems.length !== 3 || timedSetItems.some((item) => !item)) {
         throw new HttpError(500, 'Timed-set configuration is missing one or more items');
@@ -823,6 +824,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         'module_simulation',
         4,
         recentItemIds,
+        state.itemExposure,
       );
       if (moduleItems.length !== 4 || moduleItems.some((item) => !item)) {
         throw new HttpError(500, 'Module configuration is missing one or more items');
@@ -874,6 +876,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         'diagnostic',
         3,
         recentItemIds,
+        state.itemExposure,
       );
       if (diagnosticItems.length !== 3 || diagnosticItems.some((item) => !item)) {
         throw new HttpError(500, 'Diagnostic configuration is missing one or more items');
@@ -965,6 +968,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         created_at: new Date().toISOString(),
       };
       state.attempts.push(attempt);
+      state.itemExposure[itemId] = (state.itemExposure[itemId] || 0) + 1;
       state.events.push(createEvent({ userId, sessionId, eventName: 'answer_selected', payload: { itemId, selectedAnswer, isCorrect, mode } }));
 
       sessionItem.answered_at = new Date().toISOString();
