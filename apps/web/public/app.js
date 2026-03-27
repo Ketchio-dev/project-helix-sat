@@ -21,6 +21,10 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 
+function isStudentSurface() {
+  return state.userRole === 'student' || state.userRole === 'admin';
+}
+
 function currentLearnerQuery() {
   if (!state.selectedLearnerId || ['student', 'admin'].includes(state.userRole)) {
     return '';
@@ -395,6 +399,55 @@ function focusGoalSetup() {
   $('#goalTargetScore')?.focus();
 }
 
+function syncManualStartControls(action = state.nextBestAction) {
+  const controls = $('#manualStartControls');
+  if (!controls) return;
+  if (!isStudentSurface()) {
+    controls.style.display = 'none';
+    return;
+  }
+
+  const shouldHideForFocus = Boolean(action);
+  controls.style.display = shouldHideForFocus ? 'none' : 'flex';
+}
+
+function buildAlternativeActions(action) {
+  if (!action || !isStudentSurface() || !state.goalProfile?.isComplete) {
+    return [];
+  }
+
+  if (['complete_goal_setup', 'start_diagnostic', 'resume_active_session'].includes(action.kind)) {
+    return [];
+  }
+
+  const actions = [];
+  if (action.kind !== 'start_retry_loop') {
+    actions.push({
+      label: 'Repair loop',
+      handler: () => startRetryLoop(),
+    });
+  }
+  if (action.kind !== 'start_timed_set') {
+    actions.push({
+      label: 'Timed set',
+      handler: () => startTimedSetSession(),
+    });
+  }
+  if (!(action.kind === 'start_module' && action.section === 'reading_writing')) {
+    actions.push({
+      label: 'RW module',
+      handler: () => startModuleSession('reading_writing'),
+    });
+  }
+  if (!(action.kind === 'start_module' && action.section === 'math')) {
+    actions.push({
+      label: 'Math module',
+      handler: () => startModuleSession('math'),
+    });
+  }
+  return actions.slice(0, 3);
+}
+
 async function performNextBestAction(action) {
   if (!action) return;
 
@@ -403,7 +456,7 @@ async function performNextBestAction(action) {
       focusGoalSetup();
       return;
     case 'start_diagnostic':
-      $('#startDiagnostic')?.click();
+      await startDiagnosticSession();
       return;
     case 'resume_active_session':
       $('#itemArea')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -415,13 +468,11 @@ async function performNextBestAction(action) {
       $('#reviewRecommendations')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     case 'start_timed_set':
-      $('#startTimedSet')?.click();
+      await startTimedSetSession();
       return;
     case 'start_module':
-      if (action.section) {
-        $('#moduleSection').value = action.section;
-      }
-      $('#startModule')?.click();
+      if (action.section) $('#moduleSection').value = action.section;
+      await startModuleSession(action.section ?? null);
       return;
     default:
       return;
@@ -458,8 +509,7 @@ function renderGoalProfile(goalProfile) {
   const result = $('#goalSetupResult');
   if (!section) return;
 
-  const isStudentSurface = state.userRole === 'student' || state.userRole === 'admin';
-  if (!isStudentSurface || !goalProfile || goalProfile.isComplete) {
+  if (!isStudentSurface() || !goalProfile || goalProfile.isComplete) {
     section.style.display = 'none';
     if (result) {
       result.textContent = goalProfile?.isComplete
@@ -483,17 +533,22 @@ function renderNextBestAction(action) {
   state.nextBestAction = action ?? null;
   const section = $('#nextBestActionSection');
   const container = $('#nextBestAction');
+  const alternatives = $('#nextBestActionAlternatives');
+  const footnote = $('#nextBestActionFootnote');
   if (!section || !container) return;
 
-  const isStudentSurface = state.userRole === 'student' || state.userRole === 'admin';
-  if (!isStudentSurface || !action) {
+  if (!isStudentSurface() || !action) {
     section.style.display = 'none';
     clear(container);
+    clear(alternatives);
+    if (footnote) footnote.textContent = '';
+    syncManualStartControls(null);
     return;
   }
 
   section.style.display = 'block';
   clear(container);
+  clear(alternatives);
   container.append(node('h3', { text: action.title }));
   container.append(node('p', { text: action.reason }));
   const meta = [];
@@ -506,6 +561,29 @@ function renderNextBestAction(action) {
   const button = node('button', { text: action.ctaLabel });
   button.addEventListener('click', () => performNextBestAction(action));
   container.append(button);
+
+  const secondaryActions = buildAlternativeActions(action);
+  if (secondaryActions.length) {
+    alternatives.append(node('p', { className: 'muted', text: 'Or jump to a different block' }));
+    const row = node('div', { className: 'row gap' });
+    for (const secondaryAction of secondaryActions) {
+      const secondaryButton = node('button', { className: 'secondary', text: secondaryAction.label });
+      secondaryButton.addEventListener('click', secondaryAction.handler);
+      row.append(secondaryButton);
+    }
+    alternatives.append(row);
+    if (footnote) {
+      footnote.textContent = 'Helix hides the other starts by default so you only have one main decision at a time.';
+    }
+  } else if (footnote) {
+    footnote.textContent = action.kind === 'complete_goal_setup'
+      ? 'Finish goal setup first, then Helix will unlock the right first block automatically.'
+      : action.kind === 'resume_active_session'
+        ? 'Finish the open session first so your score signal stays clean.'
+        : 'This is the only action Helix wants you to think about right now.';
+  }
+
+  syncManualStartControls(action);
 }
 
 function renderDiagnosticReveal(reveal) {
@@ -1477,7 +1555,7 @@ $('#refreshDashboard').addEventListener('click', async () => {
   await loadReviewRecommendations();
 });
 
-$('#startDiagnostic').addEventListener('click', async () => {
+async function startDiagnosticSession() {
   try {
     const result = await json('/api/diagnostic/start', {
       method: 'POST',
@@ -1494,9 +1572,9 @@ $('#startDiagnostic').addEventListener('click', async () => {
   } catch (error) {
     $('#diagnosticStatus').textContent = error.message;
   }
-});
+}
 
-$('#startTimedSet').addEventListener('click', async () => {
+async function startTimedSetSession() {
   try {
     const result = await json('/api/timed-set/start', {
       method: 'POST',
@@ -1532,11 +1610,11 @@ $('#startTimedSet').addEventListener('click', async () => {
   } catch (error) {
     handleSessionConflict(error, 'Finish or resume the current exam session before starting another timed set.');
   }
-});
+}
 
-$('#startModule').addEventListener('click', async () => {
+async function startModuleSession(sectionOverride = null) {
   try {
-    const section = $('#moduleSection')?.value ?? 'reading_writing';
+    const section = sectionOverride ?? $('#moduleSection')?.value ?? 'reading_writing';
     const result = await json('/api/module/start', {
       method: 'POST',
       body: JSON.stringify({ section }),
@@ -1576,7 +1654,11 @@ $('#startModule').addEventListener('click', async () => {
   } catch (error) {
     handleSessionConflict(error, 'Finish or resume the current exam session before starting another module simulation.');
   }
-});
+}
+
+$('#startDiagnostic').addEventListener('click', startDiagnosticSession);
+$('#startTimedSet').addEventListener('click', startTimedSetSession);
+$('#startModule').addEventListener('click', () => startModuleSession());
 
 $('#attemptForm').addEventListener('submit', async (event) => {
   event.preventDefault();
