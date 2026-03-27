@@ -357,10 +357,14 @@ function renderProjection(projection, evidence = null) {
 function renderPlan(plan) {
   const container = $('#plan');
   clear(container);
-  container.append(node('p', { text: plan.rationale_summary ?? 'Adaptive plan generated from learner state.' }));
+  const blocks = Array.isArray(plan?.blocks) ? plan.blocks : [];
+  const fallbackTrigger = plan?.fallback_plan?.trigger ?? plan?.fallbackPlan?.trigger ?? null;
+  const stopCondition = plan?.stop_condition ?? plan?.stopCondition ?? null;
+
+  container.append(node('p', { text: plan?.rationale_summary ?? plan?.rationaleSummary ?? 'Adaptive plan generated from learner state.' }));
 
   const list = node('ul', { className: 'list' });
-  for (const block of plan.blocks) {
+  for (const block of blocks) {
     const item = node('li');
     item.append(node('strong', { text: `${block.block_type} — ${block.minutes} min` }));
     item.append(document.createElement('br'));
@@ -369,28 +373,43 @@ function renderPlan(plan) {
     item.append(node('span', { className: 'muted', text: `Expected benefit: ${block.expected_benefit}` }));
     list.append(item);
   }
-  container.append(list);
-  container.append(node('p', { className: 'muted', text: `Fallback: ${plan.fallback_plan.trigger}` }));
-  container.append(node('p', { className: 'muted', text: `Stop condition: ${plan.stop_condition}` }));
+  if (blocks.length) {
+    container.append(list);
+  } else {
+    container.append(node('p', { className: 'muted', text: 'Complete a diagnostic block so Helix can build your first detailed plan.' }));
+  }
+  if (fallbackTrigger) {
+    container.append(node('p', { className: 'muted', text: `Fallback: ${fallbackTrigger}` }));
+  }
+  if (stopCondition) {
+    container.append(node('p', { className: 'muted', text: `Stop condition: ${stopCondition}` }));
+  }
 }
 
 function renderPlanExplanation(explanation) {
   const container = $('#planExplanation');
   clear(container);
-  if (!explanation) {
+  const rawReasons = Array.isArray(explanation?.reasons) ? explanation.reasons : [];
+  const reasons = rawReasons.filter((reason) => reason?.title || reason?.reason);
+  const hasContent = Boolean(explanation?.headline || explanation?.topTrap?.label || reasons.length);
+  if (!hasContent) {
     container.append(node('p', { className: 'muted', text: 'Plan explanation unavailable.' }));
     return;
   }
 
-  container.append(node('p', { text: explanation.headline }));
+  if (explanation.headline) {
+    container.append(node('p', { text: explanation.headline }));
+  }
   if (explanation.topTrap?.label) {
     container.append(node('p', { className: 'notice', text: `Top trap: ${explanation.topTrap.label}` }));
   }
   const list = node('ul', { className: 'list compact' });
-  for (const reason of explanation.reasons ?? []) {
+  for (const reason of reasons) {
     list.append(node('li', { text: `${reason.title}: ${reason.reason}` }));
   }
-  container.append(list);
+  if (reasons.length) {
+    container.append(list);
+  }
 }
 
 function focusGoalSetup() {
@@ -634,7 +653,7 @@ function renderErrorDna(errorDnaSummary) {
   const container = $('#errorDna');
   clear(container);
   const entries = Array.isArray(errorDnaSummary)
-    ? errorDnaSummary
+    ? errorDnaSummary.filter((entry) => entry?.label || entry?.summary || entry?.score)
     : Object.entries(errorDnaSummary ?? {})
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
@@ -661,35 +680,45 @@ function renderErrorDna(errorDnaSummary) {
 function renderWhatChanged(summary) {
   const container = $('#whatChanged');
   clear(container);
-  if (!summary) {
+  const rawBullets = Array.isArray(summary?.bullets) ? summary.bullets : [];
+  const bullets = rawBullets.filter(Boolean);
+  if (!summary?.headline && !bullets.length) {
     container.append(node('p', { className: 'muted', text: 'Change tracking will appear after your first completed session.' }));
     return;
   }
-  container.append(node('p', { text: summary.headline }));
+  if (summary.headline) {
+    container.append(node('p', { text: summary.headline }));
+  }
   const list = node('ul', { className: 'list compact' });
-  for (const bullet of summary.bullets ?? []) {
+  for (const bullet of bullets) {
     list.append(node('li', { text: bullet }));
   }
-  container.append(list);
+  if (bullets.length) {
+    container.append(list);
+  }
 }
 
 function renderWeeklyDigest(digest) {
   const container = $('#weeklyDigest');
   clear(container);
-  if (!digest) {
+  const strengths = (Array.isArray(digest?.strengths) ? digest.strengths : []).filter(Boolean);
+  const risks = (Array.isArray(digest?.risks) ? digest.risks : []).filter(Boolean);
+  const focus = (Array.isArray(digest?.recommended_focus) ? digest.recommended_focus : []).filter(Boolean);
+  const hasContent = Boolean(digest?.period_start || digest?.period_end || strengths.length || risks.length || focus.length);
+  if (!hasContent) {
     container.append(node('p', { className: 'muted', text: 'Weekly evidence will appear after Helix has a little more completed work to summarize.' }));
     return;
   }
 
   container.append(node('p', {
     className: 'notice',
-    text: `${digest.period_start} → ${digest.period_end} · momentum ${digest.projected_momentum ?? 'flat'}`,
+    text: `${digest.period_start ?? 'This week'} → ${digest.period_end ?? 'in progress'} · momentum ${digest.projected_momentum ?? 'flat'}`,
   }));
 
   const sections = [
-    ['Strengths', digest.strengths],
-    ['Risks', digest.risks],
-    ['Next focus', digest.recommended_focus],
+    ['Strengths', strengths],
+    ['Risks', risks],
+    ['Next focus', focus],
   ];
 
   for (const [label, rows] of sections) {
@@ -1750,6 +1779,10 @@ $('#attemptForm').addEventListener('submit', async (event) => {
         renderItem(null);
         if (completedReviewLoop) {
           renderSessionNotice('Retry loop complete — Helix updated the next revisit for this trap.', 'info');
+          await loadDashboard();
+          await loadReviewRecommendations();
+        } else if (!isExamSessionType(state.currentSessionType)) {
+          renderSessionNotice('Session complete — Helix refreshed your dashboard with the new signal.', 'info');
           await loadDashboard();
           await loadReviewRecommendations();
         }
