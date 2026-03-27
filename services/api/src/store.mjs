@@ -120,6 +120,12 @@ function isExamSession(session) {
   return session?.exam_mode === true;
 }
 
+const SECTION_LABELS = { reading_writing: 'Reading & Writing', math: 'Math' };
+
+function sectionLabel(key) {
+  return SECTION_LABELS[key] ?? key;
+}
+
 function chooseModuleSection(items = [], skillStates = []) {
   const skillScores = new Map(
     skillStates.map((entry) => [
@@ -657,21 +663,33 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         paceStatus = 'on_pace';
       }
 
+      const sectionName = session.section ? sectionLabel(session.section) : null;
+
       let readinessSignal = 'needs_evidence';
-      let nextAction = 'Finish the module, then inspect which section lost the most accuracy under time pressure.';
+      let nextAction = sectionName
+        ? `Finish the ${sectionName} module, then inspect which domains lost the most accuracy under time pressure.`
+        : 'Finish the module, then inspect which section lost the most accuracy under time pressure.';
       if (expired && !progress.isComplete) {
         readinessSignal = 'expired_unfinished';
-        nextAction = 'Time expired. Finish the module now, then repair the weakest section before attempting another module.';
+        nextAction = sectionName
+          ? `Time expired. Finish the ${sectionName} module now, then repair the weakest ${sectionName} domains before attempting another module.`
+          : 'Time expired. Finish the module now, then repair the weakest section before attempting another module.';
       } else if (progress.isComplete && accuracy !== null) {
         if (accuracy >= 0.75 && paceStatus === 'on_pace') {
           readinessSignal = 'ready_to_extend';
-          nextAction = 'Lock in this pacing with one follow-up timed set, then escalate to a harder section-specific module.';
+          nextAction = sectionName
+            ? `Lock in this ${sectionName} pacing with one follow-up timed set, then escalate to a harder ${sectionName} module.`
+            : 'Lock in this pacing with one follow-up timed set, then escalate to a harder section-specific module.';
         } else if (accuracy >= 0.5) {
           readinessSignal = 'stabilize_then_repeat';
-          nextAction = 'Review the misses from this section, then repeat one shorter exam-mode block before extending difficulty.';
+          nextAction = sectionName
+            ? `Review the ${sectionName} misses, then repeat one shorter exam-mode block before extending difficulty.`
+            : 'Review the misses from this section, then repeat one shorter exam-mode block before extending difficulty.';
         } else {
           readinessSignal = 'repair_before_next_module';
-          nextAction = 'Shift back to learn mode for this section before attempting another module simulation.';
+          nextAction = sectionName
+            ? `Shift back to learn mode for ${sectionName} before attempting another module simulation.`
+            : 'Shift back to learn mode for this section before attempting another module simulation.';
         }
       } else if (attempts.length) {
         readinessSignal = 'in_progress';
