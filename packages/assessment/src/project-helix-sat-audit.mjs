@@ -159,6 +159,29 @@ function getSectionCounts(items) {
 }
 
 export function buildSessionAudit() {
+  const buildAttemptPayload = (store, sessionId, item) => {
+    const source = store.getItem(item.itemId);
+    if (source?.item_format === 'grid_in' || source?.item_format === 'student_produced_response') {
+      return {
+        itemId: item.itemId,
+        freeResponse: source.responseValidation?.acceptedResponses?.[0] ?? source.answerKey,
+        sessionId,
+        mode: 'exam',
+        confidenceLevel: 3,
+        responseTimeMs: 60000,
+      };
+    }
+
+    return {
+      itemId: item.itemId,
+      selectedAnswer: 'A',
+      sessionId,
+      mode: 'exam',
+      confidenceLevel: 3,
+      responseTimeMs: 60000,
+    };
+  };
+
   const diagnosticStore = createStore();
   const diagnostic = diagnosticStore.startDiagnostic();
 
@@ -177,14 +200,7 @@ export function buildSessionAudit() {
     reviewGateBlocksUntilCompletion = true;
   }
   for (const item of reviewSession.items) {
-    reviewStore.submitAttempt({
-      itemId: item.itemId,
-      selectedAnswer: 'A',
-      sessionId: reviewSession.session.id,
-      mode: 'exam',
-      confidenceLevel: 3,
-      responseTimeMs: 60000,
-    });
+    reviewStore.submitAttempt(buildAttemptPayload(reviewStore, reviewSession.session.id, item));
   }
   const completedReview = reviewStore.getSessionReview(reviewSession.session.id, DEMO_USER_ID);
 
@@ -265,6 +281,9 @@ export function buildProjectHelixSatAudit({ ontology, routerSource, appSource, a
       : []),
     ...(!formatRealism.hasMathGridIn
       ? ['Math still lacks any grid-in / student-produced-response item shape, which keeps SAT format realism intentionally incomplete.']
+      : []),
+    ...(formatRealism.mathGridInCount > 0 && formatRealism.mathGridInCount < 2
+      ? ['Math has only one grid-in / student-produced-response item, so format-realism coverage is still thin.']
       : []),
     ...(sessions.moduleSimulation.itemCount < 8
       ? [`Module simulation is only ${sessions.moduleSimulation.itemCount} ${sessions.moduleSimulation.section ?? 'single-section'} items, so it still falls well short of exam-realistic module length.`]
