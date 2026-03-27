@@ -43,11 +43,7 @@ const ONTOLOGY_SKILL_ALIASES = {
   },
 };
 
-const SEMANTIC_GAP_SKILLS = new Set([
-  'math:linear_equations_and_inequalities',
-  'math:area_volume_and_lines',
-  'math:right_triangle_trigonometry',
-]);
+const SEMANTIC_GAP_SKILLS = new Set([]);
 
 function incrementCount(map, key) {
   map.set(key, (map.get(key) ?? 0) + 1);
