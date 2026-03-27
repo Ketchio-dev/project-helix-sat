@@ -24,12 +24,24 @@ const expectedDomainsBySection = {
   ],
 };
 
+const demoItemMap = new Map(
+  Object.values(createDemoData().items).map((item) => [item.itemId, item]),
+);
+
 function countBy(items, getKey) {
   return items.reduce((counts, item) => {
     const key = getKey(item);
     counts[key] = (counts[key] || 0) + 1;
     return counts;
   }, {});
+}
+
+function pickExamResponse(item) {
+  const source = demoItemMap.get(item.itemId) ?? item;
+  if (source.item_format === 'grid_in' || source.responseValidation?.kind === 'grid_in') {
+    return source.responseValidation?.acceptedResponses?.[0] ?? source.answerKey;
+  }
+  return source.answerKey ?? item.choices[0]?.key;
 }
 
 async function withServer(run, options = {}) {
@@ -68,9 +80,14 @@ test('coverage audit: demo item bank spans both SAT sections and all top-level d
   }
 
   assert.ok(items.every((item) => item.itemId && item.skill && item.domain && item.section));
-  assert.ok(items.every((item) => Array.isArray(item.choices) && item.choices.length === 4));
-  assert.ok(items.every((item) => typeof item.answerKey === 'string' && item.answerKey.length === 1));
+  assert.ok(items.every((item) => (
+    item.item_format === 'grid_in'
+      ? Array.isArray(item.choices) && item.choices.length === 0
+      : Array.isArray(item.choices) && item.choices.length === 4
+  )));
+  assert.ok(items.every((item) => typeof item.answerKey === 'string' && item.answerKey.length >= 1));
   assert.ok(rationales.every((rationale) => Array.isArray(rationale.hint_ladder) && rationale.hint_ladder.length >= 3));
+  assert.ok(items.some((item) => item.item_format === 'grid_in' && item.section === 'math'));
   assert.ok(items.some((item) => item.skill === 'rw_punctuation'));
   assert.ok(items.filter((item) => item.skill === 'math_linear_equations').length >= 2);
   assert.ok(items.filter((item) => item.skill === 'math_circles').length >= 2);
@@ -102,7 +119,7 @@ test('coverage audit: learner app flow exposes both sections through timed and m
         headers: authHeaders,
         body: JSON.stringify({
           itemId: item.itemId,
-          selectedAnswer: item.choices[0].key,
+          [item.item_format === 'grid_in' ? 'freeResponse' : 'selectedAnswer']: pickExamResponse(item),
           sessionId: timedSet.session.id,
           mode: 'exam',
           confidenceLevel: 3,
@@ -125,13 +142,12 @@ test('coverage audit: learner app flow exposes both sections through timed and m
     const moduleSimulation = await fetch(`${baseUrl}/api/module/start`, {
       method: 'POST',
       headers: authHeaders,
-      body: JSON.stringify({}),
+      body: JSON.stringify({ section: 'math' }),
     }).then((res) => res.json());
 
     const moduleSections = countBy(moduleSimulation.items, (item) => item.section);
     assert.equal(moduleSimulation.items.length, 4);
-    assert.equal(moduleSections.reading_writing, 2);
-    assert.equal(moduleSections.math, 2);
+    assert.deepEqual(moduleSections, { math: 4 });
 
     let finalModuleAttempt = null;
     for (const item of moduleSimulation.items) {
@@ -140,7 +156,7 @@ test('coverage audit: learner app flow exposes both sections through timed and m
         headers: authHeaders,
         body: JSON.stringify({
           itemId: item.itemId,
-          selectedAnswer: item.choices[0].key,
+          [item.item_format === 'grid_in' ? 'freeResponse' : 'selectedAnswer']: pickExamResponse(item),
           sessionId: moduleSimulation.session.id,
           mode: 'exam',
           confidenceLevel: 3,
@@ -151,11 +167,8 @@ test('coverage audit: learner app flow exposes both sections through timed and m
 
     assert.ok(finalModuleAttempt?.moduleSummary);
     assert.equal(finalModuleAttempt.moduleSummary.completed, true);
-    assert.equal(finalModuleAttempt.moduleSummary.sectionBreakdown.length, 2);
-    assert.deepEqual(
-      finalModuleAttempt.moduleSummary.sectionBreakdown.map((entry) => entry.section ?? entry.key).sort(),
-      ['math', 'reading_writing'],
-    );
+    assert.equal(finalModuleAttempt.moduleSummary.sectionBreakdown.length, 1);
+    assert.deepEqual(finalModuleAttempt.moduleSummary.sectionBreakdown.map((entry) => entry.section ?? entry.key), ['math']);
 
     const finishedModule = await fetch(`${baseUrl}/api/module/finish`, {
       method: 'POST',
@@ -175,7 +188,7 @@ test('coverage audit: learner app flow exposes both sections through timed and m
     assert.equal(dashboard.latestModuleSummary.completed, true);
     assert.deepEqual(
       dashboard.latestModuleSummary.sectionBreakdown.map((entry) => entry.section ?? entry.key).sort(),
-      ['math', 'reading_writing'],
+      ['math'],
     );
 
     const history = await fetch(`${baseUrl}/api/sessions/history`, {

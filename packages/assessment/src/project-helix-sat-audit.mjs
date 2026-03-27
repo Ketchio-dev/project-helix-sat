@@ -166,7 +166,7 @@ export function buildSessionAudit() {
   const timedSet = timedStore.startTimedSet();
 
   const moduleStore = createStore();
-  const moduleSimulation = moduleStore.startModuleSimulation();
+  const moduleSimulation = moduleStore.startModuleSimulation(DEMO_USER_ID, { section: 'math' });
 
   const reviewStore = createStore();
   const reviewSession = reviewStore.startTimedSet();
@@ -203,6 +203,7 @@ export function buildSessionAudit() {
       itemCount: moduleSimulation.items.length,
       examMode: Boolean(moduleSimulation.session.exam_mode),
       timeLimitSec: moduleSimulation.timing.timeLimitSec,
+      section: moduleSimulation.session.section ?? null,
       sectionCounts: getSectionCounts(moduleSimulation.items),
     },
     sessionReview: {
@@ -266,7 +267,7 @@ export function buildProjectHelixSatAudit({ ontology, routerSource, appSource, a
       ? ['Math still lacks any grid-in / student-produced-response item shape, which keeps SAT format realism intentionally incomplete.']
       : []),
     ...(sessions.moduleSimulation.itemCount < 8
-      ? [`Module simulation is only ${sessions.moduleSimulation.itemCount} mixed-section items, so it does not resemble full SAT module length or section isolation.`]
+      ? [`Module simulation is only ${sessions.moduleSimulation.itemCount} ${sessions.moduleSimulation.section ?? 'single-section'} items, so it still falls well short of exam-realistic module length.`]
       : []),
     ...(appFlow.exposedButUnused.length
       ? [`Exposed endpoints without UI/API-test usage: ${appFlow.exposedButUnused.join(', ')}`]
@@ -276,8 +277,8 @@ export function buildProjectHelixSatAudit({ ontology, routerSource, appSource, a
   const nextFixes = [
     'Keep adding explicit punctuation items plus broader organization coverage in Reading/Writing.',
     'Continue deepening thin math areas, especially linear equations, circles, and trigonometry.',
-    'Teach the app and audit path about grid-in / student-produced-response items before claiming stronger Bluebook format realism.',
-    'Separate module simulations by section and increase item counts toward exam-realistic module shapes.',
+    'Expand grid-in / student-produced-response support beyond the current minimal math slice before claiming stronger Bluebook format realism.',
+    'Increase section-specific module item counts toward exam-realistic module shapes.',
     'Wire and regression-test /api/session/review if per-session postmortems are part of the intended learner flow.',
   ];
 

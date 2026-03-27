@@ -13,9 +13,89 @@ function createId(prefix) {
   return prefix + '_' + randomUUID().replace(/-/g, '').slice(0, 12);
 }
 
+const STUDENT_RESPONSE_FORMATS = new Set(['grid_in', 'student_produced_response', 'student-produced-response']);
+
+export function isStudentProducedResponseItem(item) {
+  return STUDENT_RESPONSE_FORMATS.has(item?.item_format);
+}
+
+function toClientResponseValidation(item) {
+  if (!item?.responseValidation) return null;
+  const {
+    acceptedResponses,
+    ...safeValidation
+  } = item.responseValidation;
+  return safeValidation;
+}
+
 function toClientItem(item) {
   const { answerKey, ...safeItem } = item;
-  return safeItem;
+  return {
+    ...safeItem,
+    ...(safeItem.responseValidation ? { responseValidation: toClientResponseValidation(item) } : {}),
+  };
+}
+
+export function normalizeStudentResponse(value) {
+  return `${value ?? ''}`.trim().replaceAll(',', '').replace(/\s+/g, '');
+}
+
+function parseStudentNumericResponse(value) {
+  const normalized = normalizeStudentResponse(value);
+  if (!normalized) return null;
+  if (/^-?\d+\/-?\d+$/.test(normalized)) {
+    const [numeratorText, denominatorText] = normalized.split('/');
+    const numerator = Number(numeratorText);
+    const denominator = Number(denominatorText);
+    if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) {
+      return null;
+    }
+    return numerator / denominator;
+  }
+  const asNumber = Number(normalized);
+  return Number.isFinite(asNumber) ? asNumber : null;
+}
+
+export function evaluateSubmittedResponse(item, rawResponse) {
+  const submittedResponse = normalizeStudentResponse(rawResponse);
+
+  if (!submittedResponse) {
+    return { submittedResponse, isCorrect: false };
+  }
+
+  if (!isStudentProducedResponseItem(item)) {
+    return {
+      submittedResponse,
+      isCorrect: submittedResponse === item.answerKey,
+    };
+  }
+
+  const acceptedResponses = [
+    item.answerKey,
+    ...(item.acceptedResponses ?? []),
+    ...(item.responseValidation?.acceptedResponses ?? []),
+  ]
+    .filter(Boolean)
+    .map((candidate) => normalizeStudentResponse(candidate));
+
+  if (acceptedResponses.includes(submittedResponse)) {
+    return { submittedResponse, isCorrect: true };
+  }
+
+  const submittedNumeric = parseStudentNumericResponse(submittedResponse);
+  if (submittedNumeric === null) {
+    return { submittedResponse, isCorrect: false };
+  }
+
+  const numericMatch = acceptedResponses.some((candidate) => {
+    const candidateNumeric = parseStudentNumericResponse(candidate);
+    return candidateNumeric !== null && Math.abs(candidateNumeric - submittedNumeric) < 1e-9;
+  });
+
+  return {
+    submittedResponse,
+    isCorrect: numericMatch,
+  };
 }
 
 function summarizeSessionProgress(sessionItems = []) {
@@ -38,6 +118,35 @@ function isModuleSession(session) {
 
 function isExamSession(session) {
   return session?.exam_mode === true;
+}
+
+function chooseModuleSection(items = [], skillStates = []) {
+  const skillScores = new Map(
+    skillStates.map((entry) => [
+      entry.skill_id,
+      average([
+        Number.isFinite(entry.mastery) ? entry.mastery : 0.5,
+        Number.isFinite(entry.timed_mastery) ? entry.timed_mastery : 0.5,
+      ]),
+    ]),
+  );
+  const sectionScores = {
+    reading_writing: [],
+    math: [],
+  };
+  const seenSkills = new Set();
+
+  for (const item of items) {
+    if (!sectionScores[item.section]) continue;
+    const key = `${item.section}:${item.skill}`;
+    if (seenSkills.has(key)) continue;
+    seenSkills.add(key);
+    sectionScores[item.section].push(skillScores.get(item.skill) ?? 0.5);
+  }
+
+  const rwScore = average(sectionScores.reading_writing);
+  const mathScore = average(sectionScores.math);
+  return mathScore < rwScore ? 'math' : 'reading_writing';
 }
 
 function toSessionLabel(session) {
@@ -534,6 +643,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       } = getExamTiming(session);
       const sectionBreakdown = toBreakdownRows(sessionItems, attempts, api.getItem, (item) => item.section);
       const domainBreakdown = toBreakdownRows(sessionItems, attempts, api.getItem, (item) => item.domain);
+      const focusDomain = domainBreakdown[0]?.domain ?? domainBreakdown[0]?.key ?? null;
 
       let paceStatus = 'not_started';
       if (expired) {
@@ -554,13 +664,13 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       } else if (progress.isComplete && accuracy !== null) {
         if (accuracy >= 0.75 && paceStatus === 'on_pace') {
           readinessSignal = 'ready_to_extend';
-          nextAction = 'Lock in this pacing with one follow-up timed set, then escalate to a harder mixed module.';
+          nextAction = 'Lock in this pacing with one follow-up timed set, then escalate to a harder section-specific module.';
         } else if (accuracy >= 0.5) {
           readinessSignal = 'stabilize_then_repeat';
-          nextAction = 'Review the misses by section, then repeat one shorter exam-mode block before extending difficulty.';
+          nextAction = 'Review the misses from this section, then repeat one shorter exam-mode block before extending difficulty.';
         } else {
           readinessSignal = 'repair_before_next_module';
-          nextAction = 'Shift back to learn mode for the weakest section before attempting another module simulation.';
+          nextAction = 'Shift back to learn mode for this section before attempting another module simulation.';
         }
       } else if (attempts.length) {
         readinessSignal = 'in_progress';
@@ -587,6 +697,8 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         expired,
         completed: progress.isComplete || expired,
         readinessSignal,
+        section: session.section ?? sectionBreakdown[0]?.section ?? sectionBreakdown[0]?.key ?? null,
+        focusDomain,
         sectionBreakdown,
         domainBreakdown,
         nextAction,
@@ -808,12 +920,15 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       return api.buildSessionPayload(session, { started: true, resumed: false, conflict: false });
     },
 
-    startModuleSimulation(userId = DEMO_USER_ID) {
+    startModuleSimulation(userId = DEMO_USER_ID, options = {}) {
       api.getUser(userId);
       const conflict = api.createExamSessionConflict(userId, 'module_simulation');
       if (conflict) {
         return conflict;
       }
+      const section = ['reading_writing', 'math'].includes(options?.section)
+        ? options.section
+        : chooseModuleSection(Object.values(state.items), api.getSkillStates(userId));
       const recentItemIds = [...new Set([
         ...api.getAttempts(userId).slice(-8).map((attempt) => attempt.item_id),
         ...api.getActiveSessions(userId).flatMap((session) => api.getSessionItems(session.id).map((entry) => entry.item_id)),
@@ -825,6 +940,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         4,
         recentItemIds,
         state.itemExposure,
+        { section },
       );
       if (moduleItems.length !== 4 || moduleItems.some((item) => !item)) {
         throw new HttpError(500, 'Module configuration is missing one or more items');
@@ -836,6 +952,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         exam_mode: true,
         time_limit_sec: 420,
         recommended_pace_sec: 105,
+        section,
         started_at: new Date().toISOString(),
       };
       state.sessions[session.id] = session;
@@ -851,7 +968,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         userId,
         sessionId: session.id,
         eventName: 'module_started',
-        payload: { mode: 'exam', timeLimitSec: session.time_limit_sec, itemCount: assignedItems.length },
+        payload: { mode: 'exam', timeLimitSec: session.time_limit_sec, itemCount: assignedItems.length, section },
       }));
       persistState();
       return api.buildSessionPayload(session, { started: true, resumed: false, conflict: false });
@@ -899,13 +1016,25 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       };
     },
 
-    submitAttempt({ userId = DEMO_USER_ID, itemId, sessionId, selectedAnswer, confidenceLevel = 3, mode = 'learn', responseTimeMs = 60000 }) {
+    submitAttempt({
+      userId = DEMO_USER_ID,
+      itemId,
+      sessionId,
+      selectedAnswer,
+      freeResponse,
+      confidenceLevel = 3,
+      mode = 'learn',
+      responseTimeMs = 60000,
+    }) {
       api.getUser(userId);
       if (!sessionId) throw new HttpError(400, 'sessionId is required');
       const item = api.getItem(itemId);
       const rationale = api.getRationale(itemId);
       if (!item || !rationale) throw new HttpError(404, 'Unknown item');
-      if (!selectedAnswer) throw new HttpError(400, 'selectedAnswer is required');
+      const rawResponse = isStudentProducedResponseItem(item) ? freeResponse : selectedAnswer;
+      if (!normalizeStudentResponse(rawResponse)) {
+        throw new HttpError(400, isStudentProducedResponseItem(item) ? 'freeResponse is required' : 'selectedAnswer is required');
+      }
       const session = api.getSession(sessionId);
       if (!session || session.user_id !== userId) {
         throw new HttpError(400, 'Unknown or invalid session');
@@ -944,8 +1073,10 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         throw new HttpError(409, 'Item was already answered in this session');
       }
 
-      const isCorrect = selectedAnswer === item.answerKey;
-      const distractorTag = isCorrect ? null : rationale.misconceptionByChoice[selectedAnswer] ?? rationale.misconception_tags?.[0] ?? null;
+      const { submittedResponse, isCorrect } = evaluateSubmittedResponse(item, rawResponse);
+      const distractorTag = isCorrect
+        ? null
+        : rationale.misconceptionByChoice[submittedResponse] ?? rationale.misconception_tags?.[0] ?? null;
 
       const serverResponseTimeMs = sessionItem.delivered_at
         ? Math.max(0, Date.now() - new Date(sessionItem.delivered_at).getTime())
@@ -956,7 +1087,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         user_id: userId,
         item_id: itemId,
         session_id: sessionId ?? null,
-        selected_answer: selectedAnswer,
+        selected_answer: submittedResponse,
         is_correct: isCorrect,
         response_time_ms: serverResponseTimeMs,
         client_response_time_ms: responseTimeMs,
@@ -969,7 +1100,18 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       };
       state.attempts.push(attempt);
       state.itemExposure[itemId] = (state.itemExposure[itemId] || 0) + 1;
-      state.events.push(createEvent({ userId, sessionId, eventName: 'answer_selected', payload: { itemId, selectedAnswer, isCorrect, mode } }));
+      state.events.push(createEvent({
+        userId,
+        sessionId,
+        eventName: 'answer_selected',
+        payload: {
+          itemId,
+          selectedAnswer: submittedResponse,
+          inputFormat: item.item_format,
+          isCorrect,
+          mode,
+        },
+      }));
 
       sessionItem.answered_at = new Date().toISOString();
 
@@ -1008,6 +1150,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
             id: attempt.id,
             is_correct: attempt.is_correct,
             selected_answer: attempt.selected_answer,
+            input_format: item.item_format,
             session_id: attempt.session_id,
             mode: attempt.mode,
           },
@@ -1136,6 +1279,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           const attempt = state.attempts.find((a) => a.session_id === sessionId && a.item_id === entry.item_id);
           return {
             itemId: entry.item_id,
+            itemFormat: item.item_format,
             correctAnswer: item.answerKey,
             selectedAnswer: attempt?.selected_answer ?? null,
             isCorrect: attempt?.is_correct ?? null,

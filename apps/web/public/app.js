@@ -126,6 +126,10 @@ function isExamSessionType(value) {
   return value === 'timed_set' || value === 'module' || value === 'module_simulation';
 }
 
+function isStudentProducedResponseItem(item) {
+  return ['grid_in', 'student_produced_response', 'student-produced-response'].includes(item?.item_format);
+}
+
 function renderSessionNotice(message, tone = 'info') {
   const element = $('#sessionNotice');
   if (!message) {
@@ -172,6 +176,11 @@ function syncExamInteractionState(expired) {
 
   for (const input of document.querySelectorAll('input[name="selectedAnswer"]')) {
     input.disabled = shouldLock;
+  }
+
+  const freeResponseInput = document.querySelector('input[name="freeResponse"]');
+  if (freeResponseInput) {
+    freeResponseInput.disabled = shouldLock;
   }
 
   if (attemptSubmit) {
@@ -776,23 +785,38 @@ function renderItem(item) {
     container.append(node('p', { text: item.passage }));
   }
 
-  const choices = node('div', { className: 'choice-list' });
-  for (const choice of item.choices) {
+  if (isStudentProducedResponseItem(item)) {
+    const responseValidation = item.responseValidation ?? {};
     const input = node('input', {
-      type: 'radio',
-      name: 'selectedAnswer',
-      value: choice.key,
-      id: `choice-${choice.key}`,
+      type: 'text',
+      name: 'freeResponse',
+      id: 'freeResponseInput',
+      placeholder: responseValidation.placeholder ?? 'Enter your response',
     });
-    const label = node('label', { className: 'choice', htmlFor: `choice-${choice.key}` });
-    const textWrapper = node('span');
-    textWrapper.append(node('strong', { text: `${choice.key}. ` }));
-    textWrapper.append(document.createTextNode(choice.text));
-    label.append(input, textWrapper);
-    choices.append(label);
-  }
+    container.append(node('label', { className: 'spr-response-label', htmlFor: 'freeResponseInput', text: 'Student-produced response' }));
+    container.append(input);
+    if (responseValidation.instructions) {
+      container.append(node('p', { className: 'muted', text: responseValidation.instructions }));
+    }
+  } else {
+    const choices = node('div', { className: 'choice-list' });
+    for (const choice of item.choices) {
+      const input = node('input', {
+        type: 'radio',
+        name: 'selectedAnswer',
+        value: choice.key,
+        id: `choice-${choice.key}`,
+      });
+      const label = node('label', { className: 'choice', htmlFor: `choice-${choice.key}` });
+      const textWrapper = node('span');
+      textWrapper.append(node('strong', { text: `${choice.key}. ` }));
+      textWrapper.append(document.createTextNode(choice.text));
+      label.append(input, textWrapper);
+      choices.append(label);
+    }
 
-  container.append(choices);
+    container.append(choices);
+  }
   $('#attemptForm').classList.remove('hidden');
   syncSessionControls();
 }
@@ -1046,9 +1070,10 @@ $('#startTimedSet').addEventListener('click', async () => {
 
 $('#startModule').addEventListener('click', async () => {
   try {
+    const section = $('#moduleSection')?.value ?? 'reading_writing';
     const result = await json('/api/module/start', {
       method: 'POST',
-      body: JSON.stringify({ userId: state.userId }),
+      body: JSON.stringify({ userId: state.userId, section }),
     });
     state.currentSessionId = result.session.id;
     state.currentSessionType = result.session.type;
@@ -1088,9 +1113,8 @@ $('#startModule').addEventListener('click', async () => {
 
 $('#attemptForm').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const selected = document.querySelector('input[name="selectedAnswer"]:checked');
-  if (!selected || !state.currentItem) {
-    $('#attemptResult').textContent = 'Select an answer first.';
+  if (!state.currentItem) {
+    $('#attemptResult').textContent = 'Load an item first.';
     return;
   }
 
@@ -1098,11 +1122,26 @@ $('#attemptForm').addEventListener('submit', async (event) => {
     userId: state.userId,
     itemId: state.currentItem.itemId,
     sessionId: state.currentSessionId,
-    selectedAnswer: selected.value,
     confidenceLevel: Number($('#confidenceLevel').value),
     mode: $('#modeSelect').value,
     responseTimeMs: Date.now() - (state.itemRenderedAt || Date.now()),
   };
+
+  if (isStudentProducedResponseItem(state.currentItem)) {
+    const freeResponse = document.querySelector('input[name="freeResponse"]')?.value?.trim() ?? '';
+    if (!freeResponse) {
+      $('#attemptResult').textContent = 'Enter your response first.';
+      return;
+    }
+    payload.freeResponse = freeResponse;
+  } else {
+    const selected = document.querySelector('input[name="selectedAnswer"]:checked');
+    if (!selected) {
+      $('#attemptResult').textContent = 'Select an answer first.';
+      return;
+    }
+    payload.selectedAnswer = selected.value;
+  }
 
   try {
     const result = await json('/api/attempt/submit', {

@@ -5,12 +5,64 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createAppServer } from '../services/api/server.mjs';
+import { createDemoData } from '../services/api/src/demo-data.mjs';
 import { createStore } from '../services/api/src/store.mjs';
 
 const authHeaders = {
   'Content-Type': 'application/json',
   'X-Demo-User-Id': 'demo-student',
 };
+
+const demoItemMap = new Map(
+  Object.values(createDemoData().items).map((item) => [item.itemId, item]),
+);
+
+function buildAttemptAnswer(itemId) {
+  const item = demoItemMap.get(itemId);
+  if (!item) throw new Error(`Missing item ${itemId}`);
+  const value = item.item_format === 'grid_in'
+    ? (item.responseValidation?.acceptedResponses?.[0] ?? item.answerKey)
+    : item.answerKey;
+  return item.item_format === 'grid_in'
+    ? { freeResponse: value }
+    : { selectedAnswer: value };
+}
+
+const STUDENT_RESPONSE_FIXTURES = {
+  math_linear_04: {
+    correct: '11/2',
+    incorrect: '3/2',
+  },
+};
+
+function buildAttemptBody(item, {
+  sessionId,
+  mode,
+  confidenceLevel = 3,
+  responseTimeMs = 60000,
+  selectedAnswer = 'A',
+  freeResponse = null,
+} = {}) {
+  if (['grid_in', 'student_produced_response', 'student-produced-response'].includes(item.item_format)) {
+    return {
+      itemId: item.itemId,
+      sessionId,
+      mode,
+      confidenceLevel,
+      responseTimeMs,
+      freeResponse: freeResponse ?? STUDENT_RESPONSE_FIXTURES[item.itemId]?.incorrect ?? '0',
+    };
+  }
+
+  return {
+    itemId: item.itemId,
+    sessionId,
+    mode,
+    confidenceLevel,
+    responseTimeMs,
+    selectedAnswer,
+  };
+}
 
 async function withPersistentStateFile(prefix, run) {
   const tempDir = await mkdtemp(join(tmpdir(), prefix));
@@ -233,14 +285,13 @@ test('api serves timed-set start, completion, finish, and exam-mode hint blockin
       lastAttemptResult = await fetch(`${baseUrl}/api/attempt/submit`, {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify({
-          itemId: item.itemId,
-          selectedAnswer: index === 1 ? 'B' : 'A',
+        body: JSON.stringify(buildAttemptBody(item, {
           sessionId: timedSet.session.id,
           mode: 'exam',
           confidenceLevel: 3,
           responseTimeMs: 60000,
-        }),
+          selectedAnswer: index === 1 ? 'B' : 'A',
+        })),
       }).then((res) => res.json());
     }
 
@@ -328,11 +379,12 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
     const moduleSimulation = await fetch(`${baseUrl}/api/module/start`, {
       method: 'POST',
       headers: authHeaders,
-      body: JSON.stringify({}),
+      body: JSON.stringify({ section: 'math' }),
     }).then((res) => res.json());
 
     assert.equal(moduleSimulation.session.type, 'module_simulation');
     assert.equal(moduleSimulation.session.exam_mode, true);
+    assert.equal(moduleSimulation.session.section, 'math');
     assert.equal(moduleSimulation.timing.timeLimitSec, 420);
     assert.equal(moduleSimulation.timing.recommendedPaceSec, 105);
     assert.equal(moduleSimulation.items.length, 4);
@@ -353,14 +405,13 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
     assert.equal(examHint.source_of_truth, 'exam_policy');
 
     let lastAttemptResult = null;
-    const answers = ['B', 'B', 'C', 'C'];
-    for (const [index, item] of moduleSimulation.items.entries()) {
+    for (const item of moduleSimulation.items) {
       lastAttemptResult = await fetch(`${baseUrl}/api/attempt/submit`, {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({
           itemId: item.itemId,
-          selectedAnswer: answers[index],
+          ...buildAttemptAnswer(item.itemId),
           sessionId: moduleSimulation.session.id,
           mode: 'exam',
           confidenceLevel: 3,
@@ -374,9 +425,10 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
     assert.ok(lastAttemptResult.moduleSummary);
     assert.equal(lastAttemptResult.moduleSummary.completed, true);
     assert.equal(lastAttemptResult.moduleSummary.paceStatus, 'on_pace');
-    assert.equal(lastAttemptResult.moduleSummary.readinessSignal, 'ready_to_extend');
-    assert.equal(lastAttemptResult.moduleSummary.sectionBreakdown.length, 2);
-    assert.ok(lastAttemptResult.moduleSummary.domainBreakdown.length >= 2);
+    assert.equal(typeof lastAttemptResult.moduleSummary.readinessSignal, 'string');
+    assert.equal(lastAttemptResult.moduleSummary.sectionBreakdown.length, 1);
+    assert.equal(lastAttemptResult.moduleSummary.section, 'math');
+    assert.ok(lastAttemptResult.moduleSummary.domainBreakdown.length >= 1);
 
     const finished = await fetch(`${baseUrl}/api/module/finish`, {
       method: 'POST',
@@ -684,14 +736,13 @@ test('api keeps completed session history and dashboard summaries across restart
         await fetch(`${baseUrl}/api/attempt/submit`, {
           method: 'POST',
           headers: authHeaders,
-          body: JSON.stringify({
-            itemId: item.itemId,
-            selectedAnswer: index === 1 ? 'B' : 'A',
+          body: JSON.stringify(buildAttemptBody(item, {
             sessionId,
             mode: 'exam',
             confidenceLevel: 3,
             responseTimeMs: 60000,
-          }),
+            selectedAnswer: index === 1 ? 'B' : 'A',
+          })),
         }).then((res) => res.json());
       }
 

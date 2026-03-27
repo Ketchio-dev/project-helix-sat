@@ -41,13 +41,11 @@ describe('selectSessionItems', () => {
     assert.equal(result[0].skill, 'skill_weak');
   });
 
-  it('module_simulation balances reading_writing and math sections', () => {
-    const result = selectSessionItems(demoItems, [], 'module_simulation', 4);
+  it('module_simulation can stay within an explicit section', () => {
+    const result = selectSessionItems(demoItems, [], 'module_simulation', 4, [], {}, { section: 'math' });
     assert.equal(result.length, 4);
-    const rwCount = result.filter((item) => item.section === 'reading_writing').length;
     const mathCount = result.filter((item) => item.section === 'math').length;
-    assert.equal(rwCount, 2);
-    assert.equal(mathCount, 2);
+    assert.equal(mathCount, 4);
   });
 
   it('recentItemIds filters out recently seen items', () => {

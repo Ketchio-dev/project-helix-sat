@@ -123,8 +123,8 @@ export function createRouter({ store, webRoot }) {
       }
 
       if (request.method === 'POST' && pathname === '/api/module/start') {
-        await readJsonBody(request);
-        const result = store.startModuleSimulation(authenticatedUserId);
+        const body = await readJsonBody(request);
+        const result = store.startModuleSimulation(authenticatedUserId, { section: body?.section });
         return sendJson(response, result.conflict ? 409 : 201, result);
       }
 

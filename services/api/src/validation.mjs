@@ -19,12 +19,13 @@ const responseSchemas = new Map([
 const requestSchemas = new Map([
   ['AttemptSubmitRequest', {
     type: 'object',
-    required: ['userId', 'itemId', 'sessionId', 'selectedAnswer', 'confidenceLevel', 'mode', 'responseTimeMs'],
+    required: ['userId', 'itemId', 'sessionId', 'confidenceLevel', 'mode', 'responseTimeMs'],
     properties: {
       userId: { type: 'string' },
       itemId: { type: 'string' },
       sessionId: { type: 'string' },
       selectedAnswer: { type: 'string' },
+      freeResponse: { type: 'string' },
       confidenceLevel: { type: 'number' },
       mode: { type: 'string' },
       responseTimeMs: { type: 'integer', minimum: 0 },
@@ -203,6 +204,13 @@ function getSchema(map, schemaName, kind) {
 export function validateRequest(schemaName, body) {
   const schema = getSchema(requestSchemas, schemaName, 'request');
   const details = validateValue(schema, body);
+  if (schemaName === 'AttemptSubmitRequest') {
+    const hasSelectedAnswer = typeof body?.selectedAnswer === 'string' && body.selectedAnswer.trim().length > 0;
+    const hasFreeResponse = typeof body?.freeResponse === 'string' && body.freeResponse.trim().length > 0;
+    if (!hasSelectedAnswer && !hasFreeResponse) {
+      details.push('body.selectedAnswer or body.freeResponse is required');
+    }
+  }
   if (details.length === 0) {
     return body;
   }

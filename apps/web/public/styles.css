@@ -194,6 +194,12 @@ input:disabled + span {
   flex-direction: row;
   gap: 0.65rem;
 }
+.spr-response-label {
+  display: block;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+}
 .review-item p {
   margin: 0;
 }

@@ -18,7 +18,8 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
     reading_writing: 26,
   });
   assert.deepEqual(audit.content.itemFormatCounts, {
-    single_select: 50,
+    grid_in: 1,
+    single_select: 49,
   });
 
   assert.equal(audit.verdict.crossSectionCoverage, 'credible_for_mvp');
@@ -35,20 +36,18 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   assert.deepEqual(audit.appFlow.uiMissing, []);
   assert.deepEqual(audit.appFlow.apiTestMissing, []);
   assert.deepEqual(audit.appFlow.exposedButUnused, ['/api/session/review']);
-  assert.equal(audit.formatRealism.allSingleSelect, true);
-  assert.equal(audit.formatRealism.hasMathGridIn, false);
-  assert.equal(audit.formatRealism.mathGridInCount, 0);
+  assert.equal(audit.formatRealism.allSingleSelect, false);
+  assert.equal(audit.formatRealism.hasMathGridIn, true);
+  assert.equal(audit.formatRealism.mathGridInCount, 1);
 
   assert.equal(audit.sessions.diagnostic.itemCount, 3);
   assert.equal(audit.sessions.timedSet.itemCount, 3);
   assert.equal(audit.sessions.timedSet.timeLimitSec, 210);
   assert.equal(audit.sessions.moduleSimulation.itemCount, 4);
   assert.deepEqual(audit.sessions.moduleSimulation.sectionCounts, {
-    math: 2,
-    reading_writing: 2,
+    math: 4,
   });
   assert.equal(audit.sessions.sessionReview.blockedUntilCompletion, true);
-  assert.ok(audit.majorRisks.some((entry) => entry.includes('single_select format')));
-  assert.ok(audit.majorRisks.some((entry) => entry.includes('grid-in / student-produced-response')));
-  assert.ok(audit.nextFixes.some((entry) => entry.includes('grid-in / student-produced-response')));
+  assert.ok(audit.majorRisks.some((entry) => entry.includes('4 math items')));
+  assert.ok(audit.nextFixes.some((entry) => entry.includes('minimal math slice')));
 });
