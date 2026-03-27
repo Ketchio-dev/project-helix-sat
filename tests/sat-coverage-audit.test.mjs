@@ -63,13 +63,13 @@ test('coverage audit: demo item bank spans both SAT sections and all top-level d
   const items = Object.values(data.items);
   const rationales = Object.values(data.rationales);
 
-  assert.equal(items.length, 50);
-  assert.equal(rationales.length, 50);
+  assert.equal(items.length, 55);
+  assert.equal(rationales.length, 55);
 
   const sections = countBy(items, (item) => item.section);
   assert.deepEqual(Object.keys(sections).sort(), ['math', 'reading_writing']);
-  assert.equal(sections.reading_writing, 26);
-  assert.equal(sections.math, 24);
+  assert.equal(sections.reading_writing, 27);
+  assert.equal(sections.math, 28);
   assert.ok(Math.abs(sections.reading_writing - sections.math) <= 4);
 
   for (const [section, expectedDomains] of Object.entries(expectedDomainsBySection)) {
@@ -88,11 +88,11 @@ test('coverage audit: demo item bank spans both SAT sections and all top-level d
   assert.ok(items.every((item) => typeof item.answerKey === 'string' && item.answerKey.length >= 1));
   assert.ok(rationales.every((rationale) => Array.isArray(rationale.hint_ladder) && rationale.hint_ladder.length >= 3));
   const mathGridInItems = items.filter((item) => item.item_format === 'grid_in' && item.section === 'math');
-  assert.equal(mathGridInItems.length, 3);
+  assert.equal(mathGridInItems.length, 5);
   assert.ok(items.some((item) => item.skill === 'rw_punctuation'));
-  assert.ok(items.filter((item) => item.skill === 'math_linear_equations').length >= 2);
+  assert.ok(items.filter((item) => item.skill === 'math_linear_equations').length >= 3);
   assert.ok(items.filter((item) => item.skill === 'math_circles').length >= 2);
-  assert.ok(items.filter((item) => item.skill === 'math_trigonometry').length >= 2);
+  assert.ok(items.filter((item) => item.skill === 'math_trigonometry').length >= 3);
 });
 
 test('coverage audit: learner app flow exposes both sections through timed and module sessions', async () => {
@@ -147,10 +147,12 @@ test('coverage audit: learner app flow exposes both sections through timed and m
     }).then((res) => res.json());
 
     const moduleSections = countBy(moduleSimulation.items, (item) => item.section);
-    assert.equal(moduleSimulation.items.length, 4);
-    assert.deepEqual(moduleSections, { math: 4 });
-    assert.ok(new Set(moduleSimulation.items.map((item) => item.skill)).size >= 3);
-    assert.ok(new Set(moduleSimulation.items.map((item) => item.domain)).size >= 3);
+    assert.equal(moduleSimulation.items.length, 8);
+    assert.equal(moduleSimulation.timing.timeLimitSec, 840);
+    assert.deepEqual(moduleSections, { math: 8 });
+    assert.ok(new Set(moduleSimulation.items.map((item) => item.skill)).size >= 6);
+    assert.ok(new Set(moduleSimulation.items.map((item) => item.domain)).size >= 4);
+    assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 2);
 
     let finalModuleAttempt = null;
     for (const item of moduleSimulation.items) {

@@ -295,10 +295,10 @@ export function buildProjectHelixSatAudit({ ontology, routerSource, appSource, a
 
   const nextFixes = [
     ...(ontologyCoverage.partialSkillDetails.some((entry) => entry.section === 'reading_writing')
-      ? ['Keep deepening partial Reading/Writing blueprint lanes (organization, punctuation) before claiming broader coverage.']
+      ? ['Keep deepening partial Reading/Writing blueprint lanes (organization) with stronger hand-authored items or improved generation constraints before claiming broader coverage.']
       : []),
     ...(ontologyCoverage.partialSkillDetails.some((entry) => entry.section === 'math')
-      ? [`Continue deepening ${ontologyCoverage.partialSkillDetails.filter((entry) => entry.section === 'math').map((entry) => entry.skill).join(', ')} in Math before claiming full blueprint alignment.`]
+      ? [`Continue deepening ${ontologyCoverage.partialSkillDetails.filter((entry) => entry.section === 'math').map((entry) => entry.skill).join(', ')} in Math with hand-authored depth or materially stronger prompt guidance before claiming full blueprint alignment.`]
       : []),
     ...(formatRealism.mathGridInCount < 6
       ? ['Expand grid-in / student-produced-response support beyond the current narrow math slice before claiming stronger Bluebook format realism.']

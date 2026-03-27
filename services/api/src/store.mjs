@@ -933,16 +933,18 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         ...api.getAttempts(userId).slice(-8).map((attempt) => attempt.item_id),
         ...api.getActiveSessions(userId).flatMap((session) => api.getSessionItems(session.id).map((entry) => entry.item_id)),
       ])];
+      const moduleItemCount = 8;
+      const recommendedPaceSec = 105;
       const moduleItems = selectSessionItems(
         Object.values(state.items),
         api.getSkillStates(userId),
         'module_simulation',
-        4,
+        moduleItemCount,
         recentItemIds,
         state.itemExposure,
         { section },
       );
-      if (moduleItems.length !== 4 || moduleItems.some((item) => !item)) {
+      if (moduleItems.length !== moduleItemCount || moduleItems.some((item) => !item)) {
         throw new HttpError(500, 'Module configuration is missing one or more items');
       }
       const session = {
@@ -950,8 +952,8 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         user_id: userId,
         type: 'module_simulation',
         exam_mode: true,
-        time_limit_sec: 420,
-        recommended_pace_sec: 105,
+        time_limit_sec: moduleItemCount * recommendedPaceSec,
+        recommended_pace_sec: recommendedPaceSec,
         section,
         started_at: new Date().toISOString(),
       };

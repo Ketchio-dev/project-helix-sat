@@ -59,6 +59,8 @@ test('rw_transitions boost requires varied logical relationships and near-synony
   assert.match(prompt, /logical connectors/i);
   assert.match(prompt, /cause\/effect.*contrast.*elaboration/i);
   assert.match(prompt, /near-synonyms/i);
+  assert.match(prompt, /sentence-boundary realism/i);
+  assert.match(prompt, /rhetorical relationship is specific/i);
 });
 
 test('math_linear_equations boost requires inequality coverage and varied structures', () => {
@@ -67,6 +69,8 @@ test('math_linear_equations boost requires inequality coverage and varied struct
   assert.match(prompt, /inequality/i);
   assert.match(prompt, /distribution.*combining like terms/i);
   assert.match(prompt, /distinct procedural errors/i);
+  assert.match(prompt, /constraint-checking/i);
+  assert.match(prompt, /clean.*suitable for mental math/i);
 });
 
 test('math_trigonometry boost requires real-world context and sin\/cos swap distractors', () => {
@@ -75,6 +79,8 @@ test('math_trigonometry boost requires real-world context and sin\/cos swap dist
   assert.match(prompt, /angle of elevation/i);
   assert.match(prompt, /sin\/cos swaps/i);
   assert.match(prompt, /opposite\/adjacent confusion/i);
+  assert.match(prompt, /ratio interpretation/i);
+  assert.match(prompt, /at least half/i);
 });
 
 test('math_area_and_perimeter boost requires composite shapes and measure-selection items', () => {
@@ -82,6 +88,8 @@ test('math_area_and_perimeter boost requires composite shapes and measure-select
 
   assert.match(prompt, /composite-shape/i);
   assert.match(prompt, /choosing between area and perimeter/i);
+  assert.match(prompt, /measure-selection/i);
+  assert.match(prompt, /dimensions Bluebook-clean/i);
 });
 
 test('math_quadratic_functions boost requires multiple representation forms', () => {
@@ -89,4 +97,13 @@ test('math_quadratic_functions boost requires multiple representation forms', ()
 
   assert.match(prompt, /vertex form.*factored form.*standard form/i);
   assert.match(prompt, /graph feature/i);
+  assert.match(prompt, /axis-of-symmetry or vertex interpretation/i);
+  assert.match(prompt, /graphical reasoning/i);
+});
+
+test('quality gates include weak-blueprint verification and numeric cleanliness', () => {
+  const prompt = buildPrompt('math', 'math_linear_equations', 3, 'mixed');
+
+  assert.match(prompt, /if skill is a weak-blueprint lane.*verify the item addresses at least one boost constraint/i);
+  assert.match(prompt, /if section=math and the answer is numeric.*verify the result is clean/i);
 });

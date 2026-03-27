@@ -385,17 +385,16 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
     assert.equal(moduleSimulation.session.type, 'module_simulation');
     assert.equal(moduleSimulation.session.exam_mode, true);
     assert.equal(moduleSimulation.session.section, 'math');
-    assert.equal(moduleSimulation.timing.timeLimitSec, 420);
+    assert.equal(moduleSimulation.timing.timeLimitSec, 840);
     assert.equal(moduleSimulation.timing.recommendedPaceSec, 105);
-    assert.equal(moduleSimulation.items.length, 4);
+    assert.equal(moduleSimulation.items.length, 8);
     assert.ok(moduleSimulation.currentItem);
     assert.equal(moduleSimulation.moduleSummary.sessionId, moduleSimulation.session.id);
-    assert.ok(new Set(moduleSimulation.items.map((item) => item.skill)).size >= 3);
-    assert.ok(new Set(moduleSimulation.items.map((item) => item.domain)).size >= 3);
+    assert.ok(new Set(moduleSimulation.items.map((item) => item.skill)).size >= 6);
+    assert.ok(new Set(moduleSimulation.items.map((item) => item.domain)).size >= 4);
     const gridInItems = moduleSimulation.items.filter((item) => item.item_format === 'grid_in');
-    if (gridInItems.length >= 1) {
-      assert.equal(gridInItems[0].responseValidation.acceptedResponses, undefined);
-    }
+    assert.ok(gridInItems.length >= 2);
+    assert.equal(gridInItems[0].responseValidation.acceptedResponses, undefined);
 
     const examHint = await fetch(`${baseUrl}/api/tutor/hint`, {
       method: 'POST',

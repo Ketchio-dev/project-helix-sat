@@ -1,25 +1,43 @@
 # Bluebook / Khan quality-upgrade slice
 
-This note tracks the **current fidelity slice** for Project Helix SAT after commit `30f2588`. The goal is still not full SAT replication. The goal of the current slice is to close the most visible realism gaps without breaking the existing learner flow:
+This note tracks the **current fidelity slice** for Project Helix SAT for the current in-flight fidelity slice. The goal is still not full SAT replication. The goal of the current slice is to close the most visible realism gaps without breaking the existing learner flow:
 
-1. deepen weak blueprint lanes in both sections so partial coverage shrinks,
-2. expand the math grid-in / student-produced-response slice beyond its current narrow footprint,
-3. improve prompt and content guidance so generated items stay closer to Bluebook/Khan quality,
+1. strengthen generation prompts for weak blueprint lanes with specific, testable realism constraints,
+2. deepen weak blueprint lanes in both sections so partial coverage shrinks,
+3. expand the math grid-in / student-produced-response slice beyond its current narrow footprint,
 4. keep audits, tests, and docs explicit about what still remains incomplete.
 
 ## Current baseline from the latest audit
 
-- 50 demo items total (`math=24`, `reading_writing=26`)
+- 55 demo items total (`math=28`, `reading_writing=27`)
 - 19 ontology skills tracked: 14 covered, 5 partial, 0 missing
 - No singleton-skill lanes remain
-- 3 hand-authored Math items now use `grid_in`
-- Module simulation is now section-separated, but it is still only a 4-item block
+- 5 hand-authored Math items now use `grid_in`
+- Module simulation is now section-separated and expanded to an 8-item block
 - `/api/session/review` is still exposed but underused
 
-## What this slice should improve
+## What this slice improves
+
+### Prompt-contract strengthening (COMPLETED in this commit)
+- Added stronger, testable guidance to WEAK_BLUEPRINT_BOOST blocks for all five partial-coverage lanes.
+- **rw_transitions**: now requires sentence-boundary realism, punctuation-aware transitions, and specific rhetorical relationships (elaboration vs. contrast vs. sequence).
+- **math_linear_equations**: now requires inequality coverage, constraint-checking items, clean numeric results, and word-problem contexts with units.
+- **math_quadratic_functions**: now requires axis-of-symmetry or vertex interpretation, graphical reasoning, and Bluebook-clean coefficients.
+- **math_area_and_perimeter**: now requires explicit composite-shape descriptions, measure-selection items ("which gives AREA?"), and Bluebook-clean dimensions.
+- **math_trigonometry**: now requires angle-of-elevation or real-world context in ≥50% of items, ratio interpretation, and clear opposite/adjacent/hypotenuse labeling.
+- Added three new quality gates: weak-blueprint verification, rw_transitions punctuation-context checking, and math numeric cleanliness.
+- Updated regression tests to verify all boost constraints are present in prompts.
+- Audit and docs now describe prompt improvements honestly without claiming Bluebook parity.
+
+### Still needed (not in this commit)
+- Additional hand-authored items are still needed to move the five partial lanes from “partial” to “covered.”
+- Expanded math grid-in support beyond 5 items and into more skill families.
+- Module realism improvements beyond the current 8-item section-specific blocks.
+
+## What this slice should improve next
 
 ### Format realism
-- Expand the math grid-in / student-produced-response slice beyond the current 3 items so the format is no longer a token presence.
+- Expand the math grid-in / student-produced-response slice beyond the current 5 items so the format is no longer a narrow hand-authored slice.
 - New grid-in items should cover additional math skills (not just the same lane) and work end to end in all session types.
 - Do not overclaim generator support while the richer format is still demo-bank-only.
 
@@ -66,7 +84,7 @@ Before merging, confirm all of the following:
 ## Still not promised after this slice
 
 - Full official-exam replication
-- Full-length SAT module sizing (real modules have 27–33 items per section)
+- Full-length SAT module sizing (real modules are still much longer than the current 8-item demo modules)
 - Broad generator-native support for every SAT interaction type
 - Production-depth coverage across every skill bucket
 - Adaptive module routing (real digital SAT picks module 2 difficulty based on module 1 performance)

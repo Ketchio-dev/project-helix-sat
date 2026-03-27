@@ -440,6 +440,26 @@ export function createDemoData() {
         estimatedTimeSec: 75,
       }),
 
+      math_linear_05: createItem({
+        itemId: 'math_linear_05',
+        section: 'math',
+        domain: 'algebra',
+        skill: 'math_linear_equations',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'If 3(2x - 5) ≤ 9, which value of x satisfies the inequality?',
+        choices: [
+          { label: 'A', text: '4' },
+          { label: 'B', text: '5' },
+          { label: 'C', text: '6' },
+          { label: 'D', text: '7' },
+        ],
+        answerKey: 'A',
+        status: 'production',
+        tags: ['algebra', 'linear_inequality', 'distribution', 'medium'],
+        estimatedTimeSec: 70,
+      }),
+
       math_stats_01: createItem({
         itemId: 'math_stats_01',
         section: 'math',
@@ -760,6 +780,26 @@ export function createDemoData() {
         estimatedTimeSec: 80,
       }),
 
+      rw_transition_04: createItem({
+        itemId: 'rw_transition_04',
+        section: 'reading_writing',
+        domain: 'expression_of_ideas',
+        skill: 'rw_transitions',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'Which choice completes the text with the most logical transition?',
+        passage: 'The city\'s new shade-map tool has already influenced local planning conversations about heat resilience. ______, community groups in one district used the map to argue for more trees near bus stops and school entrances.',
+        choices: [
+          { label: 'A', text: 'For example,' },
+          { label: 'B', text: 'Nevertheless,' },
+          { label: 'C', text: 'Similarly,' },
+          { label: 'D', text: 'As a result,' },
+        ],
+        answerKey: 'A',
+        tags: ['transitions', 'example', 'organization', 'medium'],
+        estimatedTimeSec: 65,
+      }),
+
       rw_punctuation_01: createItem({
         itemId: 'rw_punctuation_01',
         section: 'reading_writing',
@@ -1037,6 +1077,26 @@ export function createDemoData() {
         estimatedTimeSec: 80,
       }),
 
+      math_quadratic_03: createItem({
+        itemId: 'math_quadratic_03',
+        section: 'math',
+        domain: 'advanced_math',
+        skill: 'math_quadratic_functions',
+        difficulty_band: 'hard',
+        item_format: 'grid_in',
+        stem: 'For the function f(x) = x² - 8x + 11, what is the minimum value of f(x)? Enter your answer as an integer.',
+        choices: [],
+        answerKey: '-5',
+        responseValidation: {
+          kind: 'grid_in',
+          acceptedResponses: ['-5'],
+          placeholder: 'e.g. -5',
+          instructions: 'Enter an integer with no units.',
+        },
+        tags: ['advanced_math', 'quadratic_vertex', 'minimum_value', 'hard', 'grid_in'],
+        estimatedTimeSec: 90,
+      }),
+
       math_polynomial_01: createItem({
         itemId: 'math_polynomial_01',
         section: 'math',
@@ -1190,6 +1250,26 @@ export function createDemoData() {
         estimatedTimeSec: 95,
       }),
 
+      math_geometry_03: createItem({
+        itemId: 'math_geometry_03',
+        section: 'math',
+        domain: 'geometry_and_trigonometry',
+        skill: 'math_area_and_perimeter',
+        difficulty_band: 'medium',
+        item_format: 'grid_in',
+        stem: 'A rectangular garden is 9 feet by 7 feet. A square storage pad with side length 3 feet will cover one corner of the garden. What is the area, in square feet, of the remaining uncovered part of the garden? Enter your answer as an integer.',
+        choices: [],
+        answerKey: '54',
+        responseValidation: {
+          kind: 'grid_in',
+          acceptedResponses: ['54'],
+          placeholder: 'e.g. 54',
+          instructions: 'Enter an integer with no units.',
+        },
+        tags: ['geometry', 'area', 'composite_shape', 'grid_in', 'medium'],
+        estimatedTimeSec: 80,
+      }),
+
       math_circle_01: createItem({
         itemId: 'math_circle_01',
         section: 'math',
@@ -1265,6 +1345,24 @@ export function createDemoData() {
         answerKey: 'C',
         tags: ['trigonometry', 'similar_triangles', 'right_triangle', 'medium'],
         estimatedTimeSec: 80,
+      }),
+      math_trig_03: createItem({
+        itemId: 'math_trig_03',
+        section: 'math',
+        domain: 'geometry_and_trigonometry',
+        skill: 'math_trigonometry',
+        difficulty_band: 'hard',
+        item_format: 'single_select',
+        stem: 'A wheelchair ramp rises 3 feet for every 4 feet of horizontal run. To the nearest degree, what angle does the ramp make with the ground?',
+        choices: [
+          { label: 'A', text: '31°' },
+          { label: 'B', text: '37°' },
+          { label: 'C', text: '45°' },
+          { label: 'D', text: '53°' },
+        ],
+        answerKey: 'B',
+        tags: ['trigonometry', 'inverse_tangent', 'real_world_context', 'hard'],
+        estimatedTimeSec: 95,
       }),
     },
     rationales: {
@@ -1449,6 +1547,29 @@ export function createDemoData() {
           'The correct answer is 11/2 because 5(2x - 3) = 4x + 18 simplifies to 6x = 33, so x = 11/2.',
         ],
         misconception_tags: ['variable_isolation_error', 'partial_completion'],
+      }),
+
+      math_linear_05: createRationale({
+        item_id: 'math_linear_05',
+        explanation: 'Distribute first: 6x - 15 ≤ 9. Add 15 to both sides to get 6x ≤ 24, then divide by 6 to get x ≤ 4. Of the choices, only 4 satisfies the inequality.',
+        wrongRationales: {
+          B: 'A student who picks 5 likely solves a nearby equation or forgets to keep the boundary at 4. This happens when a student treats an inequality as an equation problem instead of checking which value actually works.',
+          C: 'A student who picks 6 likely adds 5 after dividing by 3 or stops before isolating x fully. This happens when a student compresses multiple algebra steps and loses track of the inequality target.',
+          D: 'A student who picks 7 likely reverses the direction of the comparison and looks for a value greater than 4. This happens when a student remembers that inequalities can reverse but applies that rule when dividing by a positive number, where no reversal occurs.',
+        },
+        misconceptionByChoice: {
+          B: 'inequality_as_equation',
+          C: 'partial_completion',
+          D: 'incorrect_inequality_reversal',
+        },
+        hint_ladder: [
+          'Start by distributing the 3 across both terms inside the parentheses.',
+          'After simplifying, isolate x just as you would in an equation, but keep the ≤ sign.',
+          'You should reach 6x ≤ 24 before the final step.',
+          'Dividing by positive 6 does not reverse the inequality, so x ≤ 4.',
+          'The correct answer is A because 4 satisfies the inequality and the other values are greater than the upper bound.',
+        ],
+        misconception_tags: ['inequality_as_equation', 'incorrect_inequality_reversal'],
       }),
 
       math_stats_01: createRationale({
@@ -1797,6 +1918,29 @@ export function createDemoData() {
         misconception_tags: ['transition_logic_mismatch', 'partial_truth'],
       }),
 
+      rw_transition_04: createRationale({
+        item_id: 'rw_transition_04',
+        explanation: 'The second sentence gives one concrete instance of the general claim in the first sentence. The transition must therefore introduce an illustration. “For example,” best matches that logic.',
+        wrongRationales: {
+          B: 'A student who picks “Nevertheless,” likely invents a contrast that is not present. This happens when a student sees two different clauses and assumes the relationship must be adversarial.',
+          C: 'A student who picks “Similarly,” likely treats the second sentence as a parallel claim rather than a specific illustration. This happens when a student notices topical overlap but misses the example structure.',
+          D: 'A student who picks “As a result,” likely forces a cause-and-effect chain between planning conversations and the district example. This happens when a student mistakes an instance of the larger trend for a consequence statement.',
+        },
+        misconceptionByChoice: {
+          B: 'transition_logic_mismatch',
+          C: 'example_vs_parallel_confusion',
+          D: 'example_vs_cause_confusion',
+        },
+        hint_ladder: [
+          'Read the first sentence as a general claim and the second sentence as a specific case.',
+          'The second sentence narrows from “planning conversations” to one district using the tool near bus stops and schools.',
+          'That means the transition should introduce an example, not a contrast or a result.',
+          'Eliminate “Nevertheless,” and “Similarly,” first; neither signals that the second sentence is an illustration.',
+          'The correct answer is A because “For example,” introduces the district-level case as evidence of the broader claim.',
+        ],
+        misconception_tags: ['transition_logic_mismatch', 'example_vs_parallel_confusion'],
+      }),
+
       rw_punctuation_01: createRationale({
         item_id: 'rw_punctuation_01',
         explanation: "“Unlike the museum's earlier exhibit on maritime trade” is a modifying phrase, not an independent clause. The main clause begins with “the new installation places …,” so no punctuation should separate the modifier from its subject.",
@@ -2122,6 +2266,29 @@ export function createDemoData() {
         misconception_tags: ['landing_time_as_vertex', 'coefficient_misidentification'],
       }),
 
+      math_quadratic_03: createRationale({
+        item_id: 'math_quadratic_03',
+        explanation: 'Complete the square: x² - 8x + 11 = (x² - 8x + 16) - 16 + 11 = (x - 4)² - 5. Because (x - 4)² is never negative, the minimum value of f(x) is -5.',
+        wrongRationales: {
+          '-4': 'A student who enters -4 likely completes the square incompletely, adding 16 without subtracting all of it back out. This happens when a student remembers the vertex method but mishandles the constant adjustment.',
+          '5': 'A student who enters 5 likely recognizes the 4 and 11 but loses the negative sign on the final constant. This happens when a student finds the vertex form but reports the magnitude instead of the actual minimum value.',
+          '11': 'A student who enters 11 likely reads the constant term as the minimum value without analyzing the quadratic shape. This happens when a student ignores how the squared term shifts the graph.',
+        },
+        misconceptionByChoice: {
+          '-4': 'incomplete_square_adjustment',
+          '5': 'sign_error',
+          '11': 'constant_term_as_vertex',
+        },
+        hint_ladder: [
+          'To find a minimum value, rewrite the quadratic in vertex form.',
+          'Add and subtract 16 so that x² - 8x + 16 becomes a perfect square.',
+          'You should get f(x) = (x - 4)² - 5.',
+          'The squared term is smallest when it equals 0, so the whole expression is smallest at -5.',
+          'The correct answer is -5 because (x - 4)² cannot be less than 0.',
+        ],
+        misconception_tags: ['incomplete_square_adjustment', 'sign_error'],
+      }),
+
       math_polynomial_01: createRationale({
         item_id: 'math_polynomial_01',
         explanation: 'Factor out x: x\u00B3 \u2212 x\u00B2 \u2212 6x = x(x\u00B2 \u2212 x \u2212 6). Factor the quadratic: x\u00B2 \u2212 x \u2212 6 = (x \u2212 3)(x + 2). The full factored form is x(x \u2212 3)(x + 2), so (x + 2) is a factor.',
@@ -2306,6 +2473,29 @@ export function createDemoData() {
         misconception_tags: ['missing_half_in_triangle_area', 'area_reported_as_side'],
       }),
 
+      math_geometry_03: createRationale({
+        item_id: 'math_geometry_03',
+        explanation: 'The full garden area is 9 × 7 = 63 square feet. The storage pad covers 3 × 3 = 9 square feet. Subtracting gives 63 - 9 = 54 square feet remaining.',
+        wrongRationales: {
+          '45': 'A student who enters 45 likely subtracts 18 instead of 9. This happens when a student confuses side length with area in the subtracted region.',
+          '51': 'A student who enters 51 likely subtracts a linear measure instead of the pad’s area. This happens when a student starts with the correct whole area but removes 12 rather than 9 square feet.',
+          '60': 'A student who enters 60 likely subtracts 3 instead of 9. This happens when a student notices the storage pad’s side length but does not square it to get the covered area.',
+        },
+        misconceptionByChoice: {
+          '45': 'area_of_square_miscomputed',
+          '51': 'linear_measure_subtracted_from_area',
+          '60': 'side_length_used_instead_of_area',
+        },
+        hint_ladder: [
+          'Find the area of the whole rectangle first: length × width.',
+          'Then find the area of the square pad by squaring its side length.',
+          'Subtract the covered area from the full garden area.',
+          'Make sure you subtract 9 square feet, not just 3 feet.',
+          'The correct answer is 54 because 63 - 9 = 54.',
+        ],
+        misconception_tags: ['area_of_square_miscomputed', 'side_length_used_instead_of_area'],
+      }),
+
       math_circle_01: createRationale({
         item_id: 'math_circle_01',
         explanation: 'Arc length = (central angle / 360\u00B0) \u00D7 2\u03C0r = (120/360)(2\u03C0)(6) = (1/3)(12\u03C0) = 4\u03C0.',
@@ -2397,6 +2587,29 @@ export function createDemoData() {
           'The correct answer is C because the adjacent side is 4 × 4 = 16.',
         ],
         misconception_tags: ['wrong_element_from_ratio', 'ratio_scale_error'],
+      }),
+
+      math_trig_03: createRationale({
+        item_id: 'math_trig_03',
+        explanation: 'The ramp’s rise and run make a right triangle with opposite side 3 and adjacent side 4, so tan θ = 3/4. Therefore θ = tan⁻¹(3/4) ≈ 36.87°, which rounds to 37°.',
+        wrongRationales: {
+          A: 'A student who picks 31° likely underestimates the angle from the 3-to-4 ratio or rounds too early from an imprecise calculator readout. This happens when a student knows the angle should be acute but does not use the trig ratio carefully.',
+          C: 'A student who picks 45° likely assumes equal legs in the triangle even though the rise and run are different. This happens when a student defaults to a familiar special angle instead of using tan θ = 3/4.',
+          D: 'A student who picks 53° likely finds tan⁻¹(4/3) instead of tan⁻¹(3/4). This happens when a student swaps the opposite and adjacent sides, a common right-triangle trig error.',
+        },
+        misconceptionByChoice: {
+          A: 'approximation_error',
+          C: 'special_angle_guess',
+          D: 'opposite_adjacent_swap',
+        },
+        hint_ladder: [
+          'Translate the ramp description into a right triangle: rise = opposite = 3, run = adjacent = 4.',
+          'Use tangent because tan θ = opposite/adjacent.',
+          'Compute θ = tan⁻¹(3/4), which is about 36.87°.',
+          'Round to the nearest degree after finding the calculator value.',
+          'The correct answer is B because 36.87° rounds to 37°.',
+        ],
+        misconception_tags: ['opposite_adjacent_swap', 'special_angle_guess'],
       }),
 
       math_quadratic_01: createRationale({

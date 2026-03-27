@@ -217,25 +217,49 @@ function selectModuleItemsWithBreadth(items, count) {
 }
 
 function ensureMathStudentResponseExposure(selected, rankedItems, options = {}) {
-  if (options.section !== 'math' || selected.some(isStudentProducedResponseItem)) {
+  if (options.section !== 'math') {
     return selected;
   }
 
-  const gridInCandidate = rankedItems.find((item) => isStudentProducedResponseItem(item) && !selected.some((selectedItem) => selectedItem.itemId === item.itemId));
-  if (!gridInCandidate) {
+  const studentResponseCandidates = rankedItems.filter((item) => isStudentProducedResponseItem(item));
+  if (!studentResponseCandidates.length) {
     return selected;
   }
 
+  const desiredStudentResponseCount = Math.min(
+    selected.length >= 8 ? 2 : 1,
+    studentResponseCandidates.length,
+  );
   const upgradedSelection = [...selected];
-  const sameDomainIndex = upgradedSelection.findIndex((item) => item.domain === gridInCandidate.domain);
-  if (sameDomainIndex !== -1) {
-    upgradedSelection[sameDomainIndex] = gridInCandidate;
+  const selectedIds = new Set(upgradedSelection.map((item) => item.itemId));
+  let currentStudentResponseCount = upgradedSelection.filter(isStudentProducedResponseItem).length;
+
+  if (currentStudentResponseCount >= desiredStudentResponseCount) {
     return upgradedSelection;
   }
 
-  const replaceableIndex = upgradedSelection.findIndex((item) => !isStudentProducedResponseItem(item));
-  if (replaceableIndex !== -1) {
-    upgradedSelection[replaceableIndex] = gridInCandidate;
+  for (const candidate of studentResponseCandidates) {
+    if (selectedIds.has(candidate.itemId)) continue;
+
+    const sameDomainIndex = upgradedSelection.findIndex((item) => (
+      item.domain === candidate.domain && !isStudentProducedResponseItem(item)
+    ));
+    const replaceableIndex = sameDomainIndex !== -1
+      ? sameDomainIndex
+      : upgradedSelection.findIndex((item) => !isStudentProducedResponseItem(item));
+
+    if (replaceableIndex === -1) {
+      continue;
+    }
+
+    selectedIds.delete(upgradedSelection[replaceableIndex].itemId);
+    upgradedSelection[replaceableIndex] = candidate;
+    selectedIds.add(candidate.itemId);
+    currentStudentResponseCount += 1;
+
+    if (currentStudentResponseCount >= desiredStudentResponseCount) {
+      break;
+    }
   }
 
   return upgradedSelection;

@@ -92,6 +92,9 @@ const WEAK_BLUEPRINT_BOOST = {
     '- Each distractor transition must create a grammatically correct sentence but mismatch the logical relationship (e.g., using a contrast word where continuation is needed).',
     '- Vary the clause-pair relationships across items: cause/effect, contrast, elaboration, example, and sequence.',
     '- At least one item per batch should require distinguishing between two transitions that are near-synonyms in casual speech but differ in register or logical precision.',
+    '- Pay attention to sentence-boundary realism: if a transition follows a semicolon, it should fit that punctuation context; if it follows a period, it should work as a sentence opener.',
+    '- The correct transition must create both logical coherence AND proper sentence structure; distractors may fail on logic while staying grammatical, or introduce subtle punctuation problems.',
+    '- Prefer items where the rhetorical relationship is specific (elaboration vs. contrast vs. sequence) rather than vague or multi-interpretable.',
   ],
   math_linear_equations: [
     'WEAK-BLUEPRINT BOOST — linear equations and inequalities:',
@@ -100,6 +103,9 @@ const WEAK_BLUEPRINT_BOOST = {
     '- Vary equation structures: distribution, combining like terms, fractions/decimals, and absolute value at SAT depth.',
     '- Distractors must arise from distinct procedural errors — do not reuse the same sign-flip mistake across multiple wrong answers.',
     '- Context-based items should use realistic SAT scenarios (cost models, measurement conversions) rather than abstract variable drills.',
+    '- For inequality items, require constraint-checking ("which values satisfy x > 5?") or solution-set interpretation, not just mechanical solving.',
+    '- Keep numeric results clean and suitable for mental math or simple calculator work — prefer integer solutions or clean decimals over messy fractions.',
+    '- Word-problem contexts must include clear units and realistic quantities; at least one distractor should reflect a unit or magnitude error.',
   ],
   math_quadratic_functions: [
     'WEAK-BLUEPRINT BOOST — nonlinear functions:',
@@ -108,6 +114,9 @@ const WEAK_BLUEPRINT_BOOST = {
     '- At least one item should require connecting a graph feature (vertex, intercepts, axis of symmetry) to an algebraic expression.',
     '- Distractors should target sign-pattern confusion in factoring, mixing up vertex coordinates, or confusing minimum/maximum.',
     '- Avoid items that reduce to pure arithmetic after a single substitution — the reasoning should feel genuinely nonlinear.',
+    '- Require axis-of-symmetry or vertex interpretation in at least one item per batch, not just root-finding.',
+    '- Push for graphical reasoning: "which feature of the graph matches this algebraic form?" rather than "solve for x."',
+    '- Keep coefficients and constants Bluebook-clean (small integers, predictable factoring) so the reasoning demand comes from structure, not arithmetic.',
   ],
   math_area_and_perimeter: [
     'WEAK-BLUEPRINT BOOST — area, volume, and lines:',
@@ -116,6 +125,9 @@ const WEAK_BLUEPRINT_BOOST = {
     '- At least one item should require choosing between area and perimeter (or surface area and volume) as the relevant measure.',
     '- Distractors should reflect forgetting a factor of ½, using the wrong dimension, or applying a 2D formula to a 3D context.',
     '- Keep diagrams verbal: describe the shape precisely enough that no figure is needed, matching Bluebook text-only item style.',
+    '- Require explicit composite-shape descriptions (e.g., "a rectangle with a semicircular region removed") so the item tests decomposition reasoning, not just formula recall.',
+    '- Push for measure-selection items: "which expression gives the AREA?" or "which quantity represents the PERIMETER?" before asking for a numeric answer.',
+    '- Keep dimensions Bluebook-clean: prefer multiples of 2, 3, or 5, and avoid messy radicals or irrational intermediate steps unless truly needed for the reasoning.',
   ],
   math_trigonometry: [
     'WEAK-BLUEPRINT BOOST — right-triangle trigonometry:',
@@ -124,6 +136,9 @@ const WEAK_BLUEPRINT_BOOST = {
     '- At least one item should use a real-world context (angle of elevation, ramp slope, shadow length) rather than an abstract triangle.',
     '- Distractors should target sin/cos swaps, opposite/adjacent confusion, and forgetting to apply the inverse trig function.',
     '- Keep numerical values clean enough for mental math or simple calculator work — SAT trig items do not require obscure angle measures.',
+    '- Require angle-of-elevation or real-world application context in at least half of the items in each batch, not just abstract triangle diagrams.',
+    '- Push for ratio interpretation: "which trig ratio represents the relationship?" rather than "calculate sin(θ) given these numbers."',
+    '- Ensure the stem clearly identifies opposite, adjacent, and hypotenuse so the reasoning demand is on ratio selection, not on re-labeling the triangle.',
   ],
 };
 
@@ -422,7 +437,10 @@ Before outputting, verify all of the following for every item:
   (g) the item feels concise and screen-native for Bluebook;
   (h) if section=reading_writing, the passage stays within 25-150 words;
   (i) if skill=${skill} and it is a paired-text skill, the passage clearly contains two labeled texts or viewpoints;
-  (j) if section=math, the problem still works conceptually even if the answer choices are hidden.
+  (j) if section=math, the problem still works conceptually even if the answer choices are hidden;
+  (k) if skill is a weak-blueprint lane (rw_transitions, math_linear_equations, math_quadratic_functions, math_area_and_perimeter, math_trigonometry), verify the item addresses at least one boost constraint from the guidance above;
+  (l) if skill=rw_transitions, check that the correct transition matches the sentence punctuation context (semicolon vs. period) and creates proper logical flow;
+  (m) if section=math and the answer is numeric, verify the result is clean (integers, simple decimals, or fractions with denominators ≤ 20) unless messy values are essential to the reasoning.
 
 7. Answer key distribution
 ${answerKeyInstruction}

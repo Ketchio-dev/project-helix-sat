@@ -11,6 +11,8 @@ const demoData = createDemoData();
 const gridInItem = demoData.items.math_linear_04;
 const ratioGridInItem = demoData.items.math_ratio_01;
 const trigGridInItem = demoData.items.math_trig_01;
+const quadraticGridInItem = demoData.items.math_quadratic_03;
+const geometryGridInItem = demoData.items.math_geometry_03;
 const singleSelectItem = demoData.items.math_linear_01;
 
 test('normalizeStudentResponse trims whitespace and commas for student-produced responses', () => {
@@ -29,10 +31,16 @@ test('evaluateSubmittedResponse accepts equivalent grid-in forms', () => {
 test('evaluateSubmittedResponse accepts newly added decimal and fraction grid-in items', () => {
   assert.equal(isStudentProducedResponseItem(ratioGridInItem), true);
   assert.equal(isStudentProducedResponseItem(trigGridInItem), true);
+  assert.equal(isStudentProducedResponseItem(quadraticGridInItem), true);
+  assert.equal(isStudentProducedResponseItem(geometryGridInItem), true);
   assert.equal(evaluateSubmittedResponse(ratioGridInItem, '6.25').isCorrect, true);
   assert.equal(evaluateSubmittedResponse(ratioGridInItem, '25/4').isCorrect, true);
   assert.equal(evaluateSubmittedResponse(trigGridInItem, '12/13').isCorrect, true);
   assert.equal(evaluateSubmittedResponse(trigGridInItem, '0.923076923').isCorrect, true);
+  assert.equal(evaluateSubmittedResponse(quadraticGridInItem, '-5').isCorrect, true);
+  assert.equal(evaluateSubmittedResponse(quadraticGridInItem, ' -5 ').isCorrect, true);
+  assert.equal(evaluateSubmittedResponse(geometryGridInItem, '54').isCorrect, true);
+  assert.equal(evaluateSubmittedResponse(geometryGridInItem, '45').isCorrect, false);
   assert.equal(evaluateSubmittedResponse(trigGridInItem, '5/13').isCorrect, false);
 });
 

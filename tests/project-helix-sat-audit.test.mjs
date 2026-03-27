@@ -11,15 +11,15 @@ const apiTestSource = fs.readFileSync(new URL('../tests/api.test.mjs', import.me
 test('project helix audit captures current MVP coverage and blueprint gaps', () => {
   const audit = buildProjectHelixSatAudit({ ontology, routerSource, appSource, apiTestSource });
 
-  assert.equal(audit.content.itemCount, 50);
-  assert.equal(audit.content.rationaleCount, 50);
+  assert.equal(audit.content.itemCount, 55);
+  assert.equal(audit.content.rationaleCount, 55);
   assert.deepEqual(audit.content.sectionCounts, {
-    math: 24,
-    reading_writing: 26,
+    math: 28,
+    reading_writing: 27,
   });
   assert.deepEqual(audit.content.itemFormatCounts, {
-    grid_in: 3,
-    single_select: 47,
+    grid_in: 5,
+    single_select: 50,
   });
 
   assert.equal(audit.verdict.crossSectionCoverage, 'credible_for_mvp');
@@ -38,16 +38,18 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   assert.deepEqual(audit.appFlow.exposedButUnused, ['/api/session/review']);
   assert.equal(audit.formatRealism.allSingleSelect, false);
   assert.equal(audit.formatRealism.hasMathGridIn, true);
-  assert.equal(audit.formatRealism.mathGridInCount, 3);
+  assert.equal(audit.formatRealism.mathGridInCount, 5);
 
   assert.equal(audit.sessions.diagnostic.itemCount, 3);
   assert.equal(audit.sessions.timedSet.itemCount, 3);
   assert.equal(audit.sessions.timedSet.timeLimitSec, 210);
-  assert.equal(audit.sessions.moduleSimulation.itemCount, 4);
+  assert.equal(audit.sessions.moduleSimulation.itemCount, 8);
   assert.deepEqual(audit.sessions.moduleSimulation.sectionCounts, {
-    math: 4,
+    math: 8,
   });
+  assert.equal(audit.sessions.moduleSimulation.timeLimitSec, 840);
   assert.equal(audit.sessions.sessionReview.blockedUntilCompletion, true);
-  assert.ok(audit.majorRisks.some((entry) => entry.includes('4 math items')));
-  assert.ok(audit.nextFixes.some((entry) => entry.includes('current narrow math slice')));
+  assert.ok(!audit.majorRisks.some((entry) => entry.includes('module simulation')));
+  assert.deepEqual(audit.majorRisks, ['Exposed endpoints without UI/API-test usage: /api/session/review']);
+  assert.ok(audit.nextFixes.some((entry) => entry.includes('narrow math slice')));
 });
