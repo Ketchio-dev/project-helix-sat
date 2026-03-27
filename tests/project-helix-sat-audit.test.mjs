@@ -12,15 +12,15 @@ const generatedAuditSnapshot = fs.readFileSync(new URL('../docs/audits/project-h
 test('project helix audit captures current MVP coverage and blueprint gaps', () => {
   const audit = buildProjectHelixSatAudit({ ontology, routerSource, appSource, apiTestSource });
 
-  assert.equal(audit.content.itemCount, 58);
-  assert.equal(audit.content.rationaleCount, 58);
+  assert.equal(audit.content.itemCount, 62);
+  assert.equal(audit.content.rationaleCount, 62);
   assert.deepEqual(audit.content.sectionCounts, {
-    math: 30,
-    reading_writing: 28,
+    math: 33,
+    reading_writing: 29,
   });
   assert.deepEqual(audit.content.itemFormatCounts, {
     grid_in: 5,
-    single_select: 53,
+    single_select: 57,
   });
 
   assert.equal(audit.verdict.crossSectionCoverage, 'credible_for_mvp');
@@ -50,8 +50,10 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   });
   assert.equal(audit.sessions.moduleSimulation.timeLimitSec, 840);
   assert.equal(audit.sessions.sessionReview.blockedUntilCompletion, true);
-  assert.ok(!audit.majorRisks.some((entry) => entry.includes('module simulation')));
-  assert.deepEqual(audit.majorRisks, []);
+  assert.ok(audit.majorRisks.some((entry) => entry.includes('partial')), 'should flag partial blueprint skills as a risk');
+  assert.ok(audit.majorRisks.some((entry) => entry.includes('grid-in')), 'should flag narrow grid-in coverage as a risk');
+  assert.ok(audit.majorRisks.some((entry) => entry.includes('Module simulation')), 'should flag module simulation length as a risk');
+  assert.equal(audit.majorRisks.length, 3);
   assert.ok(audit.nextFixes.some((entry) => entry.includes('narrow math slice')));
   assert.equal(formatProjectHelixSatAudit(audit).trimEnd(), generatedAuditSnapshot.trimEnd());
 });

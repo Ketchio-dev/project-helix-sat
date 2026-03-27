@@ -478,6 +478,25 @@ export function createDemoData() {
         tags: ['algebra', 'linear_inequality', 'word_problem', 'constraint_check', 'medium'],
         estimatedTimeSec: 80,
       }),
+      math_linear_07: createItem({
+        itemId: 'math_linear_07',
+        section: 'math',
+        domain: 'algebra',
+        skill: 'math_linear_equations',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'If -3(x - 5) < 12, which value of x satisfies the inequality?',
+        choices: [
+          { label: 'A', text: '-2' },
+          { label: 'B', text: '0' },
+          { label: 'C', text: '1' },
+          { label: 'D', text: '2' },
+        ],
+        answerKey: 'D',
+        status: 'production',
+        tags: ['algebra', 'linear_inequality', 'inequality_reversal', 'medium'],
+        estimatedTimeSec: 75,
+      }),
 
       math_stats_01: createItem({
         itemId: 'math_stats_01',
@@ -837,6 +856,25 @@ export function createDemoData() {
         tags: ['transitions', 'qualified_concession', 'organization', 'hard'],
         estimatedTimeSec: 75,
       }),
+      rw_transition_06: createItem({
+        itemId: 'rw_transition_06',
+        section: 'reading_writing',
+        domain: 'expression_of_ideas',
+        skill: 'rw_transitions',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'Which choice completes the text with the most logical transition?',
+        passage: 'Researchers found that students who annotated a science passage before answering questions missed fewer evidence items on a follow-up quiz. ______, the curriculum team added a short annotation reminder to the start of each practice set.',
+        choices: [
+          { label: 'A', text: 'Nevertheless,' },
+          { label: 'B', text: 'Accordingly,' },
+          { label: 'C', text: 'For example,' },
+          { label: 'D', text: 'Instead,' },
+        ],
+        answerKey: 'B',
+        tags: ['transitions', 'cause_effect', 'organization', 'medium'],
+        estimatedTimeSec: 65,
+      }),
 
       rw_punctuation_01: createItem({
         itemId: 'rw_punctuation_01',
@@ -1134,6 +1172,24 @@ export function createDemoData() {
         tags: ['advanced_math', 'quadratic_vertex', 'minimum_value', 'hard', 'grid_in'],
         estimatedTimeSec: 90,
       }),
+      math_quadratic_04: createItem({
+        itemId: 'math_quadratic_04',
+        section: 'math',
+        domain: 'advanced_math',
+        skill: 'math_quadratic_functions',
+        difficulty_band: 'hard',
+        item_format: 'single_select',
+        stem: 'For the function f(x) = (x + 2)² - 9, which value of x makes f(x) equal to f(-5)?',
+        choices: [
+          { label: 'A', text: '-1' },
+          { label: 'B', text: '0' },
+          { label: 'C', text: '1' },
+          { label: 'D', text: '3' },
+        ],
+        answerKey: 'C',
+        tags: ['advanced_math', 'quadratic_symmetry', 'vertex_form', 'hard'],
+        estimatedTimeSec: 85,
+      }),
       math_polynomial_01: createItem({
         itemId: 'math_polynomial_01',
         section: 'math',
@@ -1419,6 +1475,24 @@ export function createDemoData() {
         tags: ['trigonometry', 'angle_of_elevation', 'real_world_context', 'medium'],
         estimatedTimeSec: 80,
       }),
+      math_trig_05: createItem({
+        itemId: 'math_trig_05',
+        section: 'math',
+        domain: 'geometry_and_trigonometry',
+        skill: 'math_trigonometry',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'A 15-foot ladder leans against a wall and makes a 68° angle with the ground. About how high up the wall does the ladder reach?',
+        choices: [
+          { label: 'A', text: '12 feet' },
+          { label: 'B', text: '14 feet' },
+          { label: 'C', text: '16 feet' },
+          { label: 'D', text: '17 feet' },
+        ],
+        answerKey: 'B',
+        tags: ['trigonometry', 'sine', 'real_world_context', 'medium'],
+        estimatedTimeSec: 80,
+      }),
     },
     rationales: {
       // ── READING AND WRITING RATIONALES ────────────────────────────────
@@ -1647,6 +1721,28 @@ export function createDemoData() {
           'The correct answer is B because 8 months gives a total cost of $68, while 9 months would exceed the limit.',
         ],
         misconception_tags: ['boundary_condition_not_checked', 'fails_to_choose_maximum_valid_value'],
+      }),
+      math_linear_07: createRationale({
+        item_id: 'math_linear_07',
+        explanation: 'Distribute first: -3x + 15 < 12. Subtract 15 to get -3x < -3. Dividing by -3 reverses the inequality, so x > 1. Of the choices, only 2 satisfies that condition.',
+        wrongRationales: {
+          A: 'A student who picks -2 likely moves terms without tracking the inequality direction. This happens when a student simplifies loosely and then guesses from the negative coefficient.',
+          B: 'A student who picks 0 likely forgets that the final solution must be greater than 1. This happens when a student solves part of the inequality but never checks a candidate value.',
+          C: 'A student who picks 1 likely treats the boundary as included or forgets to reverse the inequality after dividing by a negative number. This happens when a student remembers the algebra steps but misses the strict comparison.',
+        },
+        misconceptionByChoice: {
+          A: 'sign_tracking_error',
+          B: 'candidate_not_checked',
+          C: 'incorrect_inequality_reversal',
+        },
+        hint_ladder: [
+          'Start by distributing the -3 across the parentheses.',
+          'After simplifying, isolate the x-term so that you reach -3x < -3.',
+          'When you divide both sides by a negative number, the inequality sign reverses.',
+          'That gives x > 1, so test the choices for a value greater than 1.',
+          'The correct answer is D because 2 is the only choice that satisfies x > 1.',
+        ],
+        misconception_tags: ['incorrect_inequality_reversal', 'candidate_not_checked'],
       }),
 
       math_stats_01: createRationale({
@@ -2039,6 +2135,28 @@ export function createDemoData() {
         ],
         misconception_tags: ['causation_where_qualification_exists', 'example_structure_misread'],
       }),
+      rw_transition_06: createRationale({
+        item_id: 'rw_transition_06',
+        explanation: 'The first sentence reports a result, and the second sentence describes the action the curriculum team took because of that result. The transition must therefore show consequence. “Accordingly,” best matches that cause-and-effect relationship.',
+        wrongRationales: {
+          A: 'A student who picks “Nevertheless,” likely invents a contrast between the quiz results and the team’s response. This happens when a student assumes the second sentence must push back against the first even though it actually follows from it.',
+          C: 'A student who picks “For example,” likely treats the second sentence as another illustration of the first sentence’s claim. This happens when a student misses that the second sentence describes a response, not a supporting example.',
+          D: 'A student who picks “Instead,” likely assumes the team rejected annotation after the study. This happens when a student reads the follow-up action as replacement rather than adoption.',
+        },
+        misconceptionByChoice: {
+          A: 'transition_logic_mismatch',
+          C: 'example_vs_result_confusion',
+          D: 'replacement_where_consequence_exists',
+        },
+        hint_ladder: [
+          'Ask how the second sentence relates to the first: is it contrasting, illustrating, or reacting to the reported finding?',
+          'The study result led the curriculum team to add a reminder.',
+          'That means the transition should signal a result or consequence, not a contrast or example.',
+          'Eliminate “Nevertheless,” and “For example,” first because neither shows that the action follows from the evidence.',
+          'The correct answer is B because “Accordingly,” signals that the reminder was added in response to the finding.',
+        ],
+        misconception_tags: ['transition_logic_mismatch', 'example_vs_result_confusion'],
+      }),
 
       rw_punctuation_01: createRationale({
         item_id: 'rw_punctuation_01',
@@ -2387,6 +2505,28 @@ export function createDemoData() {
         ],
         misconception_tags: ['incomplete_square_adjustment', 'sign_error'],
       }),
+      math_quadratic_04: createRationale({
+        item_id: 'math_quadratic_04',
+        explanation: 'The function is in vertex form, so its axis of symmetry is x = -2. The input -5 is 3 units to the left of that axis, so the matching input with the same output is 3 units to the right: x = 1.',
+        wrongRationales: {
+          A: 'A student who picks -1 likely moves only 1 unit to the right of the axis instead of matching the full 3-unit horizontal distance from -5. This happens when a student identifies the axis but does not preserve symmetry.',
+          B: 'A student who picks 0 likely uses the y-value shift (-9) or averages the visible numbers in the expression rather than reflecting across x = -2. This happens when a student recognizes vertex form but does not apply it geometrically.',
+          D: 'A student who picks 3 likely reflects across the y-axis or counts from 0 instead of from x = -2. This happens when a student treats symmetry as a generic “positive mirror” idea rather than using the actual axis of symmetry.',
+        },
+        misconceptionByChoice: {
+          A: 'distance_from_axis_not_preserved',
+          B: 'vertex_form_not_interpreted',
+          D: 'wrong_axis_of_symmetry',
+        },
+        hint_ladder: [
+          'In vertex form, f(x) = (x + 2)² - 9 has axis of symmetry x = -2.',
+          'Compare x = -5 to the axis: it is 3 units to the left of x = -2.',
+          'A point with the same output must be the same distance from the axis on the other side.',
+          'Move 3 units to the right of x = -2 to find the matching x-value.',
+          'The correct answer is C because x = 1 is symmetric to x = -5 across the axis x = -2.',
+        ],
+        misconception_tags: ['distance_from_axis_not_preserved', 'wrong_axis_of_symmetry'],
+      }),
       math_polynomial_01: createRationale({
         item_id: 'math_polynomial_01',
         explanation: 'Factor out x: x\u00B3 \u2212 x\u00B2 \u2212 6x = x(x\u00B2 \u2212 x \u2212 6). Factor the quadratic: x\u00B2 \u2212 x \u2212 6 = (x \u2212 3)(x + 2). The full factored form is x(x \u2212 3)(x + 2), so (x + 2) is a factor.',
@@ -2730,6 +2870,28 @@ export function createDemoData() {
           'The correct answer is B because the tree is about 17 feet tall.',
         ],
         misconception_tags: ['ratio_setup_reversed', 'adjacent_reported_as_height'],
+      }),
+      math_trig_05: createRationale({
+        item_id: 'math_trig_05',
+        explanation: 'The ladder is the hypotenuse, and the height on the wall is opposite the 68° angle. Use sine: sin(68°) = height/15, so height = 15 sin(68°) ≈ 13.9 feet, which is about 14 feet.',
+        wrongRationales: {
+          A: 'A student who picks 12 feet likely rounds too early or uses a smaller trig ratio than sin(68°). This happens when a student knows the setup is trig-based but handles the calculator work loosely.',
+          C: 'A student who picks 16 feet likely treats the 15-foot ladder as a leg and multiplies by a ratio greater than 1. This happens when a student loses track of which side is the hypotenuse.',
+          D: 'A student who picks 17 feet likely uses tangent or cosine with the wrong sides and overestimates the height. This happens when a student identifies the angle but chooses the wrong trig ratio.',
+        },
+        misconceptionByChoice: {
+          A: 'premature_rounding_in_trig_estimate',
+          C: 'hypotenuse_not_recognized',
+          D: 'wrong_trig_ratio',
+        },
+        hint_ladder: [
+          'Identify the sides first: the ladder is the hypotenuse, and the wall height is opposite the 68° angle.',
+          'Because you need opposite and know the hypotenuse, use sine.',
+          'Set up sin(68°) = height/15, then multiply both sides by 15.',
+          'A calculator gives 15 sin(68°) ≈ 13.9, so round to the nearest foot.',
+          'The correct answer is B because the ladder reaches about 14 feet up the wall.',
+        ],
+        misconception_tags: ['wrong_trig_ratio', 'hypotenuse_not_recognized'],
       }),
 
       math_quadratic_01: createRationale({

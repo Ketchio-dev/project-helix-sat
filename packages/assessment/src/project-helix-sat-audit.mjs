@@ -273,6 +273,9 @@ export function buildProjectHelixSatAudit({ ontology, routerSource, appSource, a
     ...(ontologyCoverage.missingSkills.length
       ? [`Missing explicit blueprint skills: ${ontologyCoverage.missingSkills.map((entry) => `${entry.section}:${entry.skill}`).join(', ')}`]
       : []),
+    ...(ontologyCoverage.partialSkills > 0
+      ? [`${ontologyCoverage.partialSkills} blueprint skill(s) still marked partial — full coverage requires more depth before stronger alignment claims.`]
+      : []),
     ...(content.singletonSkills.length
       ? [`Thin item depth for singleton skills: ${content.singletonSkills.map((entry) => entry.skill).join(', ')}`]
       : []),
@@ -282,11 +285,11 @@ export function buildProjectHelixSatAudit({ ontology, routerSource, appSource, a
     ...(!formatRealism.hasMathGridIn
       ? ['Math still lacks any grid-in / student-produced-response item shape, which keeps SAT format realism intentionally incomplete.']
       : []),
-    ...(formatRealism.mathGridInCount > 0 && formatRealism.mathGridInCount < 4
-      ? [`Math still has only ${formatRealism.mathGridInCount} grid-in / student-produced-response items, so format-realism coverage remains narrow.`]
+    ...(formatRealism.mathGridInCount > 0 && formatRealism.mathGridInCount < 8
+      ? [`Math has only ${formatRealism.mathGridInCount} grid-in / student-produced-response items — format realism remains a narrow hand-authored slice.`]
       : []),
-    ...(sessions.moduleSimulation.itemCount < 8
-      ? [`Module simulation is only ${sessions.moduleSimulation.itemCount} ${sessions.moduleSimulation.section ?? 'single-section'} items, so it still falls well short of exam-realistic module length.`]
+    ...(sessions.moduleSimulation.itemCount < 22
+      ? [`Module simulation is ${sessions.moduleSimulation.itemCount} ${sessions.moduleSimulation.section ?? 'single-section'} items — real SAT modules are 22–27 items, so the current shape is still much shorter than exam-realistic.`]
       : []),
     ...(appFlow.exposedButUnused.length
       ? [`Exposed endpoints without UI/API-test usage: ${appFlow.exposedButUnused.join(', ')}`]

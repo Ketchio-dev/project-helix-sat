@@ -7,19 +7,19 @@ Project Helix SAT **credibly covers both SAT Reading/Writing and Math as a proto
 ## Evidence gathered
 
 ### Demo item bank
-- 58 demo items total
-- 28 Reading/Writing items, 30 Math items
+- 62 demo items total
+- 29 Reading/Writing items, 33 Math items
 - All 8 top-level SAT domains represented
   - Reading/Writing: craft and structure (7), information and ideas (8), expression of ideas (7), standard English conventions (6)
   - Math: algebra (10), advanced math (7), problem solving and data analysis (4), geometry and trigonometry (9)
-- 58/58 items have canonical rationales and hint ladders
+- 62/62 items have canonical rationales and hint ladders
 - 19 ontology skills are tracked in the audit: 14 covered, 5 partial, 0 missing
 - There are no singleton-skill lanes anymore, but five blueprint areas are still explicitly partial:
-  - organization (rw_transitions): 5 items
-  - linear equations and inequalities (math_linear_equations): 4 items
-  - nonlinear functions (math_quadratic_functions): 3 items
+  - organization (rw_transitions): 6 items
+  - linear equations and inequalities (math_linear_equations): 5 items
+  - nonlinear functions (math_quadratic_functions): 4 items
   - area, volume, and lines (math_area_and_perimeter): 5 items
-  - right-triangle trigonometry (math_trigonometry): 4 items
+  - right-triangle trigonometry (math_trigonometry): 5 items
 
 ### Prompt-contract improvements (latest commit)
 - Generation prompts for all five partial-coverage lanes now include materially stronger, testable realism constraints.
@@ -74,4 +74,4 @@ Project Helix SAT **credibly covers both SAT Reading/Writing and Math as a proto
 
 ## Bottom line
 
-Today the product is a believable **two-section SAT prototype** with a 58-item bank, stronger weak-lane coverage, a 5-item math numeric-entry slice, wired session review, and section-specific 8-item modules. Even so, the product still needs more depth, more varied format coverage, and better calibration before any stronger Bluebook-parity claim would be justified.
+Today the product is a believable **two-section SAT prototype** with a 62-item bank, stronger weak-lane coverage, a 5-item math numeric-entry slice, wired session review, and section-specific 8-item modules. Even so, the product still needs more depth, more varied format coverage, and better calibration before any stronger Bluebook-parity claim would be justified.

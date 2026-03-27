@@ -5,11 +5,11 @@
 - Blueprint coverage: incomplete
 
 ## Content coverage
-- Items: 58
-- Rationales: 58
-- Sections: math=30, reading_writing=28
-- Domains: math:advanced_math=7, math:algebra=10, math:geometry_and_trigonometry=9, math:problem_solving_and_data_analysis=4, reading_writing:craft_and_structure=7, reading_writing:expression_of_ideas=7, reading_writing:information_and_ideas=8, reading_writing:standard_english_conventions=6
-- Formats: grid_in=5, single_select=53
+- Items: 62
+- Rationales: 62
+- Sections: math=33, reading_writing=29
+- Domains: math:advanced_math=8, math:algebra=11, math:geometry_and_trigonometry=10, math:problem_solving_and_data_analysis=4, reading_writing:craft_and_structure=7, reading_writing:expression_of_ideas=8, reading_writing:information_and_ideas=8, reading_writing:standard_english_conventions=6
+- Formats: grid_in=5, single_select=57
 
 ## Blueprint alignment
 - Ontology skills: 19
@@ -21,11 +21,11 @@
 - none
 
 ### Partial skills
-- reading_writing/expression_of_ideas/organization (5 mapped items)
-- math/algebra/linear_equations_and_inequalities (4 mapped items)
-- math/advanced_math/nonlinear_functions (3 mapped items)
+- reading_writing/expression_of_ideas/organization (6 mapped items)
+- math/algebra/linear_equations_and_inequalities (5 mapped items)
+- math/advanced_math/nonlinear_functions (4 mapped items)
 - math/geometry_and_trigonometry/area_volume_and_lines (5 mapped items)
-- math/geometry_and_trigonometry/right_triangle_trigonometry (4 mapped items)
+- math/geometry_and_trigonometry/right_triangle_trigonometry (5 mapped items)
 
 ### Singleton item skills
 - none
@@ -48,7 +48,9 @@
 - Session review gated until completion: true
 
 ## Major risks
-- none
+- 5 blueprint skill(s) still marked partial — full coverage requires more depth before stronger alignment claims.
+- Math has only 5 grid-in / student-produced-response items — format realism remains a narrow hand-authored slice.
+- Module simulation is 8 math items — real SAT modules are 22–27 items, so the current shape is still much shorter than exam-realistic.
 
 ## Next fixes
 - Keep deepening partial Reading/Writing blueprint lanes (organization) with stronger hand-authored items or improved generation constraints before claiming broader coverage.

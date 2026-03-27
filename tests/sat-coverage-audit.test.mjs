@@ -63,13 +63,13 @@ test('coverage audit: demo item bank spans both SAT sections and all top-level d
   const items = Object.values(data.items);
   const rationales = Object.values(data.rationales);
 
-  assert.equal(items.length, 58);
-  assert.equal(rationales.length, 58);
+  assert.equal(items.length, 62);
+  assert.equal(rationales.length, 62);
 
   const sections = countBy(items, (item) => item.section);
   assert.deepEqual(Object.keys(sections).sort(), ['math', 'reading_writing']);
-  assert.equal(sections.reading_writing, 28);
-  assert.equal(sections.math, 30);
+  assert.equal(sections.reading_writing, 29);
+  assert.equal(sections.math, 33);
   assert.ok(Math.abs(sections.reading_writing - sections.math) <= 4);
 
   for (const [section, expectedDomains] of Object.entries(expectedDomainsBySection)) {
@@ -90,10 +90,10 @@ test('coverage audit: demo item bank spans both SAT sections and all top-level d
   const mathGridInItems = items.filter((item) => item.item_format === 'grid_in' && item.section === 'math');
   assert.equal(mathGridInItems.length, 5);
   assert.ok(items.some((item) => item.skill === 'rw_punctuation'));
-  assert.ok(items.filter((item) => item.skill === 'rw_transitions').length >= 5);
-  assert.ok(items.filter((item) => item.skill === 'math_linear_equations').length >= 4);
+  assert.ok(items.filter((item) => item.skill === 'rw_transitions').length >= 6);
+  assert.ok(items.filter((item) => item.skill === 'math_linear_equations').length >= 5);
   assert.ok(items.filter((item) => item.skill === 'math_circles').length >= 2);
-  assert.ok(items.filter((item) => item.skill === 'math_trigonometry').length >= 4);
+  assert.ok(items.filter((item) => item.skill === 'math_trigonometry').length >= 5);
 });
 
 test('coverage audit: learner app flow exposes both sections through timed and module sessions', async () => {
@@ -175,6 +175,8 @@ test('coverage audit: learner app flow exposes both sections through timed and m
     assert.equal(finalModuleAttempt.moduleSummary.completed, true);
     assert.equal(finalModuleAttempt.moduleSummary.sectionBreakdown.length, 1);
     assert.deepEqual(finalModuleAttempt.moduleSummary.sectionBreakdown.map((entry) => entry.section ?? entry.key), ['math']);
+    assert.match(finalModuleAttempt.moduleSummary.nextAction, /\bMath\b/);
+    assert.doesNotMatch(finalModuleAttempt.moduleSummary.nextAction, /which section/i);
 
     const finishedModule = await fetch(`${baseUrl}/api/module/finish`, {
       method: 'POST',
