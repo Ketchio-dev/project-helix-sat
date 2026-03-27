@@ -821,6 +821,94 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       };
     },
 
+    getWeeklyDigest(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const profile = api.getProfile(userId);
+      const projection = api.getProjection(userId);
+      const skillStates = [...api.getSkillStates(userId)];
+      const sessionHistory = api.getSessionHistory(userId, 10);
+      const review = api.getReviewRecommendations(userId);
+      const revisitQueue = api.getReviewRevisitQueue(userId, { includeFuture: true });
+      const today = new Date();
+      const periodEnd = today.toISOString().slice(0, 10);
+      const periodStart = addDays(today, -6).toISOString().slice(0, 10);
+      const weeklySessions = sessionHistory.filter((session) => {
+        const startedAt = session.startedAt ?? session.started_at;
+        return startedAt && startedAt.slice(0, 10) >= periodStart;
+      });
+      const completedSessions = weeklySessions.filter((session) => session.status === 'complete');
+      const strongestSkill = [...skillStates]
+        .sort((left, right) => (right.mastery + right.timed_mastery) - (left.mastery + left.timed_mastery))[0] ?? null;
+      const weakestSkill = [...skillStates]
+        .sort((left, right) => (left.mastery + left.timed_mastery + left.retention_risk) - (right.mastery + right.timed_mastery + right.retention_risk))[0] ?? null;
+      const topTrap = api.getErrorDnaSummary(userId, 1)[0] ?? null;
+      const strongestLabel = strongestSkill ? formatSkillLabel(strongestSkill.skill_id) : null;
+      const weakestLabel = weakestSkill ? formatSkillLabel(weakestSkill.skill_id) : null;
+      const recentAccuracies = completedSessions
+        .map((session) => session.accuracy)
+        .filter((value) => typeof value === 'number');
+      const averageAccuracy = recentAccuracies.length
+        ? roundRatio(recentAccuracies.reduce((sum, value) => sum + value, 0) / recentAccuracies.length)
+        : null;
+
+      const strengths = [];
+      if (completedSessions.length) {
+        strengths.push(`You completed ${completedSessions.length} scored session${completedSessions.length === 1 ? '' : 's'} in the last 7 days.`);
+      } else {
+        strengths.push('Your baseline work is in place; the next completed session will start a visible weekly trend line.');
+      }
+      if (strongestLabel) {
+        strengths.push(`${strongestLabel} is currently your strongest stable lane.`);
+      }
+      if (averageAccuracy !== null) {
+        strengths.push(`Average scored accuracy this week is ${Math.round(averageAccuracy * 100)}%.`);
+      }
+
+      const risks = [];
+      if (topTrap) {
+        risks.push(`${topTrap.label} is still the most expensive recurring trap.`);
+      }
+      if (weakestLabel) {
+        risks.push(`${weakestLabel} is the weakest lane still limiting your score band.`);
+      }
+      if (!completedSessions.length) {
+        risks.push('Without another completed session, Helix cannot confirm whether the latest fixes are sticking.');
+      }
+
+      const recommendedFocus = [];
+      const retryLead = revisitQueue[0] ?? null;
+      if (retryLead?.skill) {
+        recommendedFocus.push(`Run the scheduled retry/revisit loop for ${formatSkillLabel(retryLead.skill)}.`);
+      }
+      for (const block of api.getPlan(userId).blocks?.slice(0, 2) ?? []) {
+        recommendedFocus.push(block.objective);
+      }
+      if (!recommendedFocus.length) {
+        recommendedFocus.push('Complete one focused session so Helix can recommend the next score-moving block.');
+      }
+
+      const projectedMomentum = projection.momentum_score >= 0.75
+        ? 'strong'
+        : projection.momentum_score >= 0.55
+          ? 'improving'
+          : projection.momentum_score >= 0.35
+            ? 'flat'
+            : 'declining';
+
+      return {
+        period_start: periodStart,
+        period_end: periodEnd,
+        strengths,
+        risks,
+        recommended_focus: recommendedFocus.slice(0, 3),
+        projected_momentum: projectedMomentum,
+        parent_summary: `${profile.name} is ${completedSessions.length ? 'building' : 'starting'} a weekly rhythm. The clearest next gain comes from ${retryLead?.skill ? formatSkillLabel(retryLead.skill) : (weakestLabel ?? 'the next focused practice block')}.`,
+        teacher_brief: topTrap
+          ? `Cluster support around ${topTrap.label.toLowerCase()} and monitor whether the next retry loop sticks.`
+          : `Collect one more completed session before narrowing the weekly intervention focus.`,
+      };
+    },
+
     getSessionHistory(learnerId = DEMO_USER_ID, limit = 5) {
       if (!api.hasLearnerProfile(learnerId)) {
         throw new HttpError(404, 'Unknown learner');
@@ -1318,6 +1406,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         profile: api.getProfile(userId),
         projection: api.getProjection(userId),
         projectionEvidence: api.getProjectionEvidence(userId),
+        weeklyDigest: api.getWeeklyDigest(userId),
         plan: api.getPlan(userId),
         planExplanation: api.getPlanExplanation(userId),
         errorDna: api.getErrorDna(userId),

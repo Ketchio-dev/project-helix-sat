@@ -841,6 +841,77 @@ test('api returns a diagnostic reveal after diagnostic completion', async () => 
   });
 });
 
+test('api returns a weekly digest with strengths, risks, and focus after learner activity', async () => {
+  await withServer(async (baseUrl) => {
+    const registered = await registerSession(baseUrl, {
+      name: 'Weekly Digest Student',
+      email: nextUniqueEmail('weekly-digest-student'),
+      password: 'pass1234',
+    });
+
+    await fetch(`${baseUrl}/api/goal-profile`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({
+        targetScore: 1420,
+        targetTestDate: '2026-11-07',
+        dailyMinutes: 35,
+        selfReportedWeakArea: 'transitions',
+      }),
+    });
+
+    const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+
+    await fetch(`${baseUrl}/api/attempt/submit`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({
+        itemId: diagnostic.items[0].itemId,
+        ...buildIncorrectAttemptAnswer(diagnostic.items[0].itemId),
+        sessionId: diagnostic.session.id,
+        mode: 'learn',
+        confidenceLevel: 2,
+        responseTimeMs: 33000,
+      }),
+    });
+
+    for (const item of diagnostic.items.slice(1)) {
+      await fetch(`${baseUrl}/api/attempt/submit`, {
+        method: 'POST',
+        headers: registered.headers,
+        body: JSON.stringify({
+          itemId: item.itemId,
+          ...buildAttemptAnswer(item.itemId),
+          sessionId: diagnostic.session.id,
+          mode: 'learn',
+          confidenceLevel: 3,
+          responseTimeMs: 28000,
+        }),
+      });
+    }
+
+    const digest = await fetch(`${baseUrl}/api/reports/weekly`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+
+    assert.match(digest.period_start, /^\d{4}-\d{2}-\d{2}$/);
+    assert.match(digest.period_end, /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok(Array.isArray(digest.strengths));
+    assert.ok(Array.isArray(digest.risks));
+    assert.ok(Array.isArray(digest.recommended_focus));
+    assert.ok(digest.strengths.length >= 1);
+    assert.ok(digest.risks.length >= 1);
+    assert.ok(digest.recommended_focus.length >= 1);
+    assert.ok(['declining', 'flat', 'improving', 'strong'].includes(digest.projected_momentum));
+    assert.equal(typeof digest.parent_summary, 'string');
+    assert.equal(typeof digest.teacher_brief, 'string');
+  });
+});
+
 test('api starts a retry loop from review recommendations and schedules a revisit', async () => {
   await withServer(async (baseUrl) => {
     const registered = await registerSession(baseUrl, {

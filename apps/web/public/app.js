@@ -595,6 +595,35 @@ function renderWhatChanged(summary) {
   container.append(list);
 }
 
+function renderWeeklyDigest(digest) {
+  const container = $('#weeklyDigest');
+  clear(container);
+  if (!digest) {
+    container.append(node('p', { className: 'muted', text: 'Weekly evidence will appear after Helix has a little more completed work to summarize.' }));
+    return;
+  }
+
+  container.append(node('p', {
+    className: 'notice',
+    text: `${digest.period_start} → ${digest.period_end} · momentum ${digest.projected_momentum ?? 'flat'}`,
+  }));
+
+  const sections = [
+    ['Strengths', digest.strengths],
+    ['Risks', digest.risks],
+    ['Next focus', digest.recommended_focus],
+  ];
+
+  for (const [label, rows] of sections) {
+    container.append(node('p', { className: 'muted', text: label }));
+    const list = node('ul', { className: 'list compact' });
+    for (const row of rows ?? []) {
+      list.append(node('li', { text: row }));
+    }
+    container.append(list);
+  }
+}
+
 function renderSessionHistory(payload) {
   const container = $('#sessionHistory');
   clear(container);
@@ -1389,8 +1418,9 @@ async function loadDashboard() {
       throw new Error('No linked learner available for this account.');
     }
 
-    const [dashboard, sessionHistory, parentSummary, teacherBrief, teacherAssignments, activeSession, goalProfile, nextBestAction, diagnosticReveal] = await Promise.all([
+    const [dashboard, weeklyDigest, sessionHistory, parentSummary, teacherBrief, teacherAssignments, activeSession, goalProfile, nextBestAction, diagnosticReveal] = await Promise.all([
       json(withLearnerContext('/api/dashboard/learner')),
+      json(withLearnerContext('/api/reports/weekly')).catch(() => null),
       json(withLearnerContext('/api/sessions/history')).catch(() => null),
       state.userRole === 'parent' ? json(withLearnerContext('/api/parent/summary')).catch(() => null) : Promise.resolve(null),
       state.userRole === 'teacher' ? json(withLearnerContext('/api/teacher/brief')).catch(() => null) : Promise.resolve(null),
@@ -1418,6 +1448,7 @@ async function loadDashboard() {
     renderPlanExplanation(dashboard.planExplanation);
     renderErrorDna(dashboard.errorDnaSummary);
     renderWhatChanged(dashboard.whatChanged);
+    renderWeeklyDigest(weeklyDigest ?? dashboard.weeklyDigest ?? null);
     renderReview(dashboard.review);
     renderSessionHistory(sessionHistory);
     renderTimedSetSummary(dashboard.latestTimedSetSummary);

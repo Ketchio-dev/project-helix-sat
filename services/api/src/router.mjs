@@ -246,6 +246,15 @@ export function createRouter({ store, webRoot }) {
     },
   });
 
+  registerRoute('GET', '/api/reports/weekly', {
+    auth: 'authenticated',
+    learnerAccess: 'read',
+    responseSchema: 'WeeklyReport',
+    async handler({ learnerId }) {
+      return { body: store.getWeeklyDigest(learnerId) };
+    },
+  });
+
   registerRoute('GET', '/api/items', {
     auth: 'authenticated',
     async handler({ url }) {
