@@ -1,0 +1,305 @@
+[
+  {
+    "item": {
+      "itemId": "math_linear_equations_gen_001",
+      "section": "math",
+      "domain": "algebra",
+      "skill": "math_linear_equations",
+      "difficulty_band": "easy",
+      "item_format": "single_select",
+      "stem": "If x + 8 = 21, what is the value of x?",
+      "passage": "",
+      "choices": [
+        {
+          "key": "A",
+          "label": "A",
+          "text": "13"
+        },
+        {
+          "key": "B",
+          "label": "B",
+          "text": "29"
+        },
+        {
+          "key": "C",
+          "label": "C",
+          "text": "12"
+        },
+        {
+          "key": "D",
+          "label": "D",
+          "text": "2"
+        }
+      ],
+      "answerKey": "A",
+      "status": "production",
+      "tags": [
+        "algebra",
+        "one_step_equation",
+        "inverse_operation"
+      ],
+      "estimatedTimeSec": 60
+    },
+    "rationale": {
+      "item_id": "math_linear_equations_gen_001",
+      "explanation": "Subtract 8 from both sides of the equation: x = 21 - 8 = 13.",
+      "canonical_correct_rationale": "Subtract 8 from both sides of the equation: x = 21 - 8 = 13.",
+      "canonical_wrong_rationales": {
+        "B": "This adds 8 instead of subtracting it.",
+        "C": "This is close to the correct value but comes from subtracting incorrectly.",
+        "D": "This does not result from isolating x in the equation."
+      },
+      "misconceptionByChoice": {
+        "B": "used_wrong_inverse_operation",
+        "C": "arithmetic_error",
+        "D": "failed_to_isolate_variable"
+      },
+      "hint_ladder": [
+        "You want x alone on one side of the equation.",
+        "x has 8 added to it.",
+        "Use the opposite operation of adding 8.",
+        "Subtract 8 from both sides: x = 21 - 8.",
+        "Answer: A. x = 13."
+      ],
+      "hint_ladder_json": [
+        "You want x alone on one side of the equation.",
+        "x has 8 added to it.",
+        "Use the opposite operation of adding 8.",
+        "Subtract 8 from both sides: x = 21 - 8.",
+        "Answer: A. x = 13."
+      ],
+      "misconception_tags": [
+        "used_wrong_inverse_operation",
+        "arithmetic_error",
+        "failed_to_isolate_variable"
+      ]
+    }
+  },
+  {
+    "item": {
+      "itemId": "math_linear_equations_gen_002",
+      "section": "math",
+      "domain": "algebra",
+      "skill": "math_linear_equations",
+      "difficulty_band": "easy",
+      "item_format": "single_select",
+      "stem": "If 5x = 35, what is the value of x?",
+      "passage": "",
+      "choices": [
+        {
+          "key": "A",
+          "label": "A",
+          "text": "5"
+        },
+        {
+          "key": "B",
+          "label": "B",
+          "text": "7"
+        },
+        {
+          "key": "C",
+          "label": "C",
+          "text": "30"
+        },
+        {
+          "key": "D",
+          "label": "D",
+          "text": "40"
+        }
+      ],
+      "answerKey": "B",
+      "status": "production",
+      "tags": [
+        "algebra",
+        "one_step_equation",
+        "division_to_isolate"
+      ],
+      "estimatedTimeSec": 60
+    },
+    "rationale": {
+      "item_id": "math_linear_equations_gen_002",
+      "explanation": "Divide both sides by 5 to isolate x: x = 35 / 5 = 7.",
+      "canonical_correct_rationale": "Divide both sides by 5 to isolate x: x = 35 / 5 = 7.",
+      "canonical_wrong_rationales": {
+        "A": "This treats the coefficient 5 as the value of x instead of dividing both sides by 5.",
+        "C": "This subtracts 5 from 35 instead of dividing.",
+        "D": "This adds 5 to 35 instead of dividing."
+      },
+      "misconceptionByChoice": {
+        "A": "confused_coefficient_with_solution",
+        "C": "used_subtraction_instead_of_division",
+        "D": "used_addition_instead_of_division"
+      },
+      "hint_ladder": [
+        "You need to get x by itself.",
+        "x is being multiplied by 5.",
+        "Use the opposite operation of multiplying by 5.",
+        "Divide both sides by 5: x = 35 / 5.",
+        "Answer: B. x = 7."
+      ],
+      "hint_ladder_json": [
+        "You need to get x by itself.",
+        "x is being multiplied by 5.",
+        "Use the opposite operation of multiplying by 5.",
+        "Divide both sides by 5: x = 35 / 5.",
+        "Answer: B. x = 7."
+      ],
+      "misconception_tags": [
+        "confused_coefficient_with_solution",
+        "used_subtraction_instead_of_division",
+        "used_addition_instead_of_division"
+      ]
+    }
+  },
+  {
+    "item": {
+      "itemId": "math_linear_equations_gen_001",
+      "section": "math",
+      "domain": "algebra",
+      "skill": "math_linear_equations",
+      "difficulty_band": "easy",
+      "item_format": "single_select",
+      "stem": "If x/2 + 3 = 9, what is the value of x?",
+      "passage": "",
+      "choices": [
+        {
+          "key": "A",
+          "label": "A",
+          "text": "6"
+        },
+        {
+          "key": "B",
+          "label": "B",
+          "text": "9"
+        },
+        {
+          "key": "C",
+          "label": "C",
+          "text": "12"
+        },
+        {
+          "key": "D",
+          "label": "D",
+          "text": "18"
+        }
+      ],
+      "answerKey": "C",
+      "status": "production",
+      "tags": [
+        "algebra",
+        "inverse_operations",
+        "easy_start"
+      ],
+      "estimatedTimeSec": 60
+    },
+    "rationale": {
+      "item_id": "math_linear_equations_gen_001",
+      "explanation": "Subtract 3 from both sides to get x/2 = 6. Then multiply both sides by 2 to get x = 12.",
+      "canonical_correct_rationale": "Subtract 3 from both sides to get x/2 = 6. Then multiply both sides by 2 to get x = 12.",
+      "canonical_wrong_rationales": {
+        "A": "Subtracting 3 from 9 gives 6, but 6 is the value of x/2, not x.",
+        "B": "Using 9 directly ignores the operations that must be undone to isolate x.",
+        "D": "Multiplying 9 by 2 before subtracting 3 gives 18, but the addition must be undone first."
+      },
+      "misconceptionByChoice": {
+        "A": "stops_before_final_inverse_operation",
+        "B": "does_not_isolate_variable",
+        "D": "incorrect_order_of_inverse_operations"
+      },
+      "hint_ladder": [
+        "Undo the +3 first.",
+        "Subtract 3 from both sides of the equation.",
+        "This gives x/2 = 6.",
+        "Now multiply both sides by 2.",
+        "Answer: C. x/2 + 3 = 9 -> x/2 = 6 -> x = 12."
+      ],
+      "hint_ladder_json": [
+        "Undo the +3 first.",
+        "Subtract 3 from both sides of the equation.",
+        "This gives x/2 = 6.",
+        "Now multiply both sides by 2.",
+        "Answer: C. x/2 + 3 = 9 -> x/2 = 6 -> x = 12."
+      ],
+      "misconception_tags": [
+        "stops_before_final_inverse_operation",
+        "incorrect_order_of_inverse_operations"
+      ]
+    }
+  },
+  {
+    "item": {
+      "itemId": "math_linear_equations_gen_002",
+      "section": "math",
+      "domain": "algebra",
+      "skill": "math_linear_equations",
+      "difficulty_band": "easy",
+      "item_format": "single_select",
+      "stem": "If 2(x + 3) = 14, what is the value of x?",
+      "passage": "",
+      "choices": [
+        {
+          "key": "A",
+          "label": "A",
+          "text": "4"
+        },
+        {
+          "key": "B",
+          "label": "B",
+          "text": "5"
+        },
+        {
+          "key": "C",
+          "label": "C",
+          "text": "11"
+        },
+        {
+          "key": "D",
+          "label": "D",
+          "text": "28"
+        }
+      ],
+      "answerKey": "A",
+      "status": "production",
+      "tags": [
+        "algebra",
+        "distribute_or_divide",
+        "easy_start"
+      ],
+      "estimatedTimeSec": 65
+    },
+    "rationale": {
+      "item_id": "math_linear_equations_gen_002",
+      "explanation": "Divide both sides by 2 to get x + 3 = 7. Then subtract 3 from both sides to get x = 4.",
+      "canonical_correct_rationale": "Divide both sides by 2 to get x + 3 = 7. Then subtract 3 from both sides to get x = 4.",
+      "canonical_wrong_rationales": {
+        "B": "Dividing 14 by 2 gives 7, but 7 is the value of x + 3, not x.",
+        "C": "Adding 3 after dividing gives 11, but the equation requires subtracting 3.",
+        "D": "Multiplying 14 by 2 instead of dividing moves in the wrong direction when isolating x."
+      },
+      "misconceptionByChoice": {
+        "B": "stops_before_final_inverse_operation",
+        "C": "uses_wrong_inverse_operation",
+        "D": "multiplies_instead_of_divides"
+      },
+      "hint_ladder": [
+        "First undo the multiplication by 2.",
+        "Divide both sides by 2.",
+        "Now the equation is x + 3 = 7.",
+        "Subtract 3 from both sides.",
+        "Answer: A. 2(x + 3) = 14 -> x + 3 = 7 -> x = 4."
+      ],
+      "hint_ladder_json": [
+        "First undo the multiplication by 2.",
+        "Divide both sides by 2.",
+        "Now the equation is x + 3 = 7.",
+        "Subtract 3 from both sides.",
+        "Answer: A. 2(x + 3) = 14 -> x + 3 = 7 -> x = 4."
+      ],
+      "misconception_tags": [
+        "stops_before_final_inverse_operation",
+        "uses_wrong_inverse_operation",
+        "multiplies_instead_of_divides"
+      ]
+    }
+  }
+]
