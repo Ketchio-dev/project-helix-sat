@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import { createStore } from '../services/api/src/store.mjs';
 import { projectScoreBand } from '../packages/scoring/src/score-predictor.mjs';
 import { generateDailyPlan } from '../packages/assessment/src/daily-plan-generator.mjs';
+import { buildCurriculumLessonBundle } from '../packages/curriculum/src/lesson-assets.mjs';
 import { generateCurriculumPath, generateProgramPath } from '../packages/curriculum/src/path-generator.mjs';
 import { inferSkillStage, getCurriculumSkill } from '../packages/curriculum/src/mastery-gates.mjs';
 import { createEvent } from '../packages/telemetry/src/events.mjs';
+import { createDemoData } from '../services/api/src/demo-data.mjs';
 
 const DEMO_USER_ID = 'demo-student';
 
@@ -151,6 +153,27 @@ describe('integrity: curriculum stage inference', () => {
       confidence_calibration: 0.7,
       attempts_count: 8,
     }, linearSkill), 'mastered');
+  });
+});
+
+describe('integrity: curriculum lesson bundle', () => {
+  it('turns curriculum lesson asset IDs into teach, worked-example, and transfer cards', () => {
+    const seed = createDemoData();
+    const workedExampleItem = seed.items.rw_inference_01;
+    const transferItem = seed.items.rw_inference_02;
+    const bundle = buildCurriculumLessonBundle({
+      skillId: 'rw_inferences',
+      workedExampleItem,
+      workedExampleRationale: seed.rationales[workedExampleItem.itemId],
+      transferItem,
+      transferRationale: seed.rationales[transferItem.itemId],
+    });
+
+    assert.equal(bundle.teachCard.id, 'teach_rw_inferences_v1');
+    assert.equal(bundle.workedExample.id, 'we_rw_inferences_1');
+    assert.ok(bundle.workedExample.walkthrough.length >= 1);
+    assert.equal(bundle.transferCard.id, 'transfer_rw_inferences_v1');
+    assert.equal(bundle.transferCard.itemId, transferItem.itemId);
   });
 });
 

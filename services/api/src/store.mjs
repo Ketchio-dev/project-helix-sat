@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword, createToken, needsPasswordRehash } from '
 import { HttpError } from './http-utils.mjs';
 import { generateDailyPlan } from '../../../packages/assessment/src/daily-plan-generator.mjs';
 import { selectSessionItems } from '../../../packages/assessment/src/item-selector.mjs';
+import { buildCurriculumLessonBundle } from '../../../packages/curriculum/src/lesson-assets.mjs';
 import { generateCurriculumPath, generateProgramPath } from '../../../packages/curriculum/src/path-generator.mjs';
 import { projectScoreBand } from '../../../packages/scoring/src/score-predictor.mjs';
 import { updateErrorDna, updateLearnerSkillState } from '../../../packages/assessment/src/learner-state.mjs';
@@ -17,6 +18,7 @@ function createId(prefix) {
 const STUDENT_RESPONSE_FORMATS = new Set(['grid_in', 'student_produced_response', 'student-produced-response']);
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
+const DIFFICULTY_RANK = { easy: 0, medium: 1, hard: 2 };
 
 export function isStudentProducedResponseItem(item) {
   return STUDENT_RESPONSE_FORMATS.has(item?.item_format);
@@ -276,6 +278,10 @@ function createFallbackRecommendation(item, reason, action) {
     rationalePreview: null,
     errorTag: null,
   };
+}
+
+function compareDifficulty(left = 'medium', right = 'medium') {
+  return (DIFFICULTY_RANK[left] ?? 1) - (DIFFICULTY_RANK[right] ?? 1);
 }
 
 function average(numbers = []) {
@@ -696,6 +702,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       const attempts = api.getAttempts(learnerId);
       const revisitQueue = api.getReviewRevisitQueue(learnerId);
       const revisitByItemId = new Map(revisitQueue.map((entry) => [entry.itemId, entry]));
+      const recentItemIds = new Set(attempts.slice(-12).map((attempt) => attempt.item_id));
       const recentIncorrect = [...attempts]
         .reverse()
         .filter((attempt) => !attempt.is_correct)
@@ -738,10 +745,41 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         const matchingAttempt = [...attempts]
           .reverse()
           .find((attempt) => attempt.item_id === recommendation.itemId) ?? null;
+        const anchorItem = api.getItem(recommendation.itemId);
         const misconception = recommendation.errorTag
           ? formatErrorInsight(recommendation.errorTag, api.getErrorDna(learnerId)[recommendation.errorTag] ?? 1)
           : null;
         const revisitRecord = revisitByItemId.get(recommendation.itemId) ?? null;
+        const sameSkillCandidates = Object.values(state.items)
+          .filter((candidate) => candidate.skill === recommendation.skill)
+          .sort((left, right) => {
+            const recentDelta = Number(recentItemIds.has(left.itemId)) - Number(recentItemIds.has(right.itemId));
+            if (recentDelta !== 0) return recentDelta;
+            const exposureDelta = (state.itemExposure[left.itemId] ?? 0) - (state.itemExposure[right.itemId] ?? 0);
+            if (exposureDelta !== 0) return exposureDelta;
+            const difficultyDelta = compareDifficulty(left.difficulty_band, right.difficulty_band);
+            if (difficultyDelta !== 0) return difficultyDelta;
+            return left.itemId.localeCompare(right.itemId);
+          });
+        const workedExampleItem = sameSkillCandidates.find((candidate) => candidate.itemId !== recommendation.itemId) ?? anchorItem;
+        const transferItem = [...sameSkillCandidates]
+          .sort((left, right) => {
+            const rightDifficulty = compareDifficulty(right.difficulty_band, left.difficulty_band);
+            if (rightDifficulty !== 0) return rightDifficulty;
+            const recentDelta = Number(recentItemIds.has(left.itemId)) - Number(recentItemIds.has(right.itemId));
+            if (recentDelta !== 0) return recentDelta;
+            return (state.itemExposure[left.itemId] ?? 0) - (state.itemExposure[right.itemId] ?? 0);
+          })
+          .find((candidate) => ![recommendation.itemId, workedExampleItem?.itemId].includes(candidate.itemId))
+          ?? sameSkillCandidates.find((candidate) => candidate.itemId !== recommendation.itemId)
+          ?? anchorItem;
+        const lessonBundle = buildCurriculumLessonBundle({
+          skillId: recommendation.skill,
+          workedExampleItem,
+          workedExampleRationale: workedExampleItem ? api.getRationale(workedExampleItem.itemId) : null,
+          transferItem,
+          transferRationale: transferItem ? api.getRationale(transferItem.itemId) : null,
+        });
         return {
           itemId: recommendation.itemId,
           section: recommendation.section,
@@ -753,6 +791,8 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           correctionRule: recommendation.section === 'math'
             ? 'Write the setup explicitly before solving, then check the final target one more time.'
             : 'Match the answer to the exact textual job before judging which choice sounds best.',
+          teachCard: lessonBundle.teachCard,
+          workedExample: lessonBundle.workedExample,
           retryItem: {
             itemId: recommendation.itemId,
             prompt: recommendation.prompt,
@@ -762,6 +802,15 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
             itemId: recommendation.itemId,
             ctaLabel: revisitRecord?.status === 'revisit_due' ? 'Start revisit' : 'Start retry loop',
           },
+          transferItem: lessonBundle.transferCard,
+          transferAction: lessonBundle.transferCard
+            ? {
+                kind: 'start_retry_loop',
+                itemId: lessonBundle.transferCard.itemId,
+                ctaLabel: 'Try near-transfer',
+              }
+            : null,
+          lessonAssetIds: lessonBundle.lessonAssetIds,
           confidenceBefore: matchingAttempt?.confidence_level ?? null,
           confidenceAfter: matchingAttempt?.confidence_level !== undefined
             ? Math.min(4, matchingAttempt.confidence_level + 1)
@@ -1668,8 +1717,21 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
     startReviewRetry(userId = DEMO_USER_ID, { itemId = null } = {}) {
       api.getUser(userId);
       const review = api.getReviewRecommendations(userId);
+      const requestedItem = itemId ? api.getItem(itemId) : null;
       const lead = (itemId
         ? review.recommendations.find((entry) => entry.itemId === itemId)
+          ?? (requestedItem ? {
+            itemId: requestedItem.itemId,
+            section: requestedItem.section,
+            skill: requestedItem.skill,
+            prompt: requestedItem.prompt,
+            reason: 'Run a near-transfer rep before adding more timed volume.',
+            recommendedAction: requestedItem.section === 'math'
+              ? 'Solve the setup cleanly, then verify the requested quantity before you finalize.'
+              : 'Match the answer to the exact textual job, not the closest-sounding paraphrase.',
+            rationalePreview: api.getRationale(requestedItem.itemId)?.canonical_correct_rationale ?? null,
+            errorTag: null,
+          } : null)
         : null) ?? review.recommendations[0] ?? null;
       if (!lead) {
         throw new HttpError(404, 'No review recommendation is available to retry');

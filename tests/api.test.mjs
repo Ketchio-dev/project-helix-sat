@@ -215,6 +215,10 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
     assert.ok(review.remediationCards.length >= 1);
     assert.equal(typeof review.remediationCards[0].misconception, 'string');
     assert.ok(review.remediationCards[0].retryItem?.itemId);
+    assert.equal(typeof review.remediationCards[0].teachCard?.title, 'string');
+    assert.ok(Array.isArray(review.remediationCards[0].workedExample?.walkthrough));
+    assert.ok(review.remediationCards[0].transferItem?.itemId);
+    assert.equal(review.remediationCards[0].transferAction?.kind, 'start_retry_loop');
 
     const reflection = await fetch(`${baseUrl}/api/reflection/submit`, {
       method: 'POST',
@@ -1088,6 +1092,10 @@ test('api starts a retry loop from review recommendations and schedules a revisi
     }).then((res) => res.json());
     assert.ok(reviewBefore.remediationCards.length >= 1);
     assert.equal(reviewBefore.remediationCards[0].retryAction.kind, 'start_retry_loop');
+    assert.equal(typeof reviewBefore.remediationCards[0].teachCard?.summary, 'string');
+    assert.ok(reviewBefore.remediationCards[0].workedExample?.prompt);
+    assert.ok(reviewBefore.remediationCards[0].transferItem?.itemId);
+    assert.equal(reviewBefore.remediationCards[0].transferAction?.kind, 'start_retry_loop');
 
     const nextBestAction = await fetch(`${baseUrl}/api/next-best-action`, {
       headers: registered.headers,
@@ -1103,6 +1111,14 @@ test('api starts a retry loop from review recommendations and schedules a revisi
     assert.equal(retrySession.session.type, 'review');
     assert.equal(retrySession.currentItem.itemId, reviewBefore.remediationCards[0].itemId);
     assert.ok(retrySession.sessionProgress.total >= 2);
+
+    const transferSession = await fetch(`${baseUrl}/api/review/retry/start`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({ itemId: reviewBefore.remediationCards[0].transferItem.itemId }),
+    }).then((res) => res.json());
+    assert.equal(transferSession.session.type, 'review');
+    assert.equal(transferSession.currentItem.itemId, reviewBefore.remediationCards[0].transferItem.itemId);
 
     let activeItem = retrySession.currentItem;
     let lastAttempt = null;

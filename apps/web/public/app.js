@@ -1276,8 +1276,31 @@ function renderReview(review) {
     card.append(node('p', { text: `Misconception: ${cardData.misconception}` }));
     card.append(node('p', { className: 'muted', text: `Decisive clue: ${cardData.decisiveClue}` }));
     card.append(node('p', { className: 'muted', text: `Correction rule: ${cardData.correctionRule}` }));
+    if (cardData.teachCard) {
+      card.append(node('p', { className: 'notice', text: `${cardData.teachCard.title}: ${cardData.teachCard.summary}` }));
+      if (Array.isArray(cardData.teachCard.objectives) && cardData.teachCard.objectives.length) {
+        const objectiveList = node('ul', { className: 'list compact' });
+        for (const objective of cardData.teachCard.objectives.slice(0, 2)) {
+          objectiveList.append(node('li', { text: objective }));
+        }
+        card.append(objectiveList);
+      }
+    }
+    if (cardData.workedExample?.prompt) {
+      card.append(node('p', { className: 'review-rationale', text: `Worked example: ${cardData.workedExample.prompt}` }));
+      if (Array.isArray(cardData.workedExample.walkthrough) && cardData.workedExample.walkthrough.length) {
+        const walkthrough = node('ol', { className: 'list compact' });
+        for (const step of cardData.workedExample.walkthrough.slice(0, 3)) {
+          walkthrough.append(node('li', { text: step }));
+        }
+        card.append(walkthrough);
+      }
+    }
     if (cardData.retryItem?.prompt) {
       card.append(node('p', { className: 'review-rationale', text: `Retry focus: ${cardData.retryItem.prompt}` }));
+    }
+    if (cardData.transferItem?.prompt) {
+      card.append(node('p', { className: 'muted', text: `Near-transfer: ${cardData.transferItem.prompt}` }));
     }
     card.append(node('p', {
       className: 'muted',
@@ -1295,6 +1318,14 @@ function renderReview(review) {
     });
     retryButton.addEventListener('click', async () => startRetryLoop(cardData.retryAction?.itemId ?? cardData.itemId));
     card.append(retryButton);
+    if (cardData.transferAction?.itemId) {
+      const transferButton = node('button', {
+        className: 'secondary',
+        text: cardData.transferAction.ctaLabel ?? 'Try near-transfer',
+      });
+      transferButton.addEventListener('click', async () => startRetryLoop(cardData.transferAction.itemId));
+      card.append(transferButton);
+    }
     list.append(card);
   }
 
