@@ -1,6 +1,7 @@
 import { createHintResponse } from '../../tutor/src/hint-engine.mjs';
 import { DEMO_USER_ID } from './demo-data.mjs';
 import { HttpError, readJsonBody, sendJson, serveStaticFile } from './http-utils.mjs';
+import { validateRequest } from './validation.mjs';
 
 function getAuthenticatedUserId(request) {
   const userId = request.headers['x-demo-user-id'];
@@ -100,6 +101,7 @@ export function createRouter({ store, webRoot }) {
 
       if (request.method === 'POST' && pathname === '/api/attempt/submit') {
         const body = await readJsonBody(request);
+        validateRequest('AttemptSubmitRequest', body);
         return sendJson(response, 200, store.submitAttempt({ ...body, userId: authenticatedUserId }));
       }
 
@@ -115,6 +117,7 @@ export function createRouter({ store, webRoot }) {
 
       if (request.method === 'POST' && pathname === '/api/tutor/hint') {
         const body = await readJsonBody(request);
+        validateRequest('TutorHintRequest', body);
         const item = store.getItem(body.itemId);
         const rationale = store.getRationale(body.itemId);
         const learnerState = store.getProfile(authenticatedUserId);
@@ -136,11 +139,13 @@ export function createRouter({ store, webRoot }) {
 
       if (request.method === 'POST' && pathname === '/api/reflection/submit') {
         const body = await readJsonBody(request);
+        validateRequest('ReflectionSubmitRequest', body);
         return sendJson(response, 200, store.submitReflection({ ...body, userId: authenticatedUserId }));
       }
 
       if (request.method === 'POST' && pathname === '/api/teacher/assignments') {
         const body = await readJsonBody(request);
+        validateRequest('TeacherAssignmentRequest', body);
         return sendJson(response, 200, store.saveTeacherAssignment({ ...body, userId: authenticatedUserId }));
       }
 
