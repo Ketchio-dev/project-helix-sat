@@ -211,23 +211,37 @@ function buildPrompt(domain, skill, count, difficulty) {
       ? [
           'Generate a balanced mixed set using only these bands: easy, medium, hard.',
           'Distribute the batch as evenly as possible across easy, medium, hard.',
+          'Official calibration shorthand: easy = Foundations, medium = Medium, hard = Advanced.',
           ...difficultyBands.flatMap((band) => [`${band.toUpperCase()}:`, ...difficultyCalibration[band].map((line) => `- ${line}`)]),
         ].join('\n')
-      : [`Use only the ${difficulty} band for every item.`, ...difficultyCalibration[difficulty].map((line) => `- ${line}`)].join('\n');
+      : [
+          `Use only the ${difficulty} band for every item.`,
+          'Official calibration shorthand: easy = Foundations, medium = Medium, hard = Advanced.',
+          ...difficultyCalibration[difficulty].map((line) => `- ${line}`),
+        ].join('\n');
 
   const passageInstruction =
     domain === 'reading_writing'
       ? [
           'Passage requirements:',
+          '- Anchor the prompt to Bluebook-style digital SAT Reading/Writing structure.',
+          '- Reading/Writing passages should usually fall in the 25-150 words range.',
           '- EASY passages: 2-3 sentences, clear single-claim structure, everyday academic topic.',
           '- MEDIUM passages: 3-5 sentences, claim + evidence structure, some domain vocabulary.',
           '- HARD passages: 4-7 sentences, complex argument with qualification or nuance, academic register, and may include data or competing perspectives.',
+          '- For cross-text-connections tasks, prefer a passage pair and label it explicitly as Text 1: ... Text 2: ... when appropriate.',
           `- Topics should span ${RW_TOPICS.join(', ')} across batches over time.`,
           '- Passages must be dense enough that distractors can plausibly point to different sentences or clauses.',
           '- Passage evidence must be sufficient to prove the correct answer without outside knowledge.',
+          '- No trivia or outside-knowledge dependence.',
         ].join('\n')
       : [
           'Math scenario requirements:',
+          '- Anchor the prompt to a Bluebook-style digital SAT item.',
+          '- Reflect student-produced-response expectations conceptually when the official SAT would plausibly use a student-produced-response.',
+          '- The current JSON contract outputs multiple-choice only, so keep the runtime contract explicit.',
+          '- Keep item_format "single_select" in the JSON output for now.',
+          '- Ensure the item still works conceptually even if the answer choices are hidden.',
           '- Use authentic SAT-style contexts or abstract setups only when they clarify the math, not when they add fluff.',
           '- Give enough quantitative information for the result to be uniquely determined.',
           '- Avoid trick wording that hides the math; difficulty should come from reasoning, not ambiguity.',
