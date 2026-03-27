@@ -315,19 +315,39 @@ function renderProfile(profile) {
   );
 }
 
-function renderProjection(projection) {
+function renderProjection(projection, evidence = null) {
   const container = $('#projection');
   clear(container);
+  const source = evidence?.band ? {
+    predicted_total_low: evidence.band.low,
+    predicted_total_high: evidence.band.high,
+    rw_low: evidence.band.rwLow,
+    rw_high: evidence.band.rwHigh,
+    math_low: evidence.band.mathLow,
+    math_high: evidence.band.mathHigh,
+    readiness_indicator: evidence.readiness,
+    confidence: evidence.confidence,
+    momentum_score: evidence.momentum,
+  } : projection;
   container.append(
     kvRows([
-      ['Total', `${projection.predicted_total_low} - ${projection.predicted_total_high}`],
-      ['Reading & Writing', `${projection.rw_low} - ${projection.rw_high}`],
-      ['Math', `${projection.math_low} - ${projection.math_high}`],
-      ['Readiness', projection.readiness_indicator],
-      ['Confidence', `${Math.round(projection.confidence * 100)}%`],
-      ['Momentum', `${Math.round((projection.momentum_score ?? 0) * 100)}%`],
+      ['Total', `${source.predicted_total_low} - ${source.predicted_total_high}`],
+      ['Reading & Writing', `${source.rw_low} - ${source.rw_high}`],
+      ['Math', `${source.math_low} - ${source.math_high}`],
+      ['Readiness', source.readiness_indicator],
+      ['Confidence', `${Math.round(source.confidence * 100)}%`],
+      ['Momentum', `${Math.round((source.momentum_score ?? 0) * 100)}%`],
     ]),
   );
+  const reasons = evidence?.whyChanged ?? [];
+  if (reasons.length) {
+    const list = node('ul', { className: 'list compact' });
+    for (const reason of reasons) {
+      list.append(node('li', { text: reason }));
+    }
+    container.append(node('p', { className: 'muted', text: 'Why this band looks this way' }));
+    container.append(list);
+  }
 }
 
 function renderPlan(plan) {
@@ -348,6 +368,25 @@ function renderPlan(plan) {
   container.append(list);
   container.append(node('p', { className: 'muted', text: `Fallback: ${plan.fallback_plan.trigger}` }));
   container.append(node('p', { className: 'muted', text: `Stop condition: ${plan.stop_condition}` }));
+}
+
+function renderPlanExplanation(explanation) {
+  const container = $('#planExplanation');
+  clear(container);
+  if (!explanation) {
+    container.append(node('p', { className: 'muted', text: 'Plan explanation unavailable.' }));
+    return;
+  }
+
+  container.append(node('p', { text: explanation.headline }));
+  if (explanation.topTrap?.label) {
+    container.append(node('p', { className: 'notice', text: `Top trap: ${explanation.topTrap.label}` }));
+  }
+  const list = node('ul', { className: 'list compact' });
+  for (const reason of explanation.reasons ?? []) {
+    list.append(node('li', { text: `${reason.title}: ${reason.reason}` }));
+  }
+  container.append(list);
 }
 
 function focusGoalSetup() {
@@ -486,21 +525,47 @@ function renderDiagnosticReveal(reveal) {
   }
 }
 
-function renderErrorDna(errorDna) {
+function renderErrorDna(errorDnaSummary) {
   const container = $('#errorDna');
   clear(container);
-  const entries = Object.entries(errorDna)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8);
+  const entries = Array.isArray(errorDnaSummary)
+    ? errorDnaSummary
+    : Object.entries(errorDnaSummary ?? {})
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([tag, score]) => ({
+          label: tag.replaceAll('_', ' '),
+          summary: `${tag.replaceAll('_', ' ')} is still appearing in recent work.`,
+          score,
+        }));
 
   if (!entries.length) {
     container.append(node('p', { className: 'muted', text: 'No dominant error signals yet.' }));
     return;
   }
 
-  for (const [tag, score] of entries) {
-    container.append(node('span', { className: 'badge', text: `${tag}: ${score}` }));
+  for (const entry of entries) {
+    const card = node('article', { className: 'review-item' });
+    card.append(node('strong', { text: entry.label }));
+    card.append(node('p', { text: entry.summary }));
+    card.append(node('span', { className: 'muted', text: `Signal strength: ${entry.score}` }));
+    container.append(card);
   }
+}
+
+function renderWhatChanged(summary) {
+  const container = $('#whatChanged');
+  clear(container);
+  if (!summary) {
+    container.append(node('p', { className: 'muted', text: 'Change tracking will appear after your first completed session.' }));
+    return;
+  }
+  container.append(node('p', { text: summary.headline }));
+  const list = node('ul', { className: 'list compact' });
+  for (const bullet of summary.bullets ?? []) {
+    list.append(node('li', { text: bullet }));
+  }
+  container.append(list);
 }
 
 function renderSessionHistory(payload) {
@@ -915,19 +980,38 @@ function renderReview(review) {
   $('#reflectionPrompt').textContent = state.reflectionPrompt || 'Write one rule you will reuse next time.';
 
   const list = node('div', { className: 'stack' });
-  for (const recommendation of review.recommendations ?? []) {
+  const remediationCards = review.remediationCards ?? [];
+  for (const cardData of remediationCards) {
     const card = node('article', { className: 'review-item' });
-    card.append(node('strong', { text: `${recommendation.section} · ${recommendation.skill}` }));
-    card.append(node('p', { text: recommendation.prompt }));
-    card.append(node('p', { className: 'muted', text: recommendation.reason }));
-    if (recommendation.rationalePreview) {
-      card.append(node('p', { className: 'review-rationale', text: recommendation.rationalePreview }));
+    card.append(node('strong', { text: `${formatSectionName(cardData.section)} · ${cardData.skill}` }));
+    card.append(node('p', { text: `Misconception: ${cardData.misconception}` }));
+    card.append(node('p', { className: 'muted', text: `Decisive clue: ${cardData.decisiveClue}` }));
+    card.append(node('p', { className: 'muted', text: `Correction rule: ${cardData.correctionRule}` }));
+    if (cardData.retryItem?.prompt) {
+      card.append(node('p', { className: 'review-rationale', text: `Retry focus: ${cardData.retryItem.prompt}` }));
     }
-    card.append(node('p', { className: 'muted', text: `Next action: ${recommendation.recommendedAction}` }));
+    card.append(node('p', {
+      className: 'muted',
+      text: `Confidence: ${cardData.confidenceBefore ?? '—'} -> ${cardData.confidenceAfter ?? '—'} · revisit ${cardData.nextScheduledRevisit ?? 'soon'}`,
+    }));
     list.append(card);
   }
 
-  if (!(review.recommendations ?? []).length) {
+  if (!remediationCards.length) {
+    for (const recommendation of review.recommendations ?? []) {
+      const card = node('article', { className: 'review-item' });
+      card.append(node('strong', { text: `${recommendation.section} · ${recommendation.skill}` }));
+      card.append(node('p', { text: recommendation.prompt }));
+      card.append(node('p', { className: 'muted', text: recommendation.reason }));
+      if (recommendation.rationalePreview) {
+        card.append(node('p', { className: 'review-rationale', text: recommendation.rationalePreview }));
+      }
+      card.append(node('p', { className: 'muted', text: `Next action: ${recommendation.recommendedAction}` }));
+      list.append(card);
+    }
+  }
+
+  if (!remediationCards.length && !(review.recommendations ?? []).length) {
     list.append(node('p', { className: 'muted', text: 'No review recommendations available yet.' }));
   }
 
@@ -1290,9 +1374,11 @@ async function loadDashboard() {
     renderNextBestAction(nextBestAction);
     renderDiagnosticReveal(diagnosticReveal);
     renderProfile(dashboard.profile);
-    renderProjection(dashboard.projection);
+    renderProjection(dashboard.projection, dashboard.projectionEvidence);
     renderPlan(dashboard.plan);
-    renderErrorDna(dashboard.errorDna);
+    renderPlanExplanation(dashboard.planExplanation);
+    renderErrorDna(dashboard.errorDnaSummary);
+    renderWhatChanged(dashboard.whatChanged);
     renderReview(dashboard.review);
     renderSessionHistory(sessionHistory);
     renderTimedSetSummary(dashboard.latestTimedSetSummary);

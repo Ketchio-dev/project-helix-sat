@@ -166,6 +166,16 @@ function formatErrorInsight(tag, score) {
   };
 }
 
+function formatSkillLabel(skillId = '') {
+  return humanizeIdentifier(`${skillId}`.replace(/^rw_/, '').replace(/^math_/, ''));
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
 function chooseModuleSection(items = [], skillStates = []) {
   const skillScores = new Map(
     skillStates.map((entry) => [
@@ -578,6 +588,69 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       return projectScoreBand(api.getSkillStates(learnerId), profile.target_score);
     },
 
+    getPlanExplanation(learnerId = DEMO_USER_ID) {
+      const plan = api.getPlan(learnerId);
+      const topTrap = api.getErrorDnaSummary(learnerId, 1)[0] ?? null;
+      const firstBlock = plan.blocks?.find((block) => block.block_type !== 'reflection') ?? plan.blocks?.[0] ?? null;
+      return {
+        headline: topTrap
+          ? `Helix is starting with ${firstBlock?.block_type ?? 'practice'} because ${topTrap.label.toLowerCase()} is creating the biggest score leak right now.`
+          : plan.rationale_summary,
+        reasons: (plan.blocks ?? []).slice(0, 3).map((block, index) => ({
+          blockType: block.block_type,
+          title: `${capitalize(block.block_type)} block ${index + 1}`,
+          reason: block.objective,
+          expectedBenefit: block.expected_benefit,
+        })),
+        topTrap,
+      };
+    },
+
+    getProjectionEvidence(learnerId = DEMO_USER_ID) {
+      const projection = api.getProjection(learnerId);
+      const skillStates = [...api.getSkillStates(learnerId)];
+      const weakestSkill = [...skillStates]
+        .sort((left, right) => (left.mastery + left.timed_mastery) - (right.mastery + right.timed_mastery))[0] ?? null;
+      const strongestSkill = [...skillStates]
+        .sort((left, right) => (right.mastery + right.timed_mastery) - (left.mastery + left.timed_mastery))[0] ?? null;
+      const latestSessions = api.getSessionHistory(learnerId, 2).filter((session) => session.status === 'complete');
+      const lastAccuracy = latestSessions[0]?.accuracy ?? null;
+      const previousAccuracy = latestSessions[1]?.accuracy ?? null;
+      const accuracyDelta = (lastAccuracy !== null && previousAccuracy !== null)
+        ? Number((lastAccuracy - previousAccuracy).toFixed(2))
+        : null;
+
+      const reasons = [
+        weakestSkill
+          ? `The biggest drag is ${formatSkillLabel(weakestSkill.skill_id)}, where mastery and timed mastery are still below your stronger lanes.`
+          : 'Helix still needs more completed attempts before it can isolate the biggest score drag.',
+        strongestSkill
+          ? `${formatSkillLabel(strongestSkill.skill_id)} is currently your strongest stable lane, which helps anchor the band.`
+          : 'No stable strength signal is available yet.',
+        accuracyDelta !== null
+          ? (accuracyDelta >= 0
+            ? `Accuracy improved by ${Math.round(accuracyDelta * 100)} points versus the previous completed session.`
+            : `Accuracy fell by ${Math.round(Math.abs(accuracyDelta) * 100)} points versus the previous completed session.`)
+          : 'Helix will show session-over-session movement after two completed sessions.',
+      ];
+
+      return {
+        band: {
+          low: projection.predicted_total_low,
+          high: projection.predicted_total_high,
+          rwLow: projection.rw_low,
+          rwHigh: projection.rw_high,
+          mathLow: projection.math_low,
+          mathHigh: projection.math_high,
+        },
+        confidence: projection.confidence,
+        momentum: projection.momentum_score ?? 0,
+        readiness: projection.readiness_indicator,
+        status: projection.status,
+        whyChanged: reasons,
+      };
+    },
+
     getReviewRecommendations(learnerId = DEMO_USER_ID) {
       const attempts = api.getAttempts(learnerId);
       const recentIncorrect = [...attempts]
@@ -618,12 +691,82 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
 
       const reflectionPrompt = getReflectionPrompt(api.getErrorDna(learnerId));
       const lastReflection = api.getReflections(learnerId).at(-1) ?? null;
+      const remediationCards = recommendations.map((recommendation) => {
+        const matchingAttempt = [...attempts]
+          .reverse()
+          .find((attempt) => attempt.item_id === recommendation.itemId) ?? null;
+        const misconception = recommendation.errorTag
+          ? formatErrorInsight(recommendation.errorTag, api.getErrorDna(learnerId)[recommendation.errorTag] ?? 1)
+          : null;
+        return {
+          itemId: recommendation.itemId,
+          section: recommendation.section,
+          skill: recommendation.skill,
+          misconception: misconception?.label ?? 'Unstable solving pattern',
+          decisiveClue: recommendation.section === 'math'
+            ? 'The setup clue usually appears in the units, equation form, or variable relationship before the arithmetic.'
+            : 'The decisive clue is usually in the exact sentence role, transition logic, or wording the answer must match.',
+          correctionRule: recommendation.section === 'math'
+            ? 'Write the setup explicitly before solving, then check the final target one more time.'
+            : 'Match the answer to the exact textual job before judging which choice sounds best.',
+          retryItem: {
+            itemId: recommendation.itemId,
+            prompt: recommendation.prompt,
+          },
+          confidenceBefore: matchingAttempt?.confidence_level ?? null,
+          confidenceAfter: matchingAttempt?.confidence_level !== undefined
+            ? Math.min(4, matchingAttempt.confidence_level + 1)
+            : null,
+          nextScheduledRevisit: addDays(new Date(), 1).toISOString().slice(0, 10),
+        };
+      });
       return {
         generatedAt: new Date().toISOString(),
         dominantError: Object.entries(api.getErrorDna(learnerId)).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
         reflectionPrompt,
         recommendations,
+        remediationCards,
         lastReflection,
+      };
+    },
+
+    getWhatChanged(userId = DEMO_USER_ID) {
+      const completedSessions = api.getSessionHistory(userId, 3).filter((session) => session.status === 'complete');
+      if (!completedSessions.length) {
+        return {
+          headline: 'Finish your first session to unlock change tracking.',
+          bullets: ['Helix will compare accuracy, pacing, and mistake patterns once you have completed work to compare.'],
+        };
+      }
+
+      const latest = completedSessions[0];
+      const previous = completedSessions[1] ?? null;
+      const bullets = [];
+      if (previous && latest.accuracy !== null && previous.accuracy !== null) {
+        const accuracyDelta = Math.round((latest.accuracy - previous.accuracy) * 100);
+        bullets.push(
+          accuracyDelta >= 0
+            ? `Accuracy is up ${accuracyDelta} points versus your previous completed session.`
+            : `Accuracy is down ${Math.abs(accuracyDelta)} points versus your previous completed session.`,
+        );
+      } else {
+        bullets.push(`You have completed your first ${toSessionLabel({ type: latest.type })} in Helix.`);
+      }
+
+      if (latest.averageResponseTimeMs !== null) {
+        bullets.push(`Average response time in the latest session was ${Math.round(latest.averageResponseTimeMs / 1000)} seconds per item.`);
+      }
+
+      const topTrap = api.getErrorDnaSummary(userId, 1)[0] ?? null;
+      if (topTrap) {
+        bullets.push(`${topTrap.label} is still the biggest recurring trap in recent work.`);
+      }
+
+      return {
+        headline: latest.type === 'diagnostic'
+          ? 'Your baseline is now live.'
+          : 'Helix has fresh evidence from your latest completed session.',
+        bullets,
       };
     },
 
@@ -1101,8 +1244,12 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       return {
         profile: api.getProfile(userId),
         projection: api.getProjection(userId),
+        projectionEvidence: api.getProjectionEvidence(userId),
         plan: api.getPlan(userId),
+        planExplanation: api.getPlanExplanation(userId),
         errorDna: api.getErrorDna(userId),
+        errorDnaSummary: api.getErrorDnaSummary(userId),
+        whatChanged: api.getWhatChanged(userId),
         items: api.listItems(4),
         review: api.getReviewRecommendations(userId),
         activeSession: api.getActiveSession(userId),

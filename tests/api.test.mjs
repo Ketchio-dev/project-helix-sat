@@ -158,6 +158,14 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
     const plan = await fetch(`${baseUrl}/api/plan/today`, { headers: sessions.student.headers }).then((res) => res.json());
     assert.ok(Array.isArray(plan.blocks));
 
+    const dashboardBefore = await fetch(`${baseUrl}/api/dashboard/learner`, {
+      headers: sessions.student.headers,
+    }).then((res) => res.json());
+    assert.equal(typeof dashboardBefore.planExplanation.headline, 'string');
+    assert.equal(Array.isArray(dashboardBefore.projectionEvidence.whyChanged), true);
+    assert.equal(Array.isArray(dashboardBefore.errorDnaSummary), true);
+    assert.equal(typeof dashboardBefore.whatChanged.headline, 'string');
+
     const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
       method: 'POST',
       headers: sessions.student.headers,
@@ -189,6 +197,10 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
     }).then((res) => res.json());
     assert.ok(review.reflectionPrompt);
     assert.ok(review.recommendations.length >= 1);
+    assert.ok(Array.isArray(review.remediationCards));
+    assert.ok(review.remediationCards.length >= 1);
+    assert.equal(typeof review.remediationCards[0].misconception, 'string');
+    assert.ok(review.remediationCards[0].retryItem?.itemId);
 
     const reflection = await fetch(`${baseUrl}/api/reflection/submit`, {
       method: 'POST',
