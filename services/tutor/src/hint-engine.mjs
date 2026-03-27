@@ -23,6 +23,9 @@ export function createHintResponse({ item, rationale, learnerState, errorDna, mo
   const hintLevel = clamp(Math.max(requestedLevel, priorHintCount), 0, 4);
   const ladder = rationale.hint_ladder_json;
   const message = ladder[hintLevel] ?? ladder[ladder.length - 1] ?? rationale.canonical_correct_rationale;
+  const nextAction = ['grid_in', 'student_produced_response', 'student-produced-response'].includes(item?.item_format)
+    ? (hintLevel >= 3 ? 're-solve_and_enter_numeric_response' : 're-read_setup_and_solve_step_by_step')
+    : (hintLevel >= 3 ? 'compare_answer_choices_again' : 're-read_prompt_and_eliminate_one_choice');
 
   return {
     mode: hintLevel >= 3 ? 'hint_ladder' : 'socratic',
@@ -30,7 +33,7 @@ export function createHintResponse({ item, rationale, learnerState, errorDna, mo
     confidence: 0.82,
     hint_level: hintLevel,
     student_facing_message: message,
-    next_action: hintLevel >= 3 ? 'compare_answer_choices_again' : 're-read_prompt_and_eliminate_one_choice',
+    next_action: nextAction,
     should_reveal_answer: hintLevel >= 4,
     followup_skill: item.skill,
     source_of_truth: 'canonical_rationale',

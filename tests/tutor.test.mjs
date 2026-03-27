@@ -6,6 +6,8 @@ import { createDemoData } from '../services/api/src/demo-data.mjs';
 const data = createDemoData();
 const item = data.items.math_linear_01;
 const rationale = data.rationales.math_linear_01;
+const gridInItem = data.items.math_linear_04;
+const gridInRationale = data.rationales.math_linear_04;
 
 test('tutor hint uses canonical rationale in learn mode', () => {
   const response = createHintResponse({
@@ -34,4 +36,18 @@ test('tutor hint is blocked in exam mode', () => {
   assert.equal(response.mode, 'exam_blocked');
   assert.equal(response.source_of_truth, 'exam_policy');
   assert.equal(response.should_reveal_answer, false);
+});
+
+test('tutor hint uses numeric-response next actions for grid-in items', () => {
+  const response = createHintResponse({
+    item: gridInItem,
+    rationale: gridInRationale,
+    learnerState: { preferred_explanation_language: 'ko' },
+    errorDna: {},
+    mode: 'learn',
+    requestedLevel: 3,
+  });
+
+  assert.equal(response.source_of_truth, 'canonical_rationale');
+  assert.equal(response.next_action, 're-solve_and_enter_numeric_response');
 });

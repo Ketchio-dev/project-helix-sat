@@ -390,6 +390,9 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
     assert.equal(moduleSimulation.items.length, 4);
     assert.ok(moduleSimulation.currentItem);
     assert.equal(moduleSimulation.moduleSummary.sessionId, moduleSimulation.session.id);
+    const gridInItem = moduleSimulation.items.find((item) => item.item_format === 'grid_in');
+    assert.ok(gridInItem);
+    assert.equal(gridInItem.responseValidation.acceptedResponses, undefined);
 
     const examHint = await fetch(`${baseUrl}/api/tutor/hint`, {
       method: 'POST',

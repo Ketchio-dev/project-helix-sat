@@ -7,19 +7,35 @@ import { createEvent } from '../packages/telemetry/src/events.mjs';
 
 const DEMO_USER_ID = 'demo-student';
 
+function buildAttemptPayload(item, sessionId, mode = 'exam') {
+  if (item.item_format === 'grid_in') {
+    return {
+      userId: DEMO_USER_ID,
+      itemId: item.itemId,
+      freeResponse: '11/2',
+      sessionId,
+      mode,
+      confidenceLevel: 3,
+      responseTimeMs: 60000,
+    };
+  }
+
+  return {
+    userId: DEMO_USER_ID,
+    itemId: item.itemId,
+    selectedAnswer: 'A',
+    sessionId,
+    mode,
+    confidenceLevel: 3,
+    responseTimeMs: 60000,
+  };
+}
+
 describe('integrity: exam mode does not leak correctAnswer', () => {
   it('submitAttempt in exam mode omits correctAnswer, distractorTag, projection, plan, errorDna, review', () => {
     const store = createStore();
     const timedSet = store.startTimedSet(DEMO_USER_ID);
-    const result = store.submitAttempt({
-      userId: DEMO_USER_ID,
-      itemId: timedSet.items[0].itemId,
-      selectedAnswer: 'A',
-      sessionId: timedSet.session.id,
-      mode: 'exam',
-      confidenceLevel: 3,
-      responseTimeMs: 60000,
-    });
+    const result = store.submitAttempt(buildAttemptPayload(timedSet.items[0], timedSet.session.id));
     assert.equal('correctAnswer' in result, false, 'correctAnswer must not appear in exam mode response');
     assert.equal('distractorTag' in result, false, 'distractorTag must not appear in exam mode response');
     assert.equal('projection' in result, false, 'projection must not appear in exam mode response');
@@ -63,12 +79,7 @@ describe('integrity: server timing — attempt uses server-calculated time', () 
     const store = createStore();
     const timedSet = store.startTimedSet(DEMO_USER_ID);
     store.submitAttempt({
-      userId: DEMO_USER_ID,
-      itemId: timedSet.items[0].itemId,
-      selectedAnswer: 'A',
-      sessionId: timedSet.session.id,
-      mode: 'exam',
-      confidenceLevel: 3,
+      ...buildAttemptPayload(timedSet.items[0], timedSet.session.id),
       responseTimeMs: 55000,
     });
     const attempts = store.getSessionAttempts(timedSet.session.id);
@@ -155,15 +166,7 @@ describe('integrity: session review only available for completed sessions', () =
 
     // Submit all items to complete the session
     for (const item of timedSet.items) {
-      store.submitAttempt({
-        userId: DEMO_USER_ID,
-        itemId: item.itemId,
-        selectedAnswer: 'A',
-        sessionId,
-        mode: 'exam',
-        confidenceLevel: 3,
-        responseTimeMs: 60000,
-      });
+      store.submitAttempt(buildAttemptPayload(item, sessionId));
     }
 
     // After completion — should succeed and contain items with correctAnswer
