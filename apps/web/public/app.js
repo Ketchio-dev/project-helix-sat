@@ -474,6 +474,44 @@ function renderCurriculumPath(path) {
   }
 }
 
+function renderProgramPath(programPath) {
+  const container = $('#programPath');
+  if (!container) return;
+  clear(container);
+
+  if (!programPath) {
+    container.append(node('p', { className: 'muted', text: 'Program path unavailable.' }));
+    return;
+  }
+
+  container.append(node('p', {
+    className: 'notice',
+    text: `${programPath.weeksRemaining} week${programPath.weeksRemaining === 1 ? '' : 's'} to ${programPath.targetDate} · current ${programPath.currentBand.low}–${programPath.currentBand.high} · target ${programPath.targetScore} · ~${programPath.weeklyMinutes} min/week`,
+  }));
+
+  const phaseList = node('div', { className: 'stack' });
+  for (const phase of programPath.phases.slice(0, 4)) {
+    const card = node('article', { className: 'review-item' });
+    const activeLabel = phase.key === programPath.activePhaseKey ? ' (active now)' : '';
+    card.append(node('strong', { text: `${phase.title}${activeLabel}` }));
+    card.append(node('p', { className: 'muted', text: `${phase.startsOn} → ${phase.endsOn} · ${phase.weeks} week${phase.weeks === 1 ? '' : 's'}` }));
+    card.append(node('p', { text: phase.objective }));
+    card.append(node('p', { className: 'muted', text: `Focus: ${phase.focus}` }));
+    card.append(node('p', { className: 'muted', text: `Exit signal: ${phase.exitCriteria}` }));
+    phaseList.append(card);
+  }
+  container.append(phaseList);
+
+  if (Array.isArray(programPath.milestones) && programPath.milestones.length) {
+    container.append(node('p', { className: 'muted', text: 'Milestones' }));
+    const milestoneList = node('ul', { className: 'list compact' });
+    for (const milestone of programPath.milestones) {
+      milestoneList.append(node('li', { text: `${milestone.dueOn}: ${milestone.title} — ${milestone.successSignal}` }));
+    }
+    container.append(milestoneList);
+  }
+}
+
 function focusGoalSetup() {
   const section = $('#goalSetupSection');
   section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1615,6 +1653,7 @@ async function loadDashboard() {
     renderProjection(dashboard.projection, dashboard.projectionEvidence);
     renderPlan(dashboard.plan);
     renderPlanExplanation(dashboard.planExplanation);
+    renderProgramPath(dashboard.programPath);
     renderCurriculumPath(dashboard.curriculumPath);
     renderErrorDna(dashboard.errorDnaSummary);
     renderWhatChanged(dashboard.whatChanged);

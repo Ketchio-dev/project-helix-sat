@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProgramPath",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "generatedAt",
+    "targetDate",
+    "weeksRemaining",
+    "weeklyMinutes",
+    "currentBand",
+    "targetScore",
+    "scoreGap",
+    "activePhaseKey",
+    "phases",
+    "sprintSummary",
+    "milestones"
+  ],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "targetDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "weeksRemaining": { "type": "integer", "minimum": 1 },
+    "weeklyMinutes": { "type": "integer", "minimum": 30 },
+    "currentBand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["low", "high", "midpoint"],
+      "properties": {
+        "low": { "type": "integer", "minimum": 400, "maximum": 1600 },
+        "high": { "type": "integer", "minimum": 400, "maximum": 1600 },
+        "midpoint": { "type": "integer", "minimum": 400, "maximum": 1600 }
+      }
+    },
+    "targetScore": { "type": "integer", "minimum": 400, "maximum": 1600 },
+    "scoreGap": { "type": "integer", "minimum": 0, "maximum": 1200 },
+    "activePhaseKey": { "type": "string", "minLength": 1 },
+    "phases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "title", "startsOn", "endsOn", "weeks", "objective", "focus", "exitCriteria", "emphasis"],
+        "properties": {
+          "key": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "startsOn": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "endsOn": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "weeks": { "type": "integer", "minimum": 1 },
+          "objective": { "type": "string", "minLength": 1 },
+          "focus": { "type": "string", "minLength": 1 },
+          "exitCriteria": { "type": "string", "minLength": 1 },
+          "emphasis": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "sprintSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["horizonDays", "anchorSkill", "supportSkill", "nextUnlock"],
+      "properties": {
+        "horizonDays": { "type": "integer", "minimum": 1 },
+        "anchorSkill": { "type": ["string", "null"] },
+        "supportSkill": { "type": ["string", "null"] },
+        "nextUnlock": { "type": ["string", "null"] }
+      }
+    },
+    "milestones": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "title", "dueOn", "successSignal"],
+        "properties": {
+          "key": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "dueOn": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "successSignal": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

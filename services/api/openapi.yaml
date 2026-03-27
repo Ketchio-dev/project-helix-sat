@@ -235,6 +235,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CurriculumPath'
+  /api/program/path:
+    get:
+      summary: Fetch the learner's longer-horizon study program path
+      responses:
+        '200':
+          description: Program path with multi-week phases, milestones, and sprint linkage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramPath'
   /api/session/review:
     get:
       summary: Fetch completed-session review details for answer-by-answer analysis
@@ -259,6 +269,8 @@ components:
       $ref: ../../packages/schemas/planning/daily-plan.schema.json
     CurriculumPath:
       $ref: ../../packages/schemas/planning/curriculum-path.schema.json
+    ProgramPath:
+      $ref: ../../packages/schemas/planning/program-path.schema.json
     TutorHintResponse:
       $ref: ../../packages/schemas/tutor/hint-response.schema.json
     EventEnvelope:

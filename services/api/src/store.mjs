@@ -4,7 +4,7 @@ import { hashPassword, verifyPassword, createToken, needsPasswordRehash } from '
 import { HttpError } from './http-utils.mjs';
 import { generateDailyPlan } from '../../../packages/assessment/src/daily-plan-generator.mjs';
 import { selectSessionItems } from '../../../packages/assessment/src/item-selector.mjs';
-import { generateCurriculumPath } from '../../../packages/curriculum/src/path-generator.mjs';
+import { generateCurriculumPath, generateProgramPath } from '../../../packages/curriculum/src/path-generator.mjs';
 import { projectScoreBand } from '../../../packages/scoring/src/score-predictor.mjs';
 import { updateErrorDna, updateLearnerSkillState } from '../../../packages/assessment/src/learner-state.mjs';
 import { createEvent } from '../../../packages/telemetry/src/events.mjs';
@@ -931,6 +931,21 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       });
     },
 
+    getProgramPath(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const learnerProfile = state.learnerProfiles[userId];
+      if (!learnerProfile) {
+        throw new HttpError(404, 'Unknown learner');
+      }
+
+      const curriculumPath = api.getCurriculumPath(userId);
+      return generateProgramPath({
+        profile: learnerProfile,
+        projection: api.getProjection(userId),
+        curriculumPath,
+      });
+    },
+
     getSessionHistory(learnerId = DEMO_USER_ID, limit = 5) {
       if (!api.hasLearnerProfile(learnerId)) {
         throw new HttpError(404, 'Unknown learner');
@@ -1428,6 +1443,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         profile: api.getProfile(userId),
         projection: api.getProjection(userId),
         projectionEvidence: api.getProjectionEvidence(userId),
+        programPath: api.getProgramPath(userId),
         curriculumPath: api.getCurriculumPath(userId),
         weeklyDigest: api.getWeeklyDigest(userId),
         plan: api.getPlan(userId),

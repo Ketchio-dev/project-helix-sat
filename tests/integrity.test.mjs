@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createStore } from '../services/api/src/store.mjs';
 import { projectScoreBand } from '../packages/scoring/src/score-predictor.mjs';
 import { generateDailyPlan } from '../packages/assessment/src/daily-plan-generator.mjs';
-import { generateCurriculumPath } from '../packages/curriculum/src/path-generator.mjs';
+import { generateCurriculumPath, generateProgramPath } from '../packages/curriculum/src/path-generator.mjs';
 import { inferSkillStage, getCurriculumSkill } from '../packages/curriculum/src/mastery-gates.mjs';
 import { createEvent } from '../packages/telemetry/src/events.mjs';
 
@@ -195,6 +195,51 @@ describe('integrity: curriculum path generator', () => {
     assert.ok(path.revisitCadence.length >= 1);
     assert.equal(path.dailyFocuses.length, 14);
     assert.ok(path.recoveryPath.adjustment.includes('retry loop'));
+  });
+});
+
+describe('integrity: program path generator', () => {
+  it('produces multi-week phases above the 14-day sprint layer', () => {
+    const curriculumPath = generateCurriculumPath({
+      profile: {
+        target_score: 1460,
+        target_test_date: '2026-10-10',
+        daily_minutes: 40,
+        self_reported_weak_area: 'algebra',
+      },
+      skillStates: [
+        {
+          skill_id: 'math_linear_equations',
+          mastery: 0.41,
+          timed_mastery: 0.32,
+          confidence_calibration: 0.46,
+          retention_risk: 0.52,
+          careless_risk: 0.45,
+          attempts_count: 4,
+        },
+      ],
+    });
+
+    const programPath = generateProgramPath({
+      profile: {
+        target_score: 1460,
+        target_test_date: '2026-10-10',
+        daily_minutes: 40,
+      },
+      projection: {
+        predicted_total_low: 980,
+        predicted_total_high: 1060,
+        readiness_indicator: 'building',
+      },
+      curriculumPath,
+      generatedAt: '2026-06-01T00:00:00.000Z',
+    });
+
+    assert.ok(programPath.weeksRemaining >= 1);
+    assert.ok(programPath.phases.length >= 3);
+    assert.equal(programPath.sprintSummary.horizonDays, 14);
+    assert.ok(programPath.milestones.length >= 3);
+    assert.equal(programPath.phases[0].key, programPath.activePhaseKey);
   });
 });
 

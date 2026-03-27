@@ -264,6 +264,15 @@ export function createRouter({ store, webRoot }) {
     },
   });
 
+  registerRoute('GET', '/api/program/path', {
+    auth: 'authenticated',
+    learnerAccess: 'read',
+    responseSchema: 'ProgramPath',
+    async handler({ learnerId }) {
+      return { body: store.getProgramPath(learnerId) };
+    },
+  });
+
   registerRoute('GET', '/api/items', {
     auth: 'authenticated',
     async handler({ url }) {

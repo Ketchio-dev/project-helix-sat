@@ -973,6 +973,42 @@ test('api returns a curriculum path with anchor, support, and 14-day focuses', a
   });
 });
 
+test('api returns a multi-week program path that wraps the current sprint', async () => {
+  await withServer(async (baseUrl) => {
+    const registered = await registerSession(baseUrl, {
+      name: 'Program Path Student',
+      email: nextUniqueEmail('program-path-student'),
+      password: 'pass1234',
+    });
+
+    await fetch(`${baseUrl}/api/goal-profile`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({
+        targetScore: 1500,
+        targetTestDate: '2026-12-05',
+        dailyMinutes: 50,
+        selfReportedWeakArea: 'inference',
+      }),
+    });
+
+    const programPath = await fetch(`${baseUrl}/api/program/path`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+
+    assert.ok(programPath.weeksRemaining >= 1);
+    assert.ok(programPath.phases.length >= 3);
+    assert.equal(programPath.sprintSummary.horizonDays, 14);
+    assert.ok(programPath.milestones.length >= 3);
+
+    const dashboard = await fetch(`${baseUrl}/api/dashboard/learner`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.ok(dashboard.programPath);
+    assert.equal(dashboard.programPath.sprintSummary.horizonDays, 14);
+  });
+});
+
 test('api starts a retry loop from review recommendations and schedules a revisit', async () => {
   await withServer(async (baseUrl) => {
     const registered = await registerSession(baseUrl, {

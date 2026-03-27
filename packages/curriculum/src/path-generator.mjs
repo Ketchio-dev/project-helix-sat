@@ -252,3 +252,198 @@ export function generateCurriculumPath({ profile = {}, skillStates = [], reviewQ
     dailyFocuses: buildDailyFocuses({ today, anchorNode, supportNode, maintenanceNode, horizonDays }),
   };
 }
+
+function midpointFromProjection(projection = {}) {
+  const low = Number(projection?.predicted_total_low ?? 400);
+  const high = Number(projection?.predicted_total_high ?? 1600);
+  return Math.round((low + high) / 2);
+}
+
+function buildPhase({ key, title, startDate, weeks, objective, focus, exitCriteria, emphasis }) {
+  const safeWeeks = Math.max(1, weeks);
+  const endDate = addDays(startDate, safeWeeks * 7 - 1);
+  return {
+    key,
+    title,
+    startsOn: startDate.toISOString().slice(0, 10),
+    endsOn: endDate.toISOString().slice(0, 10),
+    weeks: safeWeeks,
+    objective,
+    focus,
+    exitCriteria,
+    emphasis,
+  };
+}
+
+function splitWeeks(totalWeeks, { needsFoundation }) {
+  let remaining = Math.max(1, totalWeeks);
+  let examReadinessWeeks = remaining >= 10 ? 3 : remaining >= 4 ? 2 : 1;
+  examReadinessWeeks = Math.min(examReadinessWeeks, remaining);
+  remaining -= examReadinessWeeks;
+
+  let timedTransferWeeks = remaining >= 3 ? (totalWeeks >= 8 ? 2 : 1) : 0;
+  timedTransferWeeks = Math.min(timedTransferWeeks, Math.max(0, remaining - 1));
+  remaining -= timedTransferWeeks;
+
+  let foundationWeeks = 0;
+  if (needsFoundation) {
+    foundationWeeks = remaining >= 3
+      ? Math.min(Math.max(2, Math.round(totalWeeks * 0.25)), remaining - 1)
+      : Math.max(0, remaining - 1);
+  } else if (totalWeeks >= 8) {
+    foundationWeeks = Math.min(1, Math.max(0, remaining - 1));
+  }
+  remaining -= foundationWeeks;
+
+  let accelerationWeeks = remaining;
+  if (accelerationWeeks <= 0) {
+    if (foundationWeeks > 1) {
+      foundationWeeks -= 1;
+      accelerationWeeks += 1;
+    } else if (timedTransferWeeks > 0) {
+      timedTransferWeeks -= 1;
+      accelerationWeeks += 1;
+    } else if (examReadinessWeeks > 1) {
+      examReadinessWeeks -= 1;
+      accelerationWeeks += 1;
+    }
+  }
+
+  return {
+    foundationWeeks,
+    accelerationWeeks,
+    timedTransferWeeks,
+    examReadinessWeeks,
+  };
+}
+
+function buildMilestones({ startDate, totalWeeks, currentMid, targetScore, curriculumPath, phases }) {
+  const halfwayDate = addDays(startDate, Math.max(6, Math.floor((totalWeeks * 7) / 2)));
+  const finalPhase = phases.at(-1) ?? null;
+  return [
+    {
+      key: 'baseline',
+      title: 'Lock the baseline',
+      dueOn: addDays(startDate, 6).toISOString().slice(0, 10),
+      successSignal: curriculumPath?.anchorSkill?.masteryGate?.met
+        ? `Keep ${curriculumPath.anchorSkill.label} above the mastery gate.`
+        : `Move ${curriculumPath?.anchorSkill?.label ?? 'the anchor skill'} out of its current weak stage.`,
+    },
+    {
+      key: 'midpoint',
+      title: 'Midpoint check',
+      dueOn: halfwayDate.toISOString().slice(0, 10),
+      successSignal: `Narrow the projected gap from ${currentMid} toward ${targetScore} while stabilizing the active sprint focus.`,
+    },
+    {
+      key: 'target_window',
+      title: 'Target window rehearsal',
+      dueOn: finalPhase?.startsOn ?? addDays(startDate, totalWeeks * 7 - 7).toISOString().slice(0, 10),
+      successSignal: 'Shift the work mix toward timed transfer and exam-readiness reps.',
+    },
+  ];
+}
+
+export function generateProgramPath({
+  profile = {},
+  projection = {},
+  curriculumPath = null,
+  generatedAt = new Date(),
+} = {}) {
+  const today = startOfDay(generatedAt);
+  const targetDate = profile?.target_test_date ? startOfDay(profile.target_test_date) : addDays(today, 84);
+  const msRemaining = targetDate.getTime() - today.getTime();
+  const daysRemaining = Math.max(7, Math.ceil(msRemaining / 86400000));
+  const weeksRemaining = Math.max(1, Math.ceil(daysRemaining / 7));
+  const weeklyMinutes = Math.max(30, Number(profile?.daily_minutes ?? 30) * 6);
+  const targetScore = Number(profile?.target_score ?? 1400);
+  const currentMid = midpointFromProjection(projection);
+  const scoreGap = Math.max(0, targetScore - currentMid);
+  const needsFoundation = projection?.readiness_indicator === 'needs_foundation' || currentMid < 1000;
+  const phaseWeeks = splitWeeks(weeksRemaining, { needsFoundation });
+  const phases = [];
+
+  let phaseStart = today;
+  if (phaseWeeks.foundationWeeks > 0) {
+    phases.push(buildPhase({
+      key: 'foundation',
+      title: 'Foundation repair',
+      startDate: phaseStart,
+      weeks: phaseWeeks.foundationWeeks,
+      objective: needsFoundation
+        ? 'Stabilize the lowest-leverage skills before pushing new timed volume.'
+        : 'Use a short foundation pass to clean up the most expensive misconceptions.',
+      focus: curriculumPath?.anchorSkill?.label
+        ? `${curriculumPath.anchorSkill.label} plus prerequisite cleanup`
+        : 'Baseline skill repair',
+      exitCriteria: curriculumPath?.anchorSkill?.masteryGate?.met
+        ? `Sustain ${curriculumPath.anchorSkill.label} above the current mastery gate.`
+        : 'Move the anchor skill out of foundation repair or diagnosing.',
+      emphasis: 'accuracy_first',
+    }));
+    phaseStart = addDays(phaseStart, phaseWeeks.foundationWeeks * 7);
+  }
+
+  phases.push(buildPhase({
+    key: 'acceleration',
+    title: 'Core score acceleration',
+    startDate: phaseStart,
+    weeks: phaseWeeks.accelerationWeeks,
+    objective: 'Push the anchor and support skills through controlled and mixed practice until they unlock the next score band.',
+    focus: curriculumPath?.supportSkill?.label
+      ? `${curriculumPath.anchorSkill?.label ?? 'Anchor skill'} + ${curriculumPath.supportSkill.label}`
+      : `${curriculumPath?.anchorSkill?.label ?? 'Anchor skill'} heavy rotation`,
+    exitCriteria: curriculumPath?.nextUnlock?.label
+      ? `Unlock ${curriculumPath.nextUnlock.label} while holding the anchor above its gate.`
+      : 'Convert the sprint focus into stable mixed-practice performance.',
+    emphasis: 'mastery_building',
+  }));
+  phaseStart = addDays(phaseStart, phaseWeeks.accelerationWeeks * 7);
+
+  phases.push(buildPhase({
+    key: 'timed_transfer',
+    title: 'Timed transfer',
+    startDate: phaseStart,
+    weeks: phaseWeeks.timedTransferWeeks,
+    objective: 'Carry the repaired rules into timed sets and section-specific modules without losing calibration.',
+    focus: 'Timed transfer, pacing discipline, and trap resistance',
+    exitCriteria: 'Finish timed work with fewer high-confidence misses and tighter pacing spread.',
+    emphasis: 'time_pressure',
+  }));
+  phaseStart = addDays(phaseStart, phaseWeeks.timedTransferWeeks * 7);
+
+  phases.push(buildPhase({
+    key: 'exam_readiness',
+    title: 'Exam readiness',
+    startDate: phaseStart,
+    weeks: phaseWeeks.examReadinessWeeks,
+    objective: 'Shift from repair-heavy work into exam-realistic reps, confidence control, and final retention checks.',
+    focus: scoreGap > 120 ? 'Close the remaining score gap with highest-yield sections' : 'Protect gains and rehearse under exam conditions',
+    exitCriteria: 'Enter the final week with a stable plan, predictable pacing, and no neglected revisit debts.',
+    emphasis: 'readiness',
+  }));
+
+  return {
+    version: getCurriculumMetadata().version,
+    generatedAt: new Date(generatedAt).toISOString(),
+    targetDate: targetDate.toISOString().slice(0, 10),
+    weeksRemaining,
+    weeklyMinutes,
+    currentBand: {
+      low: projection?.predicted_total_low ?? 400,
+      high: projection?.predicted_total_high ?? 1600,
+      midpoint: currentMid,
+    },
+    targetScore,
+    scoreGap,
+    activePhaseKey: phases[0]?.key ?? 'foundation',
+    phases,
+    sprintSummary: {
+      horizonDays: curriculumPath?.horizonDays ?? CURRICULUM_HORIZON_DAYS,
+      anchorSkill: curriculumPath?.anchorSkill?.label ?? null,
+      supportSkill: curriculumPath?.supportSkill?.label ?? null,
+      nextUnlock: curriculumPath?.nextUnlock?.label ?? null,
+    },
+    milestones: buildMilestones({ startDate: today, totalWeeks: weeksRemaining, currentMid, targetScore, curriculumPath, phases }),
+  };
+}

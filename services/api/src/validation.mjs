@@ -97,6 +97,7 @@ const nextBestActionResponseSchema = {
 const responseSchemas = new Map([
   ['DailyPlan', loadedSchemas.get('planning/daily-plan.schema.json')],
   ['CurriculumPath', loadedSchemas.get('planning/curriculum-path.schema.json')],
+  ['ProgramPath', loadedSchemas.get('planning/program-path.schema.json')],
   ['EventEnvelope', loadedSchemas.get('events/event-envelope.schema.json')],
   ['ScorePrediction', loadedSchemas.get('scoring/score-prediction.schema.json')],
   ['TutorHintResponse', loadedSchemas.get('tutor/hint-response.schema.json')],
