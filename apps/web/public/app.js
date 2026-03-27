@@ -747,6 +747,7 @@ function renderReview(review) {
 
 function renderItem(item) {
   state.currentItem = item;
+  if (item) state.itemRenderedAt = Date.now();
   const container = $('#itemArea');
   clear(container);
 
@@ -1044,7 +1045,7 @@ $('#attemptForm').addEventListener('submit', async (event) => {
     selectedAnswer: selected.value,
     confidenceLevel: Number($('#confidenceLevel').value),
     mode: $('#modeSelect').value,
-    responseTimeMs: 48000,
+    responseTimeMs: Date.now() - (state.itemRenderedAt || Date.now()),
   };
 
   try {
@@ -1052,13 +1053,19 @@ $('#attemptForm').addEventListener('submit', async (event) => {
       method: 'POST',
       body: JSON.stringify(payload),
     });
-    $('#attemptResult').textContent = JSON.stringify(result, null, 2);
+    if (result.correctAnswer !== undefined) {
+      $('#attemptResult').textContent = JSON.stringify(result, null, 2);
+    } else {
+      $('#attemptResult').textContent = result.attempt?.is_correct
+        ? 'Answer recorded. Review available after session ends.'
+        : 'Answer recorded. Review available after session ends.';
+    }
     state.currentSessionType = result.sessionType ?? state.currentSessionType;
     state.currentSessionProgress = result.sessionProgress ?? state.currentSessionProgress;
-    renderProjection(result.projection);
-    renderPlan(result.plan);
-    renderErrorDna(result.errorDna);
-    renderReview(result.review);
+    if (result.projection) renderProjection(result.projection);
+    if (result.plan) renderPlan(result.plan);
+    if (result.errorDna) renderErrorDna(result.errorDna);
+    if (result.review) renderReview(result.review);
     if (result.timedSummary) {
       renderTimedSetSummary(result.timedSummary);
     }
@@ -1085,11 +1092,8 @@ $('#attemptForm').addEventListener('submit', async (event) => {
     } else {
       if (isExamSessionType(state.currentSessionType)) {
         state.currentItem = null;
-        state.currentSessionId = null;
-        state.currentSessionType = null;
-        state.currentSessionProgress = null;
-        state.activeSessionEnvelope = null;
-        clearSessionNotice();
+        state.sessionCompleted = true;
+        renderSessionNotice('Session complete — click Finish to review results.', 'info');
       }
       renderItem(null);
     }

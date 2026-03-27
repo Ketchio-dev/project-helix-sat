@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 export const EVENT_NAMES = [
   'app_opened',
   'diagnostic_started',
@@ -24,8 +26,11 @@ export const EVENT_NAMES = [
 ];
 
 export function createEvent({ userId, sessionId = null, eventName, payload = {} }) {
+  if (!EVENT_NAMES.includes(eventName)) {
+    throw new Error(`Unknown event name: ${eventName}`);
+  }
   return {
-    id: `evt_${Math.random().toString(36).slice(2, 10)}`,
+    id: 'evt_' + randomUUID().replace(/-/g, '').slice(0, 12),
     user_id: userId,
     session_id: sessionId,
     event_name: eventName,

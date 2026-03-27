@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createDemoData, DEMO_USER_ID } from './demo-data.mjs';
 import { HttpError } from './http-utils.mjs';
 import { generateDailyPlan } from '../../../packages/assessment/src/daily-plan-generator.mjs';
@@ -7,7 +8,7 @@ import { createEvent } from '../../../packages/telemetry/src/events.mjs';
 import { createMemoryStateStorage } from './state-storage.mjs';
 
 function createId(prefix) {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+  return prefix + '_' + randomUUID().replace(/-/g, '').slice(0, 12);
 }
 
 function toClientItem(item) {
@@ -658,6 +659,11 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       const sessionItems = api.getSessionItems(session.id);
       const currentSessionItem = api.getCurrentSessionItem(session.id);
 
+      if (currentSessionItem && !currentSessionItem.delivered_at) {
+        currentSessionItem.delivered_at = new Date().toISOString();
+        persistState();
+      }
+
       return {
         session,
         sessionType: session.type,
@@ -777,6 +783,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         item_id: item.itemId,
         ordinal: index + 1,
         answered_at: null,
+        delivered_at: null,
       }));
       state.sessionItems[session.id] = assignedItems;
       state.events.push(createEvent({
@@ -820,6 +827,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         item_id: item.itemId,
         ordinal: index + 1,
         answered_at: null,
+        delivered_at: null,
       }));
       state.sessionItems[session.id] = assignedItems;
       state.events.push(createEvent({
@@ -846,6 +854,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         item_id: item.itemId,
         ordinal: index + 1,
         answered_at: null,
+        delivered_at: null,
       }));
       state.sessionItems[session.id] = assignedItems;
       state.events.push(createEvent({ userId, sessionId: session.id, eventName: 'diagnostic_started', payload: { mode: 'diagnostic' } }));
@@ -905,6 +914,11 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
 
       const isCorrect = selectedAnswer === item.answerKey;
       const distractorTag = isCorrect ? null : rationale.misconceptionByChoice[selectedAnswer] ?? rationale.misconception_tags?.[0] ?? null;
+
+      const serverResponseTimeMs = sessionItem.delivered_at
+        ? Math.max(0, Date.now() - new Date(sessionItem.delivered_at).getTime())
+        : responseTimeMs;
+
       const attempt = {
         id: createId('attempt'),
         user_id: userId,
@@ -912,7 +926,8 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         session_id: sessionId ?? null,
         selected_answer: selectedAnswer,
         is_correct: isCorrect,
-        response_time_ms: responseTimeMs,
+        response_time_ms: serverResponseTimeMs,
+        client_response_time_ms: responseTimeMs,
         changed_answer_count: 0,
         confidence_level: confidenceLevel,
         hint_count: 0,
@@ -929,14 +944,14 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         if (skillState.skill_id !== item.skill) return skillState;
         return updateLearnerSkillState(skillState, {
           isCorrect,
-          responseTimeMs,
+          responseTimeMs: serverResponseTimeMs,
           confidenceLevel,
           hintCount: 0,
         }, item, distractorTag);
       });
       state.errorDna[userId] = updateErrorDna(api.getErrorDna(userId), {
         isCorrect,
-        responseTimeMs,
+        responseTimeMs: serverResponseTimeMs,
         confidenceLevel,
       }, distractorTag);
 
@@ -947,7 +962,29 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         state.sessions[sessionId].ended_at = new Date().toISOString();
         state.events.push(createEvent({ userId, sessionId, eventName: 'session_completed', payload: { type: session.type } }));
       }
+
+      if (nextSessionItem) {
+        nextSessionItem.delivered_at = new Date().toISOString();
+      }
+
       persistState();
+
+      if (isExamSession(session)) {
+        return {
+          attempt: {
+            id: attempt.id,
+            is_correct: attempt.is_correct,
+            selected_answer: attempt.selected_answer,
+            session_id: attempt.session_id,
+            mode: attempt.mode,
+          },
+          sessionProgress,
+          sessionType: session.type,
+          timedSummary: session.type === 'timed_set' ? api.getTimedSetSummary(sessionId) : null,
+          moduleSummary: isModuleSession(session) ? api.getModuleSummary(sessionId) : null,
+          nextItem: nextSessionItem ? toClientItem(api.getItem(nextSessionItem.item_id)) : null,
+        };
+      }
 
       return {
         attempt,
@@ -1046,6 +1083,36 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         reflection,
         totalReflections: state.reflections[userId].length,
         nextAction: 'Use this rule in your next timed or review block.',
+      };
+    },
+
+    getSessionReview(sessionId, userId) {
+      const session = api.getSession(sessionId);
+      if (!session || session.user_id !== userId) {
+        throw new HttpError(400, 'Unknown or invalid session');
+      }
+      if (!session.ended_at) {
+        throw new HttpError(400, 'Session must be completed before review is available');
+      }
+      return {
+        session,
+        sessionProgress: summarizeSessionProgress(api.getSessionItems(sessionId)),
+        items: api.getSessionItems(sessionId).map((entry) => {
+          const item = api.getItem(entry.item_id);
+          const rationale = api.getRationale(entry.item_id);
+          const attempt = state.attempts.find((a) => a.session_id === sessionId && a.item_id === entry.item_id);
+          return {
+            itemId: entry.item_id,
+            correctAnswer: item.answerKey,
+            selectedAnswer: attempt?.selected_answer ?? null,
+            isCorrect: attempt?.is_correct ?? null,
+            distractorTag: (!attempt?.is_correct && attempt) ? (rationale.misconceptionByChoice[attempt.selected_answer] ?? null) : null,
+            rationale: rationale?.explanation ?? null,
+          };
+        }),
+        projection: api.getProjection(userId),
+        plan: api.getPlan(userId),
+        errorDna: api.getErrorDna(userId),
       };
     },
 

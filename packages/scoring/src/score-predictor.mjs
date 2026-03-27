@@ -3,6 +3,22 @@ function clamp(value, min, max) {
 }
 
 export function projectScoreBand(skillStates, targetScore = 1450) {
+  if (!skillStates || skillStates.length === 0) {
+    return {
+      predicted_total_low: 400,
+      predicted_total_high: 1600,
+      rw_low: 200,
+      rw_high: 800,
+      math_low: 200,
+      math_high: 800,
+      confidence: 0,
+      readiness_indicator: 'insufficient_evidence',
+      momentum_score: 0,
+      model_version: 'projection-v0-prototype',
+      status: 'insufficient_evidence',
+      minimum_attempts_needed: 5,
+    };
+  }
   const averages = skillStates.reduce((acc, state) => {
     acc.mastery += state.mastery;
     acc.timed += state.timed_mastery;
@@ -32,6 +48,11 @@ export function projectScoreBand(skillStates, targetScore = 1450) {
   const rwMid = clamp(Math.round(260 + averageSection(rwBias) * 500), 200, 800);
   const mathMid = clamp(Math.round(260 + averageSection(mathBias) * 500), 200, 800);
 
+  const evidenceStatus = divisor < 3 ? 'low_evidence' : 'sufficient';
+  const adjustedConfidence = divisor < 3
+    ? Math.min(clamp(0.56 + (1 - retention) * 0.2 + divisor * 0.01, 0.35, 0.92), 0.25)
+    : clamp(0.56 + (1 - retention) * 0.2 + divisor * 0.01, 0.35, 0.92);
+
   return {
     predicted_total_low: clamp(midpoint - spread, 400, 1600),
     predicted_total_high: clamp(midpoint + spread, 400, 1600),
@@ -39,9 +60,10 @@ export function projectScoreBand(skillStates, targetScore = 1450) {
     rw_high: clamp(rwMid + Math.round(spread / 2), 200, 800),
     math_low: clamp(mathMid - Math.round(spread / 2), 200, 800),
     math_high: clamp(mathMid + Math.round(spread / 2), 200, 800),
-    confidence: clamp(0.56 + (1 - retention) * 0.2 + divisor * 0.01, 0.35, 0.92),
+    confidence: adjustedConfidence,
     readiness_indicator: readiness,
     momentum_score: clamp((mastery + timed) / 2 - retention * 0.2, 0, 1),
     model_version: 'projection-v0-prototype',
+    status: evidenceStatus,
   };
 }

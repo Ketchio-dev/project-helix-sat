@@ -144,6 +144,11 @@ export function createRouter({ store, webRoot }) {
         return sendJson(response, 200, store.saveTeacherAssignment({ ...body, userId: authenticatedUserId }));
       }
 
+      if (request.method === 'GET' && pathname === '/api/session/review') {
+        const sessionId = url.searchParams.get('sessionId');
+        return sendJson(response, 200, store.getSessionReview(sessionId, authenticatedUserId));
+      }
+
       if (request.method === 'GET') {
         return await serveStaticFile(response, webRoot, pathname);
       }

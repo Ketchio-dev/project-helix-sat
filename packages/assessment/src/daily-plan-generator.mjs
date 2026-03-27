@@ -9,6 +9,25 @@ function rankSkill(skillState) {
 }
 
 export function generateDailyPlan({ profile, skillStates, errorDna, date = new Date().toISOString().slice(0, 10) }) {
+  if (!skillStates || skillStates.length === 0) {
+    return {
+      date,
+      total_minutes: profile.daily_minutes,
+      planner_version: 'v0-prototype',
+      status: 'needs_diagnostic',
+      rationale_summary: 'No skill data yet. Complete a diagnostic session to get a personalized plan.',
+      blocks: [{
+        block_type: 'diagnostic',
+        minutes: profile.daily_minutes,
+        objective: 'Complete the initial diagnostic to establish your skill baseline.',
+        target_skills: [],
+        expected_benefit: 'Enables personalized planning.',
+        frustration_risk: 'low',
+      }],
+      fallback_plan: null,
+      stop_condition: 'Complete the diagnostic.',
+    };
+  }
   const sorted = [...skillStates].sort((a, b) => rankSkill(b) - rankSkill(a));
   const primary = sorted[0];
   const secondary = sorted[1] ?? primary;
