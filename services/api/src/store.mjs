@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { createDemoData, DEMO_USER_ID } from './demo-data.mjs';
 import { HttpError } from './http-utils.mjs';
 import { generateDailyPlan } from '../../../packages/assessment/src/daily-plan-generator.mjs';
+import { selectSessionItems } from '../../../packages/assessment/src/item-selector.mjs';
 import { projectScoreBand } from '../../../packages/scoring/src/score-predictor.mjs';
 import { updateErrorDna, updateLearnerSkillState } from '../../../packages/assessment/src/learner-state.mjs';
 import { createEvent } from '../../../packages/telemetry/src/events.mjs';
@@ -759,13 +760,18 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       if (conflict) {
         return conflict;
       }
-      const timedSetItemIds = [
-        'rw_words_context_01',
-        'math_linear_01',
-        'rw_structure_01',
-      ];
-      const timedSetItems = timedSetItemIds.map((itemId) => api.getItem(itemId));
-      if (timedSetItems.some((item) => !item)) {
+      const recentItemIds = [...new Set([
+        ...api.getAttempts(userId).slice(-8).map((attempt) => attempt.item_id),
+        ...api.getActiveSessions(userId).flatMap((session) => api.getSessionItems(session.id).map((entry) => entry.item_id)),
+      ])];
+      const timedSetItems = selectSessionItems(
+        Object.values(state.items),
+        api.getSkillStates(userId),
+        'timed_set',
+        3,
+        recentItemIds,
+      );
+      if (timedSetItems.length !== 3 || timedSetItems.some((item) => !item)) {
         throw new HttpError(500, 'Timed-set configuration is missing one or more items');
       }
       const session = {
@@ -802,14 +808,18 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       if (conflict) {
         return conflict;
       }
-      const moduleItemIds = [
-        'rw_words_context_01',
-        'rw_structure_01',
-        'math_linear_01',
-        'math_stats_01',
-      ];
-      const moduleItems = moduleItemIds.map((itemId) => api.getItem(itemId));
-      if (moduleItems.some((item) => !item)) {
+      const recentItemIds = [...new Set([
+        ...api.getAttempts(userId).slice(-8).map((attempt) => attempt.item_id),
+        ...api.getActiveSessions(userId).flatMap((session) => api.getSessionItems(session.id).map((entry) => entry.item_id)),
+      ])];
+      const moduleItems = selectSessionItems(
+        Object.values(state.items),
+        api.getSkillStates(userId),
+        'module_simulation',
+        4,
+        recentItemIds,
+      );
+      if (moduleItems.length !== 4 || moduleItems.some((item) => !item)) {
         throw new HttpError(500, 'Module configuration is missing one or more items');
       }
       const session = {
@@ -849,7 +859,21 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         started_at: new Date().toISOString(),
       };
       state.sessions[session.id] = session;
-      const assignedItems = Object.values(state.items).slice(0, 3).map((item, index) => ({
+      const recentItemIds = [...new Set([
+        ...api.getAttempts(userId).slice(-8).map((attempt) => attempt.item_id),
+        ...api.getActiveSessions(userId).flatMap((activeSession) => api.getSessionItems(activeSession.id).map((entry) => entry.item_id)),
+      ])];
+      const diagnosticItems = selectSessionItems(
+        Object.values(state.items),
+        api.getSkillStates(userId),
+        'diagnostic',
+        3,
+        recentItemIds,
+      );
+      if (diagnosticItems.length !== 3 || diagnosticItems.some((item) => !item)) {
+        throw new HttpError(500, 'Diagnostic configuration is missing one or more items');
+      }
+      const assignedItems = diagnosticItems.map((item, index) => ({
         session_item_id: createId('session_item'),
         item_id: item.itemId,
         ordinal: index + 1,

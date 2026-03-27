@@ -1,3 +1,60 @@
+function createChoices(choices) {
+  return choices.map(({ label, text }) => ({ key: label, label, text }));
+}
+
+function createItem({
+  itemId,
+  section,
+  domain,
+  skill,
+  difficulty_band,
+  item_format,
+  stem,
+  passage = '',
+  choices,
+  answerKey,
+  status = 'production',
+  tags = [],
+  estimatedTimeSec = 75,
+}) {
+  return {
+    itemId,
+    section,
+    domain,
+    skill,
+    difficulty_band,
+    item_format,
+    stem,
+    prompt: stem,
+    passage,
+    choices: createChoices(choices),
+    answerKey,
+    status,
+    tags,
+    estimatedTimeSec,
+  };
+}
+
+function createRationale({
+  item_id,
+  explanation,
+  wrongRationales,
+  misconceptionByChoice,
+  hint_ladder,
+  misconception_tags,
+}) {
+  return {
+    item_id,
+    explanation,
+    canonical_correct_rationale: explanation,
+    canonical_wrong_rationales: wrongRationales,
+    misconceptionByChoice,
+    hint_ladder,
+    hint_ladder_json: hint_ladder,
+    misconception_tags,
+  };
+}
+
 export const DEMO_USER_ID = 'demo-student';
 
 export function createDemoData() {
@@ -86,156 +143,465 @@ export function createDemoData() {
       },
     },
     items: {
-      rw_words_context_01: {
+      rw_words_context_01: createItem({
         itemId: 'rw_words_context_01',
         section: 'reading_writing',
         domain: 'craft_and_structure',
         skill: 'rw_words_in_context',
-        estimatedTimeSec: 75,
-        prompt: 'Which choice best completes the text with the most precise meaning?',
+        difficulty_band: 'easy',
+        item_format: 'single_select',
+        stem: 'Which choice best completes the text with the most precise meaning?',
         passage: 'Researchers described the new coral-growth model as elegant because it captured seasonal variation without relying on dozens of unstable assumptions.',
         choices: [
-          { key: 'A', text: 'colorful' },
-          { key: 'B', text: 'streamlined' },
-          { key: 'C', text: 'fragile' },
-          { key: 'D', text: 'mysterious' },
+          { label: 'A', text: 'colorful' },
+          { label: 'B', text: 'streamlined' },
+          { label: 'C', text: 'fragile' },
+          { label: 'D', text: 'mysterious' },
         ],
         answerKey: 'B',
-      },
-      rw_structure_01: {
+        status: 'production',
+        tags: ['diagnostic_anchor', 'vocabulary_precision', 'easy_start'],
+        estimatedTimeSec: 75,
+      }),
+      rw_structure_01: createItem({
         itemId: 'rw_structure_01',
         section: 'reading_writing',
         domain: 'craft_and_structure',
         skill: 'rw_text_structure_and_purpose',
-        estimatedTimeSec: 80,
-        prompt: 'What is the primary function of the underlined sentence in the text?',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'What is the primary function of the third sentence in the text?',
         passage: 'The city first piloted the bus lanes in 2023. Ridership increased within six weeks. The third sentence explains why the pilot succeeded despite early criticism: drivers had reliable travel times during peak congestion. As a result, the policy gained public support.',
         choices: [
-          { key: 'A', text: 'It introduces a counterexample to the city policy.' },
-          { key: 'B', text: 'It provides the reason a previously mentioned result occurred.' },
-          { key: 'C', text: 'It restates the author’s main claim in broader terms.' },
-          { key: 'D', text: 'It shifts the passage to an unrelated future proposal.' },
+          { label: 'A', text: 'It introduces a counterexample to the city policy.' },
+          { label: 'B', text: 'It provides the reason a previously mentioned result occurred.' },
+          { label: 'C', text: 'It restates the author’s main claim in broader terms.' },
+          { label: 'D', text: 'It shifts the passage to an unrelated future proposal.' },
         ],
         answerKey: 'B',
-      },
-      math_linear_01: {
+        status: 'production',
+        tags: ['sentence_role', 'cause_effect', 'core_skill'],
+        estimatedTimeSec: 80,
+      }),
+      rw_evidence_01: createItem({
+        itemId: 'rw_evidence_01',
+        section: 'reading_writing',
+        domain: 'information_and_ideas',
+        skill: 'rw_command_of_evidence',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'Which choice best describes how the data function in the text?',
+        passage: 'Botanist Elena Ruiz argues that rooftop gardens can cool dense neighborhoods. In one 2025 pilot, sensors on buildings with gardens recorded midday roof temperatures about 12 degrees Fahrenheit lower than those on similar buildings without gardens. Ruiz cites the pilot to support her claim.',
+        choices: [
+          { label: 'A', text: 'They introduce a new concern that weakens Ruiz’s claim.' },
+          { label: 'B', text: 'They define a scientific term used earlier in the passage.' },
+          { label: 'C', text: 'They provide concrete evidence that supports Ruiz’s claim.' },
+          { label: 'D', text: 'They shift the discussion from gardens to transportation policy.' },
+        ],
+        answerKey: 'C',
+        status: 'production',
+        tags: ['evidence_function', 'data_interpretation', 'supporting_detail'],
+        estimatedTimeSec: 85,
+      }),
+      rw_transition_01: createItem({
+        itemId: 'rw_transition_01',
+        section: 'reading_writing',
+        domain: 'expression_of_ideas',
+        skill: 'rw_transitions',
+        difficulty_band: 'easy',
+        item_format: 'single_select',
+        stem: 'Which choice completes the text with the most logical transition?',
+        passage: 'The neighborhood museum extended its hours on Friday evenings. Attendance from local families rose during the first month. ______, the museum decided to keep the expanded schedule through the summer.',
+        choices: [
+          { label: 'A', text: 'As a result,' },
+          { label: 'B', text: 'By contrast,' },
+          { label: 'C', text: 'For instance,' },
+          { label: 'D', text: 'Nevertheless,' },
+        ],
+        answerKey: 'A',
+        status: 'production',
+        tags: ['transitions', 'cause_effect', 'easy_start'],
+        estimatedTimeSec: 70,
+      }),
+      rw_central_ideas_01: createItem({
+        itemId: 'rw_central_ideas_01',
+        section: 'reading_writing',
+        domain: 'information_and_ideas',
+        skill: 'rw_central_ideas_and_details',
+        difficulty_band: 'hard',
+        item_format: 'single_select',
+        stem: 'Which choice best states the main idea of the text?',
+        passage: 'Historians once treated nineteenth-century ship logs mainly as navigational records. More recently, climate researchers have used the logs to reconstruct wind patterns and sea-ice coverage. The same documents are therefore valuable not only to maritime historians but also to scientists studying long-term environmental change.',
+        choices: [
+          { label: 'A', text: 'Ship logs are unreliable because they were not written for scientists.' },
+          { label: 'B', text: 'Most maritime historians now specialize in climate research.' },
+          { label: 'C', text: 'Climate researchers created the first accurate ship logs in the nineteenth century.' },
+          { label: 'D', text: 'Ship logs have become useful to multiple fields because they preserve environmental information.' },
+        ],
+        answerKey: 'D',
+        status: 'production',
+        tags: ['main_idea', 'cross_disciplinary', 'harder_text'],
+        estimatedTimeSec: 95,
+      }),
+      rw_revision_01: createItem({
+        itemId: 'rw_revision_01',
+        section: 'reading_writing',
+        domain: 'standard_english_conventions',
+        skill: 'rw_sentence_boundaries',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+        passage: 'The robotics club built a small underwater drone for the regional showcase, ______ the team tested it in a nearby pool before the event.',
+        choices: [
+          { label: 'A', text: 'the team tested it in a nearby pool before the event.' },
+          { label: 'B', text: 'and the team tested it in a nearby pool before the event.' },
+          { label: 'C', text: 'testing it in a nearby pool before the event.' },
+          { label: 'D', text: 'however, the team tested it in a nearby pool before the event.' },
+        ],
+        answerKey: 'B',
+        status: 'production',
+        tags: ['standard_english', 'sentence_boundaries', 'coordination'],
+        estimatedTimeSec: 80,
+      }),
+      math_linear_01: createItem({
         itemId: 'math_linear_01',
         section: 'math',
         domain: 'algebra',
         skill: 'math_linear_equations',
-        estimatedTimeSec: 70,
-        prompt: 'If 3(x - 4) = 18, what is the value of x?',
-        passage: '',
+        difficulty_band: 'easy',
+        item_format: 'single_select',
+        stem: 'If 3(x - 4) = 18, what is the value of x?',
         choices: [
-          { key: 'A', text: '2' },
-          { key: 'B', text: '6' },
-          { key: 'C', text: '10' },
-          { key: 'D', text: '22' },
+          { label: 'A', text: '2' },
+          { label: 'B', text: '6' },
+          { label: 'C', text: '10' },
+          { label: 'D', text: '22' },
         ],
         answerKey: 'C',
-      },
-      math_stats_01: {
+        status: 'production',
+        tags: ['algebra', 'one_step_then_isolate', 'easy_start'],
+        estimatedTimeSec: 70,
+      }),
+      math_stats_01: createItem({
         itemId: 'math_stats_01',
         section: 'math',
         domain: 'problem_solving_and_data_analysis',
         skill: 'math_statistics_probability',
-        estimatedTimeSec: 85,
-        prompt: 'A survey found that 18 of 30 students preferred weekend practice tests. What percentage is this?',
-        passage: '',
+        difficulty_band: 'hard',
+        item_format: 'single_select',
+        stem: 'A survey found that 18 of 30 students preferred weekend practice tests. What percentage is this?',
         choices: [
-          { key: 'A', text: '40%' },
-          { key: 'B', text: '50%' },
-          { key: 'C', text: '60%' },
-          { key: 'D', text: '80%' },
+          { label: 'A', text: '40%' },
+          { label: 'B', text: '50%' },
+          { label: 'C', text: '60%' },
+          { label: 'D', text: '80%' },
         ],
         answerKey: 'C',
-      },
+        status: 'production',
+        tags: ['percent', 'fraction_to_percent', 'timed_trap'],
+        estimatedTimeSec: 85,
+      }),
+      math_systems_01: createItem({
+        itemId: 'math_systems_01',
+        section: 'math',
+        domain: 'algebra',
+        skill: 'math_systems_of_linear_equations',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'A student buys 7 notebooks and pens combined for $17. Notebooks cost $3 each, and pens cost $2 each. How many notebooks did the student buy?',
+        choices: [
+          { label: 'A', text: '2' },
+          { label: 'B', text: '3' },
+          { label: 'C', text: '4' },
+          { label: 'D', text: '5' },
+        ],
+        answerKey: 'B',
+        status: 'production',
+        tags: ['systems', 'word_problem', 'algebraic_setup'],
+        estimatedTimeSec: 90,
+      }),
+      math_geometry_01: createItem({
+        itemId: 'math_geometry_01',
+        section: 'math',
+        domain: 'geometry_and_trigonometry',
+        skill: 'math_area_and_perimeter',
+        difficulty_band: 'medium',
+        item_format: 'single_select',
+        stem: 'A rectangle has length 8 and perimeter 26. What is the width of the rectangle?',
+        choices: [
+          { label: 'A', text: '4' },
+          { label: 'B', text: '5' },
+          { label: 'C', text: '5' },
+          { label: 'D', text: '9' },
+        ],
+        answerKey: 'C',
+        status: 'production',
+        tags: ['geometry', 'perimeter', 'equation_setup'],
+        estimatedTimeSec: 80,
+      }),
+      math_quadratic_01: createItem({
+        itemId: 'math_quadratic_01',
+        section: 'math',
+        domain: 'advanced_math',
+        skill: 'math_quadratic_functions',
+        difficulty_band: 'hard',
+        item_format: 'single_select',
+        stem: 'Which pair of values satisfies x^2 - 5x + 6 = 0?',
+        choices: [
+          { label: 'A', text: 'x = 2 and x = 3' },
+          { label: 'B', text: 'x = -2 and x = -3' },
+          { label: 'C', text: 'x = 1 and x = 6' },
+          { label: 'D', text: 'x = -1 and x = -6' },
+        ],
+        answerKey: 'A',
+        status: 'production',
+        tags: ['advanced_math', 'factoring', 'roots'],
+        estimatedTimeSec: 95,
+      }),
     },
     rationales: {
-      rw_words_context_01: {
-        canonical_correct_rationale: 'The passage praises a model for doing more with fewer assumptions, so “streamlined” is the precise, text-bound choice.',
-        canonical_wrong_rationales: {
+      rw_words_context_01: createRationale({
+        item_id: 'rw_words_context_01',
+        explanation: 'The passage praises a model for doing more with fewer assumptions, so “streamlined” is the precise, text-bound choice.',
+        wrongRationales: {
           A: '“Colorful” sounds positive but does not match the passage’s logic about efficiency.',
           C: '“Fragile” contradicts the model’s success.',
-          D: '“Mysterious” is unsupported by the text.'
+          D: '“Mysterious” is unsupported by the text.',
         },
         misconceptionByChoice: {
           A: 'vocabulary_overfit',
           C: 'unsupported_inference',
-          D: 'scope_mismatch'
+          D: 'scope_mismatch',
         },
-        hint_ladder_json: [
+        hint_ladder: [
           'Start by asking what quality the author is praising.',
           'Look for a choice that means efficient or simplified in this context.',
           'Eliminate choices that are merely positive but not text-bound.',
           'The correct answer points to doing more with fewer assumptions.',
-          'Answer: B, because the model is described as efficient and precise, not just generally positive.'
+          'Answer: B, because the model is described as efficient and precise, not just generally positive.',
         ],
-        misconception_tags: ['vocabulary_overfit', 'scope_mismatch']
-      },
-      rw_structure_01: {
-        canonical_correct_rationale: 'The sentence explains why ridership increased and why the pilot gained support, so it functions as a cause for a prior result.',
-        canonical_wrong_rationales: {
+        misconception_tags: ['vocabulary_overfit', 'scope_mismatch'],
+      }),
+      rw_structure_01: createRationale({
+        item_id: 'rw_structure_01',
+        explanation: 'The sentence explains why ridership increased and why the pilot gained support, so it functions as a cause for a prior result.',
+        wrongRationales: {
           A: 'No counterexample is introduced.',
           C: 'The sentence is narrower than the whole-passage claim.',
-          D: 'The passage remains on the same policy discussion.'
+          D: 'The passage remains on the same policy discussion.',
         },
         misconceptionByChoice: {
           A: 'tone_purpose_confusion',
           C: 'scope_mismatch',
-          D: 'literal_misread'
+          D: 'literal_misread',
         },
-        hint_ladder_json: [
+        hint_ladder: [
           'Ask what changed right before this sentence.',
           'The sentence explains a result already mentioned, not the whole passage.',
           'Focus on sentence role: cause, example, contrast, or conclusion?',
           'It gives the reason the pilot succeeded and later gained support.',
-          'Answer: B, because the sentence explains why the earlier outcome occurred.'
+          'Answer: B, because the sentence explains why the earlier outcome occurred.',
         ],
-        misconception_tags: ['scope_mismatch']
-      },
-      math_linear_01: {
-        canonical_correct_rationale: 'Divide both sides by 3 to get x - 4 = 6, then add 4 to get x = 10.',
-        canonical_wrong_rationales: {
+        misconception_tags: ['scope_mismatch'],
+      }),
+      rw_evidence_01: createRationale({
+        item_id: 'rw_evidence_01',
+        explanation: 'The temperature comparison is a concrete data point, so it functions as evidence supporting Ruiz’s claim that rooftop gardens cool neighborhoods.',
+        wrongRationales: {
+          A: 'The data support the claim rather than weakening it.',
+          B: 'The passage does not define a term with the data.',
+          D: 'The discussion stays focused on rooftop gardens and temperature.',
+        },
+        misconceptionByChoice: {
+          A: 'claim_evidence_mismatch',
+          B: 'purpose_confusion',
+          D: 'scope_mismatch',
+        },
+        hint_ladder: [
+          'Ask whether the numbers support, define, or challenge the claim.',
+          'The data compare buildings with and without gardens.',
+          'That comparison gives evidence, not a new topic.',
+          'Look for the choice that describes direct support.',
+          'Answer: C, because the pilot data back up Ruiz’s claim.',
+        ],
+        misconception_tags: ['claim_evidence_mismatch', 'scope_mismatch'],
+      }),
+      rw_transition_01: createRationale({
+        item_id: 'rw_transition_01',
+        explanation: 'The museum saw higher attendance, so the decision to keep longer hours follows as a result.',
+        wrongRationales: {
+          B: 'There is no contrast between the two sentences.',
+          C: 'The second sentence is not just an example; it causes the next decision.',
+          D: 'Nothing in the passage suggests a contradiction.',
+        },
+        misconceptionByChoice: {
+          B: 'relationship_confusion',
+          C: 'example_vs_result_confusion',
+          D: 'tone_mismatch',
+        },
+        hint_ladder: [
+          'Read the second and third sentences together.',
+          'Did the attendance increase lead to the museum’s choice?',
+          'If one event causes the next, use a result transition.',
+          'Eliminate transitions that signal contrast.',
+          'Answer: A, because the later decision follows from the attendance increase.',
+        ],
+        misconception_tags: ['relationship_confusion'],
+      }),
+      rw_central_ideas_01: createRationale({
+        item_id: 'rw_central_ideas_01',
+        explanation: 'The passage explains that ship logs now serve both historical and scientific work because they preserve environmental information over time.',
+        wrongRationales: {
+          A: 'The passage does not say the logs are unreliable.',
+          B: 'It does not claim historians now mainly do climate research.',
+          C: 'The logs were not created by climate researchers.',
+        },
+        misconceptionByChoice: {
+          A: 'unsupported_inference',
+          B: 'overgeneralization',
+          C: 'literal_misread',
+        },
+        hint_ladder: [
+          'Look for the broad point that ties together every sentence.',
+          'The final sentence explains why the logs matter now.',
+          'The correct answer should include both historians and scientists.',
+          'Avoid choices that focus on only one sentence or invent a new claim.',
+          'Answer: D, because the passage emphasizes the logs’ value across fields.',
+        ],
+        misconception_tags: ['unsupported_inference', 'overgeneralization'],
+      }),
+      rw_revision_01: createRationale({
+        item_id: 'rw_revision_01',
+        explanation: 'A coordinating conjunction is needed to join the two independent clauses, so “and” creates a complete, grammatical sentence.',
+        wrongRationales: {
+          A: 'Without a conjunction, the sentence becomes a run-on.',
+          C: 'This creates a dangling modifier instead of a complete sentence.',
+          D: '“However” signals contrast, but the second clause continues the first idea.',
+        },
+        misconceptionByChoice: {
+          A: 'run_on_sentence',
+          C: 'fragment_confusion',
+          D: 'transition_mismatch',
+        },
+        hint_ladder: [
+          'Count how many complete clauses appear in the sentence.',
+          'Two complete clauses need proper punctuation or a conjunction.',
+          'The second clause continues the first rather than contrasting with it.',
+          'Look for the option that cleanly joins the clauses.',
+          'Answer: B, because “and” correctly links the two related independent clauses.',
+        ],
+        misconception_tags: ['run_on_sentence', 'transition_mismatch'],
+      }),
+      math_linear_01: createRationale({
+        item_id: 'math_linear_01',
+        explanation: 'Divide both sides by 3 to get x - 4 = 6, then add 4 to get x = 10.',
+        wrongRationales: {
           A: 'This comes from subtracting instead of adding after isolating x - 4.',
           B: 'This stops too early after dividing by 3.',
-          D: 'This adds 4 before dividing correctly.'
+          D: 'This adds 4 before dividing correctly.',
         },
         misconceptionByChoice: {
           A: 'sign_error',
           B: 'variable_isolation_error',
-          D: 'overcomplication'
+          D: 'overcomplication',
         },
-        hint_ladder_json: [
+        hint_ladder: [
           'Undo operations in reverse order.',
           'First remove the outer multiplication by dividing by 3.',
           'After dividing, you still need to isolate x completely.',
           'You should have x - 4 = 6 before the final step.',
-          'Answer: C, because x - 4 = 6 and then x = 10.'
+          'Answer: C, because x - 4 = 6 and then x = 10.',
         ],
-        misconception_tags: ['sign_error', 'variable_isolation_error']
-      },
-      math_stats_01: {
-        canonical_correct_rationale: '18 out of 30 simplifies to 3 out of 5, which equals 60%.',
-        canonical_wrong_rationales: {
+        misconception_tags: ['sign_error', 'variable_isolation_error'],
+      }),
+      math_stats_01: createRationale({
+        item_id: 'math_stats_01',
+        explanation: '18 out of 30 simplifies to 3 out of 5, which equals 60%.',
+        wrongRationales: {
           A: '40% would correspond to 12 out of 30.',
           B: '50% would correspond to 15 out of 30.',
-          D: '80% would correspond to 24 out of 30.'
+          D: '80% would correspond to 24 out of 30.',
         },
         misconceptionByChoice: {
           A: 'arithmetic_slip',
           B: 'wrong_formula_recall',
-          D: 'overcomplication'
+          D: 'overcomplication',
         },
-        hint_ladder_json: [
+        hint_ladder: [
           'Turn the fraction into something easy to scale to 100.',
           'Simplify 18/30 before converting to a percent.',
           '3/5 is equivalent to how many percent?',
           'Think of 5 equal parts: each part is 20%.',
-          'Answer: C, because 18/30 = 3/5 = 60%.'
+          'Answer: C, because 18/30 = 3/5 = 60%.',
         ],
-        misconception_tags: ['arithmetic_slip']
-      },
+        misconception_tags: ['arithmetic_slip'],
+      }),
+      math_systems_01: createRationale({
+        item_id: 'math_systems_01',
+        explanation: 'If n is the number of notebooks and p is the number of pens, then n + p = 7 and 3n + 2p = 17. Solving the system gives n = 3.',
+        wrongRationales: {
+          A: 'This undercounts the notebooks after setting up the system.',
+          C: 'This usually comes from treating the total cost as 18 instead of 17.',
+          D: 'This ignores the fact that the items must total 7.',
+        },
+        misconceptionByChoice: {
+          A: 'system_setup_slip',
+          C: 'arithmetic_slip',
+          D: 'constraint_ignored',
+        },
+        hint_ladder: [
+          'Write one equation for the number of items and one for the total cost.',
+          'Use n + p = 7 and 3n + 2p = 17.',
+          'Substitute p = 7 - n into the cost equation.',
+          'Solve the resulting linear equation for n.',
+          'Answer: B, because the system gives n = 3 notebooks.',
+        ],
+        misconception_tags: ['system_setup_slip', 'constraint_ignored'],
+      }),
+      math_geometry_01: createRationale({
+        item_id: 'math_geometry_01',
+        explanation: 'The perimeter of a rectangle is 2(length + width), so 2(8 + w) = 26. Dividing by 2 gives 8 + w = 13, so w = 5.',
+        wrongRationales: {
+          A: 'This comes from forgetting to divide the perimeter by 2 first.',
+          B: 'Five is correct, but it appears under choice C, not B.',
+          D: 'This adds instead of subtracting after dividing by 2.',
+        },
+        misconceptionByChoice: {
+          A: 'formula_misuse',
+          B: 'selection_error',
+          D: 'sign_error',
+        },
+        hint_ladder: [
+          'Start with the perimeter formula for a rectangle.',
+          'Substitute 8 for the length and 26 for the perimeter.',
+          'Divide by 2 before isolating the width.',
+          'The remaining equation should be 8 + w = 13.',
+          'Answer: C, because the width is 5.',
+        ],
+        misconception_tags: ['formula_misuse', 'sign_error'],
+      }),
+      math_quadratic_01: createRationale({
+        item_id: 'math_quadratic_01',
+        explanation: 'Factoring gives (x - 2)(x - 3) = 0, so the solutions are x = 2 and x = 3.',
+        wrongRationales: {
+          B: 'The negative values do not satisfy the original equation.',
+          C: 'These values multiply to 6 but do not add to 5.',
+          D: 'These values are sign-reversed and do not solve the equation.',
+        },
+        misconceptionByChoice: {
+          B: 'sign_pattern_confusion',
+          C: 'factor_pair_misread',
+          D: 'inverse_reasoning_error',
+        },
+        hint_ladder: [
+          'Look for two numbers that multiply to 6 and add to 5.',
+          'Those numbers let you factor the quadratic.',
+          'After factoring, set each factor equal to zero.',
+          'Check the signs carefully when matching the middle term.',
+          'Answer: A, because the roots are 2 and 3.',
+        ],
+        misconception_tags: ['sign_pattern_confusion', 'factor_pair_misread'],
+      }),
     },
     sessions: {},
     attempts: [],
