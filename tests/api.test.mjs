@@ -998,14 +998,19 @@ test('api returns a multi-week program path that wraps the current sprint', asyn
 
     assert.ok(programPath.weeksRemaining >= 1);
     assert.ok(programPath.phases.length >= 3);
+    assert.ok(programPath.sessionsPerWeek >= 3);
     assert.equal(programPath.sprintSummary.horizonDays, 14);
+    assert.ok(programPath.roadmapBlocks.length >= 1);
     assert.ok(programPath.milestones.length >= 3);
+    assert.equal(programPath.targetDate, '2026-12-05');
+    assert.ok(programPath.phases.every((phase) => typeof phase.progress === 'number'));
 
     const dashboard = await fetch(`${baseUrl}/api/dashboard/learner`, {
       headers: registered.headers,
     }).then((res) => res.json());
     assert.ok(dashboard.programPath);
     assert.equal(dashboard.programPath.sprintSummary.horizonDays, 14);
+    assert.ok(dashboard.programPath.roadmapBlocks.length >= 1);
   });
 });
 

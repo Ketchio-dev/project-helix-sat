@@ -943,6 +943,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         profile: learnerProfile,
         projection: api.getProjection(userId),
         curriculumPath,
+        sessionHistory: api.getSessionHistory(userId, 64),
       });
     },
 

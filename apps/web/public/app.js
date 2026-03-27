@@ -486,7 +486,7 @@ function renderProgramPath(programPath) {
 
   container.append(node('p', {
     className: 'notice',
-    text: `${programPath.weeksRemaining} week${programPath.weeksRemaining === 1 ? '' : 's'} to ${programPath.targetDate} · current ${programPath.currentBand.low}–${programPath.currentBand.high} · target ${programPath.targetScore} · ~${programPath.weeklyMinutes} min/week`,
+    text: `${programPath.weeksRemaining} week${programPath.weeksRemaining === 1 ? '' : 's'} to ${programPath.targetDate} · current ${programPath.currentBand.low}–${programPath.currentBand.high} · target ${programPath.targetScore} · ~${programPath.weeklyMinutes} min/week · ${programPath.sessionsPerWeek} core session${programPath.sessionsPerWeek === 1 ? '' : 's'}/week`,
   }));
 
   const phaseList = node('div', { className: 'stack' });
@@ -497,10 +497,22 @@ function renderProgramPath(programPath) {
     card.append(node('p', { className: 'muted', text: `${phase.startsOn} → ${phase.endsOn} · ${phase.weeks} week${phase.weeks === 1 ? '' : 's'}` }));
     card.append(node('p', { text: phase.objective }));
     card.append(node('p', { className: 'muted', text: `Focus: ${phase.focus}` }));
+    card.append(node('p', { className: 'muted', text: `Progress: ${phase.completedSessions}/${phase.expectedSessions} core sessions · ${Math.round((phase.progress ?? 0) * 100)}% · ${phase.status}` }));
     card.append(node('p', { className: 'muted', text: `Exit signal: ${phase.exitCriteria}` }));
     phaseList.append(card);
   }
   container.append(phaseList);
+
+  if (Array.isArray(programPath.roadmapBlocks) && programPath.roadmapBlocks.length) {
+    container.append(node('p', { className: 'muted', text: '4-week roadmap blocks' }));
+    const roadmapList = node('ul', { className: 'list compact' });
+    for (const block of programPath.roadmapBlocks.slice(0, 6)) {
+      roadmapList.append(node('li', {
+        text: `${block.title} (${block.startsOn} → ${block.endsOn}) — ${block.focus} · ${block.status} · ${block.successSignal}`,
+      }));
+    }
+    container.append(roadmapList);
+  }
 
   if (Array.isArray(programPath.milestones) && programPath.milestones.length) {
     container.append(node('p', { className: 'muted', text: 'Milestones' }));

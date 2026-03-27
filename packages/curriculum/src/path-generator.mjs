@@ -35,6 +35,26 @@ function startOfDay(value = new Date()) {
   return date;
 }
 
+function parseDateOnly(value, fallback = new Date()) {
+  if (!value) return startOfDay(fallback);
+  if (value instanceof Date) return startOfDay(value);
+  if (typeof value === 'string') {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 0, 0, 0, 0);
+    }
+  }
+  return startOfDay(value);
+}
+
+function formatDateOnly(value) {
+  const date = startOfDay(value);
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function addDays(date, days) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
@@ -209,7 +229,7 @@ function buildDailyFocuses({ today, anchorNode, supportNode, maintenanceNode, ho
     if (!node) continue;
     rows.push({
       dayOffset: offset,
-      date: addDays(today, offset).toISOString().slice(0, 10),
+      date: formatDateOnly(addDays(today, offset)),
       focusType,
       skillId: node.skillId,
       label: node.label,
@@ -265,8 +285,8 @@ function buildPhase({ key, title, startDate, weeks, objective, focus, exitCriter
   return {
     key,
     title,
-    startsOn: startDate.toISOString().slice(0, 10),
-    endsOn: endDate.toISOString().slice(0, 10),
+    startsOn: formatDateOnly(startDate),
+    endsOn: formatDateOnly(endDate),
     weeks: safeWeeks,
     objective,
     focus,
@@ -324,7 +344,7 @@ function buildMilestones({ startDate, totalWeeks, currentMid, targetScore, curri
     {
       key: 'baseline',
       title: 'Lock the baseline',
-      dueOn: addDays(startDate, 6).toISOString().slice(0, 10),
+      dueOn: formatDateOnly(addDays(startDate, 6)),
       successSignal: curriculumPath?.anchorSkill?.masteryGate?.met
         ? `Keep ${curriculumPath.anchorSkill.label} above the mastery gate.`
         : `Move ${curriculumPath?.anchorSkill?.label ?? 'the anchor skill'} out of its current weak stage.`,
@@ -332,30 +352,104 @@ function buildMilestones({ startDate, totalWeeks, currentMid, targetScore, curri
     {
       key: 'midpoint',
       title: 'Midpoint check',
-      dueOn: halfwayDate.toISOString().slice(0, 10),
+      dueOn: formatDateOnly(halfwayDate),
       successSignal: `Narrow the projected gap from ${currentMid} toward ${targetScore} while stabilizing the active sprint focus.`,
     },
     {
       key: 'target_window',
       title: 'Target window rehearsal',
-      dueOn: finalPhase?.startsOn ?? addDays(startDate, totalWeeks * 7 - 7).toISOString().slice(0, 10),
+      dueOn: finalPhase?.startsOn ?? formatDateOnly(addDays(startDate, totalWeeks * 7 - 7)),
       successSignal: 'Shift the work mix toward timed transfer and exam-readiness reps.',
     },
   ];
+}
+
+function estimateSessionsPerWeek(weeklyMinutes) {
+  return clamp(Math.round(weeklyMinutes / 50), 3, 6);
+}
+
+function getPhaseStatus(phase, today) {
+  const start = parseDateOnly(phase.startsOn, today);
+  const end = parseDateOnly(phase.endsOn, today);
+  if (today > end) return 'completed';
+  if (today >= start && today <= end) return 'active';
+  return 'upcoming';
+}
+
+function attachPhaseProgress({ phases, sessionHistory = [], today, sessionsPerWeek }) {
+  const completedSessions = sessionHistory
+    .filter((session) => session?.status === 'complete' && session?.endedAt)
+    .map((session) => ({
+      endedAt: new Date(session.endedAt),
+    }));
+
+  return phases.map((phase) => {
+    const start = parseDateOnly(phase.startsOn, today);
+    const end = parseDateOnly(phase.endsOn, today);
+    const expectedSessions = Math.max(1, phase.weeks * sessionsPerWeek);
+    const completedCount = completedSessions.filter((session) => session.endedAt >= start && session.endedAt <= end).length;
+    return {
+      ...phase,
+      status: getPhaseStatus(phase, today),
+      expectedSessions,
+      completedSessions: completedCount,
+      progress: Number(clamp(completedCount / expectedSessions, 0, 1).toFixed(2)),
+    };
+  });
+}
+
+function buildRoadmapBlocks({ startDate, totalWeeks, phases, curriculumPath, targetScore, currentMid, today }) {
+  const blocks = [];
+  const totalBlocks = Math.max(1, Math.ceil(totalWeeks / 4));
+  let blockStart = startDate;
+
+  for (let index = 0; index < totalBlocks; index += 1) {
+    const weeks = Math.min(4, totalWeeks - index * 4);
+    const blockEnd = addDays(blockStart, weeks * 7 - 1);
+    const activePhase = phases.find((phase) => {
+      const phaseStart = parseDateOnly(phase.startsOn, today);
+      const phaseEnd = parseDateOnly(phase.endsOn, today);
+      return blockStart <= phaseEnd && blockEnd >= phaseStart;
+    }) ?? phases.at(-1) ?? null;
+
+    blocks.push({
+      key: `block_${index + 1}`,
+      title: `Weeks ${index * 4 + 1}-${index * 4 + weeks}`,
+      startsOn: formatDateOnly(blockStart),
+      endsOn: formatDateOnly(blockEnd),
+      weeks,
+      status: today > blockEnd ? 'completed' : today >= blockStart && today <= blockEnd ? 'active' : 'upcoming',
+      phaseKey: activePhase?.key ?? 'acceleration',
+      focus: index === 0 && curriculumPath?.anchorSkill?.label
+        ? `${curriculumPath.anchorSkill.label} anchor + ${curriculumPath.supportSkill?.label ?? 'support cleanup'}`
+        : activePhase?.focus ?? 'Follow the current highest-yield phase focus.',
+      successSignal: index === totalBlocks - 1
+        ? `Arrive within reach of ${targetScore} while keeping revisit debt under control.`
+        : index === 0
+          ? `Move the current band from ${currentMid} toward the next stable checkpoint.`
+          : activePhase?.exitCriteria ?? 'Clear the current phase exit criteria.',
+    });
+
+    blockStart = addDays(blockStart, weeks * 7);
+  }
+
+  return blocks;
 }
 
 export function generateProgramPath({
   profile = {},
   projection = {},
   curriculumPath = null,
+  sessionHistory = [],
   generatedAt = new Date(),
 } = {}) {
   const today = startOfDay(generatedAt);
-  const targetDate = profile?.target_test_date ? startOfDay(profile.target_test_date) : addDays(today, 84);
+  const targetDate = profile?.target_test_date ? parseDateOnly(profile.target_test_date, today) : addDays(today, 84);
   const msRemaining = targetDate.getTime() - today.getTime();
   const daysRemaining = Math.max(7, Math.ceil(msRemaining / 86400000));
   const weeksRemaining = Math.max(1, Math.ceil(daysRemaining / 7));
   const weeklyMinutes = Math.max(30, Number(profile?.daily_minutes ?? 30) * 6);
+  const sessionsPerWeek = estimateSessionsPerWeek(weeklyMinutes);
   const targetScore = Number(profile?.target_score ?? 1400);
   const currentMid = midpointFromProjection(projection);
   const scoreGap = Math.max(0, targetScore - currentMid);
@@ -423,12 +517,29 @@ export function generateProgramPath({
     emphasis: 'readiness',
   }));
 
+  const phasesWithProgress = attachPhaseProgress({
+    phases,
+    sessionHistory,
+    today,
+    sessionsPerWeek,
+  });
+  const roadmapBlocks = buildRoadmapBlocks({
+    startDate: today,
+    totalWeeks: weeksRemaining,
+    phases: phasesWithProgress,
+    curriculumPath,
+    targetScore,
+    currentMid,
+    today,
+  });
+
   return {
     version: getCurriculumMetadata().version,
     generatedAt: new Date(generatedAt).toISOString(),
-    targetDate: targetDate.toISOString().slice(0, 10),
+    targetDate: formatDateOnly(targetDate),
     weeksRemaining,
     weeklyMinutes,
+    sessionsPerWeek,
     currentBand: {
       low: projection?.predicted_total_low ?? 400,
       high: projection?.predicted_total_high ?? 1600,
@@ -436,14 +547,15 @@ export function generateProgramPath({
     },
     targetScore,
     scoreGap,
-    activePhaseKey: phases[0]?.key ?? 'foundation',
-    phases,
+    activePhaseKey: phasesWithProgress.find((phase) => phase.status === 'active')?.key ?? phasesWithProgress[0]?.key ?? 'foundation',
+    phases: phasesWithProgress,
     sprintSummary: {
       horizonDays: curriculumPath?.horizonDays ?? CURRICULUM_HORIZON_DAYS,
       anchorSkill: curriculumPath?.anchorSkill?.label ?? null,
       supportSkill: curriculumPath?.supportSkill?.label ?? null,
       nextUnlock: curriculumPath?.nextUnlock?.label ?? null,
     },
-    milestones: buildMilestones({ startDate: today, totalWeeks: weeksRemaining, currentMid, targetScore, curriculumPath, phases }),
+    roadmapBlocks,
+    milestones: buildMilestones({ startDate: today, totalWeeks: weeksRemaining, currentMid, targetScore, curriculumPath, phases: phasesWithProgress }),
   };
 }

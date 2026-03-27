@@ -237,9 +237,13 @@ describe('integrity: program path generator', () => {
 
     assert.ok(programPath.weeksRemaining >= 1);
     assert.ok(programPath.phases.length >= 3);
+    assert.ok(programPath.sessionsPerWeek >= 3);
     assert.equal(programPath.sprintSummary.horizonDays, 14);
+    assert.ok(programPath.roadmapBlocks.length >= 1);
     assert.ok(programPath.milestones.length >= 3);
     assert.equal(programPath.phases[0].key, programPath.activePhaseKey);
+    assert.equal(programPath.targetDate, '2026-10-10');
+    assert.ok(programPath.phases.every((phase) => ['completed', 'active', 'upcoming'].includes(phase.status)));
   });
 });
 
