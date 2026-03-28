@@ -218,6 +218,22 @@ describe('integrity: curriculum lesson bundle', () => {
         transferPattern: /label the clauses first/i,
       },
       {
+        skillId: 'rw_words_in_context',
+        workedExampleItem: seed.items.rw_words_context_01,
+        transferItem: seed.items.rw_words_context_02,
+        summaryPattern: /precision questions/i,
+        trapPattern: /everyday meaning of the word/i,
+        transferPattern: /shade of meaning/i,
+      },
+      {
+        skillId: 'rw_rhetorical_synthesis',
+        workedExampleItem: seed.items.rw_rhetoric_01,
+        transferItem: seed.items.rw_rhetoric_02,
+        summaryPattern: /goal-first reading/i,
+        trapPattern: /does not actually accomplish the stated writing goal/i,
+        transferPattern: /assigned job/i,
+      },
+      {
         skillId: 'math_systems_of_linear_equations',
         workedExampleItem: seed.items.math_systems_02,
         transferItem: seed.items.math_systems_01,
@@ -232,6 +248,22 @@ describe('integrity: curriculum lesson bundle', () => {
         summaryPattern: /what the numbers represent/i,
         trapPattern: /population or event was read too loosely/i,
         transferPattern: /target statistic or event first/i,
+      },
+      {
+        skillId: 'math_quadratic_functions',
+        workedExampleItem: seed.items.math_quadratic_03,
+        transferItem: seed.items.math_quadratic_04,
+        summaryPattern: /structure questions/i,
+        trapPattern: /aimed at the wrong feature/i,
+        transferPattern: /requested feature easiest to see/i,
+      },
+      {
+        skillId: 'math_polynomial_rational',
+        workedExampleItem: seed.items.math_polynomial_01,
+        transferItem: seed.items.math_polynomial_02,
+        summaryPattern: /structure over speed/i,
+        trapPattern: /zeros, factors, and excluded values/i,
+        transferPattern: /root, a restriction, or an equivalent rewritten form/i,
       },
     ];
 
