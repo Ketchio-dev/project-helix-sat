@@ -16,6 +16,7 @@ const state = {
   currentSessionType: null,
   currentSessionProgress: null,
   reflectionPrompt: '',
+  latestQuickWinSummary: null,
   latestTimedSetSummary: null,
   latestModuleSummary: null,
   activeSessionEnvelope: null,
@@ -54,6 +55,7 @@ const json = async (url, options) => {
     state.goalProfile = null;
     state.nextBestAction = null;
     state.diagnosticReveal = null;
+    state.latestQuickWinSummary = null;
     state.showDiagnosticPreflight = false;
     state.dismissDiagnosticPreflight = false;
     showLogin();
@@ -155,6 +157,7 @@ function formatCountdown(value) {
 
 function toDisplaySessionType(value) {
   if (!value) return 'session';
+  if (value === 'quick_win') return 'Quick win';
   if (value === 'timed_set') return 'Timed set';
   if (value === 'module' || value === 'module_simulation') return 'Module simulation';
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -707,6 +710,12 @@ function studentActionCopy(action) {
         reason: 'Take one short 12-minute check so Helix can stop being generic and show your first real score-moving step.',
         ctaLabel: 'Start your 12-minute check',
       };
+    case 'start_quick_win':
+      return {
+        title,
+        reason,
+        ctaLabel: 'Take the 2-minute win',
+      };
     case 'resume_active_session':
       return {
         title: 'Finish what you started',
@@ -747,7 +756,7 @@ function buildAlternativeActions(action) {
     return [];
   }
 
-  if (['complete_goal_setup', 'start_diagnostic', 'resume_active_session'].includes(action.kind)) {
+  if (['complete_goal_setup', 'start_diagnostic', 'start_quick_win', 'resume_active_session'].includes(action.kind)) {
     return [];
   }
 
@@ -789,6 +798,9 @@ async function performNextBestAction(action) {
     case 'start_diagnostic':
       openDiagnosticPreflight();
       return;
+    case 'start_quick_win':
+      await startQuickWinSession();
+      return;
     case 'resume_active_session':
       $('#itemArea')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
@@ -825,6 +837,31 @@ async function startRetryLoop(itemId = null) {
       currentItem: result.currentItem ?? null,
     };
     $('#modeSelect').value = 'review';
+    clearSessionNotice();
+    renderNextBestAction(null);
+    renderItem(result.currentItem);
+    renderSessionProgress(result.sessionProgress);
+    $('#itemArea')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (error) {
+    $('#attemptResult').textContent = error.message;
+  }
+}
+
+async function startQuickWinSession() {
+  try {
+    const result = await json('/api/quick-win/start', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    state.currentSessionId = result.session.id;
+    state.currentSessionType = result.session.type;
+    state.currentSessionProgress = result.sessionProgress ?? null;
+    state.activeSessionEnvelope = {
+      session: result.session,
+      sessionProgress: result.sessionProgress ?? null,
+      currentItem: result.currentItem ?? null,
+    };
+    $('#modeSelect').value = 'learn';
     clearSessionNotice();
     renderNextBestAction(null);
     renderItem(result.currentItem);
@@ -1107,6 +1144,45 @@ function renderSessionHistory(payload) {
   }
 
   container.append(stack);
+}
+
+function renderQuickWinSummary(summary) {
+  const section = $('#quickWinSection');
+  const container = $('#quickWinSummary');
+  if (!container || !section) return;
+  clear(container);
+
+  const normalized = summary?.quickWinSummary ?? summary ?? null;
+  state.latestQuickWinSummary = normalized;
+
+  if (!isStudentSurface() || !normalized) {
+    section.style.display = 'none';
+    container.append(node('p', { className: 'muted', text: 'No quick-win result yet.' }));
+    return;
+  }
+
+  section.style.display = 'block';
+
+  const card = node('article', { className: 'timed-summary-item' });
+  card.append(node('h3', { text: normalized.headline ?? 'Quick win' }));
+  card.append(node('div', { className: 'session-status-row' }, [
+    node('span', { className: 'pill success', text: `${normalized.correct ?? 0}/${normalized.total ?? 0} correct` }),
+    node('span', { className: 'pill', text: normalized.focusSkill ? formatSkillLabel(normalized.focusSkill) : 'Quick win' }),
+    node('span', { className: 'pill', text: normalized.completed ? 'Completed' : 'In progress' }),
+  ]));
+  card.append(kvRows([
+    ['Accuracy', formatPercent(normalized.accuracy)],
+    ['Answered', `${normalized.answered ?? 0}/${normalized.total ?? 0}`],
+    ['Started', formatDateTime(normalized.startedAt)],
+  ]));
+  if (normalized.comebackPrompt) {
+    card.append(node('p', { className: 'notice', text: normalized.comebackPrompt }));
+  }
+  if (normalized.nextAction) {
+    card.append(node('p', { className: 'muted', text: `Next: ${normalized.nextAction}` }));
+  }
+
+  container.append(card);
 }
 
 function renderTimedSetSummary(summary) {
@@ -1839,6 +1915,7 @@ function handleLogout() {
   state.goalProfile = null;
   state.nextBestAction = null;
   state.diagnosticReveal = null;
+  state.latestQuickWinSummary = null;
   state.dashboardExpanded = false;
   showLogin();
 }
@@ -1946,6 +2023,7 @@ async function loadDashboard() {
     renderWeeklyDigest(weeklyDigest ?? dashboard.weeklyDigest ?? null);
     renderReview(dashboard.review);
     renderSessionHistory(sessionHistory);
+    renderQuickWinSummary(dashboard.latestQuickWinSummary);
     renderTimedSetSummary(dashboard.latestTimedSetSummary);
     renderModuleSummary(dashboard.latestModuleSummary);
     renderParentSummary(parentSummary);
@@ -2146,6 +2224,7 @@ $('#attemptForm').addEventListener('submit', async (event) => {
     if (result.projection) renderProjection(result.projection);
     if (result.plan) renderPlan(result.plan);
     if (result.errorDna) renderErrorDna(result.errorDna);
+    if (result.quickWinSummary) renderQuickWinSummary(result.quickWinSummary);
     if (result.diagnosticReveal) {
       renderDiagnosticReveal(result.diagnosticReveal);
       renderNextBestAction(result.diagnosticReveal.firstRecommendedAction ?? null);
@@ -2182,6 +2261,7 @@ $('#attemptForm').addEventListener('submit', async (event) => {
         renderItem(result.nextItem);
       } else {
         const completedReviewLoop = state.currentSessionType === 'review';
+        const completedQuickWin = state.currentSessionType === 'quick_win';
         if (isExamSessionType(state.currentSessionType)) {
           state.currentItem = null;
           state.sessionCompleted = true;
@@ -2190,6 +2270,11 @@ $('#attemptForm').addEventListener('submit', async (event) => {
         renderItem(null);
         if (completedReviewLoop) {
           renderSessionNotice('Retry loop complete — Helix updated the next revisit for this trap.', 'info');
+          await loadDashboard();
+          await loadReviewRecommendations();
+        } else if (completedQuickWin) {
+          const headline = result.quickWinSummary?.headline ?? 'Quick win complete — Helix banked your first confidence rep.';
+          renderSessionNotice(headline, 'info');
           await loadDashboard();
           await loadReviewRecommendations();
         } else if (!isExamSessionType(state.currentSessionType)) {

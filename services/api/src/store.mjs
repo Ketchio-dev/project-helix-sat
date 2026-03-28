@@ -228,6 +228,7 @@ function chooseModuleSection(items = [], skillStates = []) {
 
 function toSessionLabel(session) {
   if (!session) return 'session';
+  if (session.type === 'quick_win') return 'quick win';
   if (isTimedSession(session)) return 'timed set';
   if (isModuleSession(session)) return 'module simulation';
   return session.type;
@@ -1369,6 +1370,70 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       return latestModule ? api.getModuleSummary(latestModule.id) : null;
     },
 
+    getQuickWinSummary(sessionId) {
+      const session = api.getSession(sessionId);
+      if (!session || session.type !== 'quick_win') {
+        return null;
+      }
+
+      const sessionItems = api.getSessionItems(sessionId);
+      const progress = summarizeSessionProgress(sessionItems);
+      const attempts = api.getSessionAttempts(sessionId);
+      const correct = attempts.filter((attempt) => attempt.is_correct).length;
+      const accuracy = attempts.length ? roundRatio(correct / attempts.length) : null;
+      const focusSkill = session.quick_win_focus_skill ?? api.getItem(sessionItems[0]?.item_id)?.skill ?? null;
+      const focusLabel = focusSkill ? formatSkillLabel(focusSkill) : 'your next skill';
+      const completed = progress.isComplete;
+
+      let headline = `Quick win ready on ${focusLabel}`;
+      if (completed && accuracy !== null) {
+        if (accuracy >= 1) {
+          headline = `${correct}/${attempts.length} — strong start on ${focusLabel}`;
+        } else if (accuracy >= 0.67) {
+          headline = `${correct}/${attempts.length} — solid start on ${focusLabel}`;
+        } else {
+          headline = `${correct}/${attempts.length} — first rep banked on ${focusLabel}`;
+        }
+      }
+
+      const comebackPrompt = completed
+        ? accuracy !== null && accuracy >= 0.67
+          ? `Come back tomorrow and Helix will build on this ${focusLabel.toLowerCase()} win before the pattern fades.`
+          : `Helix logged the first rep. Come back for one more short ${focusLabel.toLowerCase()} loop before moving to heavier volume.`
+        : `Finish this short ${focusLabel.toLowerCase()} win so Helix can lock your first confidence bump.`;
+
+      const nextAction = completed
+        ? accuracy !== null && accuracy >= 0.67
+          ? `Use this momentum to step into the next repair block while ${focusLabel.toLowerCase()} still feels winnable.`
+          : `Treat this as a first rep, then let Helix slow the next repair block just enough to make it stick.`
+        : `Answer the last ${progress.remaining} item${progress.remaining === 1 ? '' : 's'} to bank the win.`;
+
+      return {
+        sessionId: session.id,
+        sessionType: session.type,
+        startedAt: session.started_at,
+        endedAt: session.ended_at ?? null,
+        answered: progress.answered,
+        total: progress.total,
+        correct,
+        accuracy,
+        focusSkill,
+        headline,
+        comebackPrompt,
+        nextAction,
+        completed,
+      };
+    },
+
+    getLatestQuickWinSummary(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const latestQuickWin = Object.values(state.sessions)
+        .filter((session) => session.user_id === userId && session.type === 'quick_win')
+        .sort((left, right) => new Date(right.started_at) - new Date(left.started_at))[0] ?? null;
+
+      return latestQuickWin ? api.getQuickWinSummary(latestQuickWin.id) : null;
+    },
+
     getErrorDnaSummary(userId = DEMO_USER_ID, limit = 3) {
       return Object.entries(api.getErrorDna(userId))
         .sort((left, right) => right[1] - left[1])
@@ -1412,6 +1477,8 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       const plan = api.getPlan(userId);
       const review = api.getReviewRecommendations(userId);
       const revisitQueue = api.getReviewRevisitQueue(userId);
+      const latestDiagnosticSession = findLatestCompletedSession(userId, (session) => session.type === 'diagnostic');
+      const latestQuickWinSummary = api.getLatestQuickWinSummary(userId);
       if (!attempts.length || plan.status === 'needs_diagnostic') {
         return {
           kind: 'start_diagnostic',
@@ -1422,6 +1489,15 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           sessionType: 'diagnostic',
           section: null,
         };
+      }
+
+      if (needsFreshQuickWin(latestDiagnosticSession, latestQuickWinSummary)) {
+        const reviewLead = review.recommendations?.[0] ?? null;
+        const firstBlock = plan.blocks?.find((block) => block.block_type !== 'reflection') ?? plan.blocks?.[0] ?? null;
+        const focusSkill = reviewLead?.skill ?? firstBlock?.target_skills?.[0] ?? null;
+        const section = reviewLead?.section
+          ?? (focusSkill?.startsWith('math_') ? 'math' : focusSkill ? 'reading_writing' : null);
+        return buildQuickWinAction({ focusSkill, section });
       }
 
       const revisitLead = revisitQueue.find((entry) => entry.status === 'retry_recommended' || isReviewRevisitDue(entry)) ?? null;
@@ -1522,9 +1598,15 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       const firstBlock = plan.blocks?.find((block) => block.block_type !== 'reflection') ?? plan.blocks?.[0] ?? null;
       const leakLead = topScoreLeaks[0] ?? null;
       const confidenceLabel = toConfidenceLabel(projection.confidence);
+      const latestQuickWinSummary = api.getLatestQuickWinSummary(userId);
 
       let firstRecommendedAction = api.getNextBestAction(userId, { preferSessionStart: true });
-      if (reviewLead) {
+      if (needsFreshQuickWin(diagnosticSession, latestQuickWinSummary)) {
+        const focusSkill = reviewLead?.skill ?? firstBlock?.target_skills?.[0] ?? null;
+        const section = reviewLead?.section
+          ?? (focusSkill?.startsWith('math_') ? 'math' : focusSkill ? 'reading_writing' : null);
+        firstRecommendedAction = buildQuickWinAction({ focusSkill, section });
+      } else if (reviewLead) {
         firstRecommendedAction = {
           kind: 'start_retry_loop',
           title: reviewLead.skill
@@ -1593,6 +1675,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         review: api.getReviewRecommendations(userId),
         activeSession: api.getActiveSession(userId),
         sessionHistory: api.getSessionHistory(userId, 5),
+        latestQuickWinSummary: api.getLatestQuickWinSummary(userId),
         latestTimedSetSummary: api.getLatestTimedSetSummary(userId),
         latestModuleSummary: api.getLatestModuleSummary(userId),
       };
@@ -1991,6 +2074,72 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       };
     },
 
+    startQuickWin(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const latestDiagnosticSession = findLatestCompletedSession(userId, (session) => session.type === 'diagnostic');
+      if (!latestDiagnosticSession) {
+        throw new HttpError(409, 'Complete the baseline diagnostic before starting a quick win');
+      }
+      const review = api.getReviewRecommendations(userId);
+      const plan = api.getPlan(userId);
+      const firstBlock = plan.blocks?.find((block) => block.block_type !== 'reflection') ?? plan.blocks?.[0] ?? null;
+      const focusSkill = review.recommendations?.[0]?.skill ?? firstBlock?.target_skills?.[0] ?? null;
+      const section = review.recommendations?.[0]?.section
+        ?? (focusSkill?.startsWith('math_') ? 'math' : focusSkill ? 'reading_writing' : null);
+      const recentItemIds = [...new Set([
+        ...api.getAttempts(userId).slice(-10).map((attempt) => attempt.item_id),
+        ...api.getActiveSessions(userId).flatMap((session) => api.getSessionItems(session.id).map((entry) => entry.item_id)),
+      ])];
+      const quickWinItems = selectQuickWinItems({
+        items: Object.values(state.items),
+        recentItemIds,
+        exposureCounts: state.itemExposure,
+        focusSkill,
+        section,
+      });
+
+      if (quickWinItems.length !== 3 || quickWinItems.some((item) => !item)) {
+        throw new HttpError(500, 'Quick-win configuration is missing one or more items');
+      }
+
+      const session = {
+        id: createId('sess'),
+        user_id: userId,
+        type: 'quick_win',
+        section: section ?? quickWinItems[0]?.section ?? null,
+        quick_win_focus_skill: focusSkill ?? quickWinItems[0]?.skill ?? null,
+        started_at: new Date().toISOString(),
+      };
+      state.sessions[session.id] = session;
+      state.sessionItems[session.id] = quickWinItems.map((item, index) => ({
+        session_item_id: createId('session_item'),
+        item_id: item.itemId,
+        ordinal: index + 1,
+        answered_at: null,
+        delivered_at: null,
+      }));
+      state.events.push(createEvent({
+        userId,
+        sessionId: session.id,
+        eventName: 'quick_win_started',
+        payload: {
+          mode: 'learn',
+          itemCount: quickWinItems.length,
+          focusSkill: session.quick_win_focus_skill,
+        },
+      }));
+      persistState();
+      return api.buildSessionPayload(session, {
+        started: true,
+        resumed: false,
+        conflict: false,
+        quickWin: {
+          focusSkill: session.quick_win_focus_skill,
+          section: session.section,
+        },
+      });
+    },
+
     submitAttempt({
       userId = DEMO_USER_ID,
       itemId,
@@ -2172,6 +2321,9 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         projection: api.getProjection(userId),
         plan: api.getPlan(userId),
         errorDna: api.getErrorDna(userId),
+        quickWinSummary: session.type === 'quick_win' && sessionProgress.isComplete
+          ? api.getQuickWinSummary(sessionId)
+          : null,
         diagnosticReveal: session.type === 'diagnostic' && sessionProgress.isComplete
           ? api.getDiagnosticReveal(userId, sessionId)
           : null,
@@ -2407,6 +2559,68 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       return { user: safeUser, token, tokenExpiresAt: new Date(Date.now() + (24 * 60 * 60 * 1000)).toISOString() };
     },
   };
+
+  function findLatestCompletedSession(userId, predicate) {
+    return Object.values(state.sessions)
+      .filter((session) => session.user_id === userId && session.ended_at && predicate(session))
+      .sort((left, right) => new Date(right.ended_at) - new Date(left.ended_at))[0] ?? null;
+  }
+
+  function needsFreshQuickWin(latestDiagnosticSession, latestQuickWinSummary) {
+    if (!latestDiagnosticSession) return false;
+    if (!latestQuickWinSummary?.startedAt) return true;
+    return new Date(latestQuickWinSummary.startedAt) < new Date(latestDiagnosticSession.ended_at);
+  }
+
+  function buildQuickWinAction({ focusSkill = null, section = null } = {}) {
+    const focusLabel = focusSkill ? formatSkillLabel(focusSkill) : 'your next skill';
+    return {
+      kind: 'start_quick_win',
+      title: `Bank a quick win in ${focusLabel}`,
+      reason: `${focusLabel} is close enough to your current level that one short success loop should give you a real confidence bump before heavier work.`,
+      ctaLabel: 'Take the 2-minute win',
+      estimatedMinutes: 2,
+      sessionType: 'quick_win',
+      section,
+      focusSkill,
+    };
+  }
+
+  function selectQuickWinItems({ items, recentItemIds = [], exposureCounts = {}, focusSkill = null, section = null }) {
+    const recentIds = new Set(recentItemIds.filter(Boolean));
+    const available = items.filter((item) => item?.itemId && !recentIds.has(item.itemId));
+    const candidates = (available.length ? available : items.filter((item) => item?.itemId))
+      .filter((item) => item.difficulty_band !== 'hard');
+    const ranked = [...candidates].sort((left, right) => {
+      const leftDifficulty = left.difficulty_band === 'easy' ? 0 : 1;
+      const rightDifficulty = right.difficulty_band === 'easy' ? 0 : 1;
+      if (leftDifficulty !== rightDifficulty) return leftDifficulty - rightDifficulty;
+      const leftExposure = exposureCounts[left.itemId] ?? 0;
+      const rightExposure = exposureCounts[right.itemId] ?? 0;
+      if (leftExposure !== rightExposure) return leftExposure - rightExposure;
+      return left.itemId.localeCompare(right.itemId);
+    });
+
+    const selected = [];
+    const usedIds = new Set();
+    const pools = [
+      focusSkill ? ranked.filter((item) => item.skill === focusSkill) : [],
+      section ? ranked.filter((item) => item.section === section) : [],
+      ranked,
+    ];
+
+    for (const pool of pools) {
+      for (const item of pool) {
+        if (selected.length >= 3) break;
+        if (usedIds.has(item.itemId)) continue;
+        selected.push(item);
+        usedIds.add(item.itemId);
+      }
+      if (selected.length >= 3) break;
+    }
+
+    return selected.slice(0, 3);
+  }
 
   return api;
 }

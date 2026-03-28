@@ -91,12 +91,20 @@ async function main() {
     await page.getByText('Score range now:', { exact: false }).waitFor();
     await page.getByText('Start here next').waitFor();
     await page.getByText('Why Helix believes this').waitFor();
+    await page.locator('#diagnosticReveal').getByRole('button', { name: 'Take the 2-minute win' }).click();
 
-    await page.getByRole('button', { name: 'Show full study dashboard' }).click();
-    await page.getByRole('button', { name: 'Hide full study dashboard' }).waitFor();
-    await expectVisible(page, '#studentSnapshotSection');
-    await expectVisible(page, '#studentPlanSection');
-    await expectVisible(page, '#programPathSection');
+    for (let index = 0; index < 5; index += 1) {
+      if (await page.locator('#quickWinSection').isVisible().catch(() => false)) {
+        break;
+      }
+      await page.locator('#attemptForm').waitFor({ state: 'visible' });
+      await answerCurrentItem(page);
+      await page.waitForTimeout(30);
+    }
+
+    await page.locator('#quickWinSection').waitFor({ state: 'visible' });
+    await page.locator('#quickWinSection h2').waitFor({ state: 'visible' });
+
   } finally {
     await browser.close();
   }

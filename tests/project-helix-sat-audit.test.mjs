@@ -74,9 +74,12 @@ test('learner shell includes diagnostic preflight and richer progress narration 
 
 test('learner shell prioritizes one main action and tucks secondary detail away', () => {
   assert.match(indexSource, /Your next move/);
+  assert.match(indexSource, /Quick Win/);
   assert.match(indexSource, /Want the deeper breakdown\?/);
   assert.match(indexSource, /data-student-dashboard-detail/);
   assert.match(appSource, /studentActionCopy/);
+  assert.match(appSource, /Take the 2-minute win/);
+  assert.match(appSource, /renderQuickWinSummary/);
   assert.match(appSource, /More ways to work/);
   assert.match(appSource, /Try this again/);
   assert.match(appSource, /syncDashboardDetails/);
@@ -88,6 +91,8 @@ test('repo ships a no-dependency playwright learner smoke runner', () => {
   assert.match(smokeRunnerSource, /npm', \['install', '--no-save', 'playwright'\]/);
   assert.match(smokeRunnerSource, /Show full study dashboard/);
   assert.match(smokeRunnerSource, /Your 12-minute starting point/);
+  assert.match(smokeRunnerSource, /Take the 2-minute win/);
+  assert.match(smokeRunnerSource, /#quickWinSection/);
 });
 
 

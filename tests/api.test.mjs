@@ -880,7 +880,7 @@ test('api fresh student diagnostic seeds skill states and exits empty-state plan
   });
 });
 
-test('api returns a richer diagnostic reveal after diagnostic completion', async () => {
+test('api returns a richer diagnostic reveal after diagnostic completion and unlocks a quick win', async () => {
   await withServer(async (baseUrl) => {
     const registered = await registerSession(baseUrl, {
       name: 'Reveal Student',
@@ -932,8 +932,8 @@ test('api returns a richer diagnostic reveal after diagnostic completion', async
     assert.equal(typeof lastAttempt.diagnosticReveal.whyThisPlan, 'string');
     assert.ok(Array.isArray(lastAttempt.diagnosticReveal.evidenceBullets));
     assert.ok(lastAttempt.diagnosticReveal.evidenceBullets.length >= 2);
-    assert.equal(lastAttempt.diagnosticReveal.firstRecommendedAction.kind, 'start_retry_loop');
-    assert.ok(lastAttempt.diagnosticReveal.firstRecommendedAction.itemId);
+    assert.equal(lastAttempt.diagnosticReveal.firstRecommendedAction.kind, 'start_quick_win');
+    assert.equal(typeof lastAttempt.diagnosticReveal.firstRecommendedAction.focusSkill, 'string');
 
     const reveal = await fetch(`${baseUrl}/api/diagnostic/reveal`, {
       headers: registered.headers,
@@ -942,7 +942,47 @@ test('api returns a richer diagnostic reveal after diagnostic completion', async
     assert.equal(typeof reveal.confidenceLabel, 'string');
     assert.equal(typeof reveal.whyThisPlan, 'string');
     assert.ok(reveal.evidenceBullets.some((bullet) => bullet.includes('Baseline completed')));
-    assert.equal(reveal.firstRecommendedAction.kind, 'start_retry_loop');
+    assert.equal(reveal.firstRecommendedAction.kind, 'start_quick_win');
+
+    const quickWin = await fetch(`${baseUrl}/api/quick-win/start`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+    assert.equal(quickWin.session.type, 'quick_win');
+    assert.equal(quickWin.items.length, 3);
+    assert.ok(quickWin.items.every((item) => item.difficulty_band !== 'hard'));
+
+    let quickWinComplete = null;
+    for (const item of quickWin.items) {
+      quickWinComplete = await fetch(`${baseUrl}/api/attempt/submit`, {
+        method: 'POST',
+        headers: registered.headers,
+        body: JSON.stringify({
+          itemId: item.itemId,
+          ...buildAttemptAnswer(item.itemId),
+          sessionId: quickWin.session.id,
+          mode: 'learn',
+          confidenceLevel: 4,
+          responseTimeMs: 15000,
+        }),
+      }).then((res) => res.json());
+    }
+
+    assert.equal(quickWinComplete.sessionType, 'quick_win');
+    assert.equal(quickWinComplete.sessionProgress.isComplete, true);
+    assert.equal(quickWinComplete.quickWinSummary.sessionType, 'quick_win');
+    assert.equal(typeof quickWinComplete.quickWinSummary.headline, 'string');
+
+    const dashboard = await fetch(`${baseUrl}/api/dashboard/learner`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.equal(dashboard.latestQuickWinSummary.sessionType, 'quick_win');
+
+    const nextAction = await fetch(`${baseUrl}/api/next-best-action`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.notEqual(nextAction.kind, 'start_quick_win');
   });
 });
 
@@ -1186,8 +1226,33 @@ test('api starts a retry loop from review recommendations and schedules a revisi
     const nextBestAction = await fetch(`${baseUrl}/api/next-best-action`, {
       headers: registered.headers,
     }).then((res) => res.json());
-    assert.equal(nextBestAction.kind, 'start_retry_loop');
-    assert.ok(nextBestAction.itemId);
+    assert.equal(nextBestAction.kind, 'start_quick_win');
+
+    const quickWin = await fetch(`${baseUrl}/api/quick-win/start`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+    for (const item of quickWin.items) {
+      await fetch(`${baseUrl}/api/attempt/submit`, {
+        method: 'POST',
+        headers: registered.headers,
+        body: JSON.stringify({
+          itemId: item.itemId,
+          ...buildAttemptAnswer(item.itemId),
+          sessionId: quickWin.session.id,
+          mode: 'learn',
+          confidenceLevel: 4,
+          responseTimeMs: 15000,
+        }),
+      });
+    }
+
+    const retryNextAction = await fetch(`${baseUrl}/api/next-best-action`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.equal(retryNextAction.kind, 'start_retry_loop');
+    assert.ok(retryNextAction.itemId);
 
     const retrySession = await fetch(`${baseUrl}/api/review/retry/start`, {
       method: 'POST',

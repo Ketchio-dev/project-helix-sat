@@ -76,6 +76,7 @@ const nextBestActionResponseSchema = {
       enum: [
         'complete_goal_setup',
         'start_diagnostic',
+        'start_quick_win',
         'resume_active_session',
         'review_mistakes',
         'start_retry_loop',
@@ -87,7 +88,7 @@ const nextBestActionResponseSchema = {
     reason: { type: 'string', minLength: 1 },
     ctaLabel: { type: 'string', minLength: 1 },
     estimatedMinutes: { type: ['integer', 'null'], minimum: 1 },
-    sessionType: { type: ['string', 'null'], enum: ['diagnostic', 'review', 'timed_set', 'module_simulation', null] },
+    sessionType: { type: ['string', 'null'], enum: ['diagnostic', 'quick_win', 'review', 'timed_set', 'module_simulation', null] },
     section: { type: ['string', 'null'], enum: ['reading_writing', 'math', null] },
     itemId: { type: ['string', 'null'], minLength: 1 },
     focusSkill: { type: ['string', 'null'], minLength: 1 },

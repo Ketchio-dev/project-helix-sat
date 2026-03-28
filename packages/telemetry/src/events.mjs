@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 export const EVENT_NAMES = [
   'app_opened',
   'diagnostic_started',
+  'quick_win_started',
   'timed_set_started',
   'module_started',
   'question_rendered',

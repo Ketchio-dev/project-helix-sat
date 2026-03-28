@@ -387,6 +387,14 @@ export function createRouter({ store, webRoot }) {
     },
   });
 
+  registerRoute('POST', '/api/quick-win/start', {
+    auth: 'authenticated',
+    learnerAccess: 'owner',
+    async handler({ learnerId }) {
+      return { body: store.startQuickWin(learnerId), statusCode: 201 };
+    },
+  });
+
   registerRoute('POST', '/api/timed-set/start', {
     auth: 'authenticated',
     learnerAccess: 'owner',

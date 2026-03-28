@@ -40,6 +40,18 @@ paths:
       responses:
         '201':
           description: Diagnostic session created
+  /api/quick-win/start:
+    post:
+      summary: Start a short post-diagnostic quick-win session
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyRequest'
+      responses:
+        '201':
+          description: Quick-win session created
   /api/timed-set/start:
     post:
       summary: Start a short timed set in exam mode
