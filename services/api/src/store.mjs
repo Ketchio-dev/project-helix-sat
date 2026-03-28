@@ -20,7 +20,11 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 const DIFFICULTY_RANK = { easy: 0, medium: 1, hard: 2 };
 const MODULE_SESSION_SHAPE = {
-  reading_writing: { itemCount: 12, recommendedPaceSec: 95 },
+  reading_writing: {
+    itemCount: 12,
+    recommendedPaceSec: 95,
+    extended: { itemCount: 16, recommendedPaceSec: 90 },
+  },
   math: {
     itemCount: 12,
     recommendedPaceSec: 105,

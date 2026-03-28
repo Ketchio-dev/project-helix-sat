@@ -89,6 +89,14 @@ describe('selectSessionItems', () => {
     assert.ok(result.filter((item) => item.item_format === 'grid_in').length >= 4);
   });
 
+  it('larger reading-writing module_simulation blocks keep section breadth without leaking math items', () => {
+    const result = selectSessionItems(demoItems, [], 'module_simulation', 16, [], {}, { section: 'reading_writing' });
+    assert.equal(result.length, 16);
+    assert.ok(result.every((item) => item.section === 'reading_writing'));
+    assert.ok(new Set(result.map((item) => item.skill)).size >= 8);
+    assert.ok(new Set(result.map((item) => item.domain)).size >= 4);
+  });
+
 
   it('recentItemIds filters out recently seen items', () => {
     const recentIds = demoItems.slice(0, 3).map((item) => item.itemId);

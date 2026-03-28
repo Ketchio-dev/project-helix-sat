@@ -27,7 +27,8 @@ Project Helix SAT now **covers the full ontology slice in its shipped audit** an
 ### App flow
 - First-run diagnostic remains a **13-item baseline** across both sections
 - Timed sets still provide short exam-mode reps
-- Module simulation now runs as a **12-item** section-specific exam block
+- Module simulation still defaults to a **12-item** section-specific exam block
+- The learner shell now also exposes **optional 16-item extended modules** for denser Reading/Writing and Math practice, while the standard audit snapshot stays on the default 12-item shape
 - Completed sessions expose **Review Session** actions backed by `/api/session/review`
 - Remediation cards now carry more authored teaching language instead of relying only on raw rationale summaries
 
@@ -39,7 +40,7 @@ Project Helix SAT now **covers the full ontology slice in its shipped audit** an
 ## Weakest current coverage
 
 1. **Module simulation is still shorter than the real digital SAT.**
-   - It is now 12 items long, but that is still materially shorter than a real SAT module.
+   - The default shipped module is still 12 items long, and the optional extended section profiles are only 16 items, so all paths remain materially shorter than a real SAT module.
 2. **Format realism is broader but still bounded.**
    - 14 Math items use `grid_in`, but the shipped bank is still mostly `single_select`.
 3. **Authored lesson assets are still a partial layer, not a full courseware system.**
@@ -50,17 +51,17 @@ Project Helix SAT now **covers the full ontology slice in its shipped audit** an
 1. **The product still uses one dominant item interaction pattern.**
    - Numeric-entry support is now credible, but multiple choice still dominates the bank.
 2. **Module simulation still compresses structure too aggressively.**
-   - Twelve section-specific items are better than the previous slice, but still not enough to feel like a true SAT module.
+   - Twelve default section-specific items are easier to complete, and the new optional 16-item section profiles help, but none of the current paths yet feel like a true SAT module.
 3. **Curriculum explanation is ahead of authored instruction.**
    - The product can explain and route learners well, but it still needs deeper authored teaching assets if it wants to feel like a full curriculum system rather than a smart practice engine.
 
 ## Recommended next fixes
 
-1. Raise section-specific module length beyond the current 12 items toward a more exam-realistic shape.
+1. Raise section-specific module length beyond the current 12-item default / 16-item extended profiles toward a more exam-realistic shape.
 2. Expand the current 14-item math grid-in / student-produced-response slice so format realism is no longer a minority path.
 3. Continue turning remediation surfaces from rationale-backed scaffolds into richer authored lesson assets across more skills.
 4. Keep iterating on prompt quality so future generated items stay closer to Bluebook/Khan substance without overclaiming runtime parity.
 
 ## Bottom line
 
-Today the product is a believable **two-section SAT prototype** with a 79-item bank, full ontology-slice coverage in the audit, a 14-item math numeric-entry slice, stronger authored remediation cards, a 13-item onboarding baseline diagnostic, and 12-item section-specific modules. It is much closer to a real curriculum-backed SAT product than it was a few slices ago, but module realism and deeper authored instruction are still the clearest next bottlenecks.
+Today the product is a believable **two-section SAT prototype** with a 79-item bank, full ontology-slice coverage in the audit, a 14-item math numeric-entry slice, stronger authored remediation cards, a 13-item onboarding baseline diagnostic, a 12-item default module path, and optional 16-item extended modules for both sections. It is much closer to a real curriculum-backed SAT product than it was a few slices ago, but module realism and deeper authored instruction are still the clearest next bottlenecks.

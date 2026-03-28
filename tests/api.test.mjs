@@ -609,6 +609,25 @@ test('api can start an extended math module shape through the module-start contr
   });
 });
 
+test('api can start an extended reading-writing module shape through the module-start contract', async () => {
+  await withAuthedServer(async (baseUrl, sessions) => {
+    const moduleSimulation = await fetch(`${baseUrl}/api/module/start`, {
+      method: 'POST',
+      headers: sessions.student.headers,
+      body: JSON.stringify({ section: 'reading_writing', realismProfile: 'extended' }),
+    }).then((res) => res.json());
+
+    assert.equal(moduleSimulation.session.type, 'module_simulation');
+    assert.equal(moduleSimulation.session.section, 'reading_writing');
+    assert.equal(moduleSimulation.timing.timeLimitSec, 1440);
+    assert.equal(moduleSimulation.timing.recommendedPaceSec, 90);
+    assert.equal(moduleSimulation.items.length, 16);
+    assert.ok(moduleSimulation.items.every((item) => item.section === 'reading_writing'));
+    assert.ok(new Set(moduleSimulation.items.map((item) => item.skill)).size >= 8);
+    assert.ok(new Set(moduleSimulation.items.map((item) => item.domain)).size >= 4);
+  });
+});
+
 
 test('api returns session history for the authenticated learner', async () => {
   await withAuthedServer(async (baseUrl, sessions) => {
