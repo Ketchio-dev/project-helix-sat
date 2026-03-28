@@ -8,6 +8,7 @@ const state = {
   goalProfile: null,
   nextBestAction: null,
   diagnosticReveal: null,
+  dashboardExpanded: false,
   showDiagnosticPreflight: false,
   dismissDiagnosticPreflight: false,
   currentItem: null,
@@ -93,6 +94,16 @@ function node(tag, { className, text, htmlFor, value, type, name, checked, id, p
     if (child) element.append(child);
   }
   return element;
+}
+
+function detailsBlock(summaryText, children = [], open = false) {
+  const details = node('details');
+  details.open = open;
+  details.append(node('summary', { text: summaryText }));
+  for (const child of children) {
+    if (child) details.append(child);
+  }
+  return details;
 }
 
 function kvRows(entries) {
@@ -339,12 +350,12 @@ function renderProjection(projection, evidence = null) {
   } : projection;
   container.append(
     kvRows([
-      ['Total', `${source.predicted_total_low} - ${source.predicted_total_high}`],
+      ['Score range', `${source.predicted_total_low} - ${source.predicted_total_high}`],
       ['Reading & Writing', `${source.rw_low} - ${source.rw_high}`],
       ['Math', `${source.math_low} - ${source.math_high}`],
-      ['Readiness', source.readiness_indicator],
-      ['Confidence', `${Math.round(source.confidence * 100)}%`],
-      ['Momentum', `${Math.round((source.momentum_score ?? 0) * 100)}%`],
+      ['Ready now', source.readiness_indicator],
+      ['Certainty', `${Math.round(source.confidence * 100)}%`],
+      ['Trend', `${Math.round((source.momentum_score ?? 0) * 100)}%`],
     ]),
   );
   const reasons = evidence?.whyChanged ?? [];
@@ -353,7 +364,7 @@ function renderProjection(projection, evidence = null) {
     for (const reason of reasons) {
       list.append(node('li', { text: reason }));
     }
-    container.append(node('p', { className: 'muted', text: 'Why this band looks this way' }));
+    container.append(node('p', { className: 'muted', text: 'Why this range' }));
     container.append(list);
   }
 }
@@ -365,7 +376,7 @@ function renderPlan(plan) {
   const fallbackTrigger = plan?.fallback_plan?.trigger ?? plan?.fallbackPlan?.trigger ?? null;
   const stopCondition = plan?.stop_condition ?? plan?.stopCondition ?? null;
 
-  container.append(node('p', { text: plan?.rationale_summary ?? plan?.rationaleSummary ?? 'Adaptive plan generated from learner state.' }));
+  container.append(node('p', { text: plan?.rationale_summary ?? plan?.rationaleSummary ?? 'Your plan stays short because Helix is starting with the fastest score gain.' }));
 
   const list = node('ul', { className: 'list' });
   for (const block of blocks) {
@@ -383,10 +394,10 @@ function renderPlan(plan) {
     container.append(node('p', { className: 'muted', text: 'Complete a diagnostic block so Helix can build your first detailed plan.' }));
   }
   if (fallbackTrigger) {
-    container.append(node('p', { className: 'muted', text: `Fallback: ${fallbackTrigger}` }));
+    container.append(node('p', { className: 'muted', text: `Why this fallback: ${fallbackTrigger}` }));
   }
   if (stopCondition) {
-    container.append(node('p', { className: 'muted', text: `Stop condition: ${stopCondition}` }));
+    container.append(node('p', { className: 'muted', text: `When to stop: ${stopCondition}` }));
   }
 }
 
@@ -405,7 +416,7 @@ function renderPlanExplanation(explanation) {
     container.append(node('p', { text: explanation.headline }));
   }
   if (explanation.topTrap?.label) {
-    container.append(node('p', { className: 'notice', text: `Top trap: ${explanation.topTrap.label}` }));
+    container.append(node('p', { className: 'notice', text: `Biggest repeat mistake: ${explanation.topTrap.label}` }));
   }
   const list = node('ul', { className: 'list compact' });
   for (const reason of reasons) {
@@ -422,15 +433,29 @@ function renderCurriculumPath(path) {
   clear(container);
 
   if (!path?.anchorSkill) {
-    container.append(node('p', { className: 'muted', text: 'Complete a diagnostic to unlock the first curriculum path.' }));
+    container.append(node('p', { className: 'muted', text: 'Complete a diagnostic to unlock your first weekly map.' }));
     return;
+  }
+
+  container.append(node('p', {
+    className: 'notice',
+    text: `Main focus: ${path.anchorSkill?.label ?? '—'} · backup focus: ${path.supportSkill?.label ?? '—'} · keep warm: ${path.maintenanceSkill?.label ?? '—'}`,
+  }));
+
+  if (Array.isArray(path.dailyFocuses) && path.dailyFocuses.length) {
+    container.append(node('p', { className: 'muted', text: 'Today, tomorrow, then this week' }));
+    const quickList = node('ul', { className: 'list compact' });
+    for (const focus of path.dailyFocuses.slice(0, 3)) {
+      quickList.append(node('li', { text: `${focus.date}: ${focus.label} — ${focus.objective}` }));
+    }
+    container.append(quickList);
   }
 
   const highlights = node('div', { className: 'grid two compact-grid' });
   const cards = [
-    ['Anchor skill', path.anchorSkill],
-    ['Support lane', path.supportSkill],
-    ['Maintenance lane', path.maintenanceSkill],
+    ['Main focus', path.anchorSkill],
+    ['Backup focus', path.supportSkill],
+    ['Keep warm', path.maintenanceSkill],
   ];
 
   for (const [title, skill] of cards) {
@@ -445,37 +470,30 @@ function renderCurriculumPath(path) {
     }
     highlights.append(card);
   }
-  container.append(highlights);
+  const detailChildren = [highlights];
 
   if (path.nextUnlock) {
-    container.append(node('p', { className: 'notice', text: `Next unlock: ${path.nextUnlock.label} — ${path.nextUnlock.reason}` }));
+    detailChildren.push(node('p', { className: 'notice', text: `Next unlock: ${path.nextUnlock.label} — ${path.nextUnlock.reason}` }));
   }
 
   if (path.recoveryPath) {
     const recovery = node('div', { className: 'stack' });
-    recovery.append(node('p', { className: 'muted', text: 'Recovery path' }));
+    recovery.append(node('p', { className: 'muted', text: 'If you slip' }));
     recovery.append(node('p', { text: path.recoveryPath.trigger }));
     recovery.append(node('p', { className: 'muted', text: path.recoveryPath.adjustment }));
-    container.append(recovery);
+    detailChildren.push(recovery);
   }
 
   if (Array.isArray(path.revisitCadence) && path.revisitCadence.length) {
-    container.append(node('p', { className: 'muted', text: 'Revisit cadence' }));
+    detailChildren.push(node('p', { className: 'muted', text: 'Come back to this' }));
     const revisitList = node('ul', { className: 'list compact' });
     for (const revisit of path.revisitCadence.slice(0, 4)) {
       revisitList.append(node('li', { text: `${revisit.label} in ${revisit.dueInDays} day${revisit.dueInDays === 1 ? '' : 's'} — ${revisit.reason}` }));
     }
-    container.append(revisitList);
+    detailChildren.push(revisitList);
   }
 
-  if (Array.isArray(path.dailyFocuses) && path.dailyFocuses.length) {
-    container.append(node('p', { className: 'muted', text: 'Next 4 study days' }));
-    const focusList = node('ul', { className: 'list compact' });
-    for (const focus of path.dailyFocuses.slice(0, 4)) {
-      focusList.append(node('li', { text: `${focus.date}: ${focus.label} (${focus.focusType}) — ${focus.objective}` }));
-    }
-    container.append(focusList);
-  }
+  container.append(detailsBlock('See the full week plan', detailChildren));
 }
 
 function renderProgramPath(programPath) {
@@ -490,7 +508,7 @@ function renderProgramPath(programPath) {
 
   container.append(node('p', {
     className: 'notice',
-    text: `${programPath.weeksRemaining} week${programPath.weeksRemaining === 1 ? '' : 's'} to ${programPath.targetDate} · current ${programPath.currentBand.low}–${programPath.currentBand.high} · target ${programPath.targetScore} · ~${programPath.weeklyMinutes} min/week · ${programPath.sessionsPerWeek} core session${programPath.sessionsPerWeek === 1 ? '' : 's'}/week`,
+    text: `This month: ${programPath.sessionsPerWeek} core session${programPath.sessionsPerWeek === 1 ? '' : 's'}/week · current ${programPath.currentBand.low}–${programPath.currentBand.high} · target ${programPath.targetScore} by ${programPath.targetDate}`,
   }));
 
   const phaseList = node('div', { className: 'stack' });
@@ -505,27 +523,29 @@ function renderProgramPath(programPath) {
     card.append(node('p', { className: 'muted', text: `Exit signal: ${phase.exitCriteria}` }));
     phaseList.append(card);
   }
-  container.append(phaseList);
+  const detailChildren = [phaseList];
 
   if (Array.isArray(programPath.roadmapBlocks) && programPath.roadmapBlocks.length) {
-    container.append(node('p', { className: 'muted', text: '4-week roadmap blocks' }));
+    detailChildren.push(node('p', { className: 'muted', text: 'Longer runway' }));
     const roadmapList = node('ul', { className: 'list compact' });
     for (const block of programPath.roadmapBlocks.slice(0, 6)) {
       roadmapList.append(node('li', {
         text: `${block.title} (${block.startsOn} → ${block.endsOn}) — ${block.focus} · ${block.status} · ${block.successSignal}`,
       }));
     }
-    container.append(roadmapList);
+    detailChildren.push(roadmapList);
   }
 
   if (Array.isArray(programPath.milestones) && programPath.milestones.length) {
-    container.append(node('p', { className: 'muted', text: 'Milestones' }));
+    detailChildren.push(node('p', { className: 'muted', text: 'Milestones' }));
     const milestoneList = node('ul', { className: 'list compact' });
     for (const milestone of programPath.milestones) {
       milestoneList.append(node('li', { text: `${milestone.dueOn}: ${milestone.title} — ${milestone.successSignal}` }));
     }
-    container.append(milestoneList);
+    detailChildren.push(milestoneList);
   }
+
+  container.append(detailsBlock('See the full month plan', detailChildren));
 }
 
 function focusGoalSetup() {
@@ -581,7 +601,8 @@ function renderDiagnosticPreflight() {
   section.style.display = 'block';
   clear(container);
   container.append(node('p', { className: 'notice', text: plan.title }));
-  container.append(node('p', { text: plan.promise }));
+  container.append(node('p', { text: 'Helix is finding the fastest route to your first score gain. You’ll finish with one clear next move.' }));
+  container.append(node('p', { className: 'muted', text: plan.promise }));
   if (plan.meta.length) {
     container.append(node('p', { className: 'muted', text: plan.meta.join(' · ') }));
   }
@@ -631,6 +652,39 @@ function syncManualStartControls(action = state.nextBestAction) {
 
   const shouldHideForFocus = Boolean(action);
   controls.style.display = shouldHideForFocus ? 'none' : 'flex';
+}
+
+function syncDashboardDetails() {
+  const detailSections = [...document.querySelectorAll('[data-student-dashboard-detail]')];
+  const toggleSection = $('#dashboardToggleSection');
+  const toggleButton = $('#toggleDashboardDetails');
+  const toggleCopy = $('#dashboardToggleCopy');
+  const supportViewSection = $('#supportViewSection');
+  const teacherAssignmentsSection = $('#teacherAssignmentsSection');
+  const isLearner = isStudentSurface();
+
+  for (const section of detailSections) {
+    section.style.display = !isLearner || state.dashboardExpanded ? '' : 'none';
+  }
+
+  if (toggleSection) {
+    toggleSection.style.display = isLearner && state.goalProfile?.isComplete && !state.currentSessionId ? 'block' : 'none';
+  }
+  if (toggleButton) {
+    toggleButton.textContent = state.dashboardExpanded ? 'Hide full study dashboard' : 'Show full study dashboard';
+  }
+  if (toggleCopy) {
+    toggleCopy.textContent = state.dashboardExpanded
+      ? 'You are seeing the full dashboard. Hide it again when you want one clear next move.'
+      : 'Keep one clear next move on top. Open the full study dashboard only when you want more detail.';
+  }
+
+  if (supportViewSection) {
+    supportViewSection.style.display = state.userRole === 'teacher' || state.userRole === 'parent' ? '' : 'none';
+  }
+  if (teacherAssignmentsSection) {
+    teacherAssignmentsSection.style.display = state.userRole === 'teacher' ? '' : 'none';
+  }
 }
 
 function buildAlternativeActions(action) {
@@ -739,6 +793,7 @@ function renderGoalProfile(goalProfile) {
         ? 'Goal profile saved. Helix can now shape your plan around your score target and schedule.'
         : 'Finish your goal setup to unlock your first personalized plan.';
     }
+    syncDashboardDetails();
     return;
   }
 
@@ -750,6 +805,7 @@ function renderGoalProfile(goalProfile) {
   if (result) {
     result.textContent = 'Complete this once so Helix can tune your first score-moving plan.';
   }
+  syncDashboardDetails();
 }
 
 function renderNextBestAction(action) {
@@ -770,14 +826,16 @@ function renderNextBestAction(action) {
     if (footnote) footnote.textContent = '';
     syncManualStartControls(null);
     renderDiagnosticPreflight();
+    syncDashboardDetails();
     return;
   }
 
   section.style.display = 'block';
   clear(container);
   clear(alternatives);
-  container.append(node('h3', { text: action.title }));
-  container.append(node('p', { text: action.reason }));
+  const copy = studentActionCopy(action);
+  container.append(node('h3', { text: copy.title }));
+  container.append(node('p', { text: copy.reason }));
   const meta = [];
   if (action.estimatedMinutes) meta.push(`~${action.estimatedMinutes} min`);
   if (action.section) meta.push(formatSectionName(action.section));
@@ -785,22 +843,21 @@ function renderNextBestAction(action) {
   if (meta.length) {
     container.append(node('p', { className: 'muted', text: meta.join(' · ') }));
   }
-  const button = node('button', { text: action.ctaLabel });
+  const button = node('button', { text: copy.ctaLabel });
   button.addEventListener('click', () => performNextBestAction(action));
   container.append(button);
 
   const secondaryActions = buildAlternativeActions(action);
   if (secondaryActions.length) {
-    alternatives.append(node('p', { className: 'muted', text: 'Or jump to a different block' }));
     const row = node('div', { className: 'row gap' });
     for (const secondaryAction of secondaryActions) {
       const secondaryButton = node('button', { className: 'secondary', text: secondaryAction.label });
       secondaryButton.addEventListener('click', secondaryAction.handler);
       row.append(secondaryButton);
     }
-    alternatives.append(row);
+    alternatives.append(detailsBlock('More ways to work', [row]));
     if (footnote) {
-      footnote.textContent = 'Helix hides the other starts by default so you only have one main decision at a time.';
+      footnote.textContent = 'One main action at a time. Other options stay tucked away.';
     }
   } else if (footnote) {
     footnote.textContent = action.kind === 'complete_goal_setup'
@@ -812,6 +869,7 @@ function renderNextBestAction(action) {
 
   syncManualStartControls(action);
   renderDiagnosticPreflight();
+  syncDashboardDetails();
 }
 
 function renderDiagnosticReveal(reveal) {
@@ -830,7 +888,7 @@ function renderDiagnosticReveal(reveal) {
   clear(container);
   container.append(node('p', {
     className: 'notice',
-    text: `Current score band: ${reveal.scoreBand.low}–${reveal.scoreBand.high} · ${reveal.confidenceLabel ?? 'early read'} (${Math.round((reveal.confidence ?? 0) * 100)}%) · momentum ${Math.round((reveal.momentum ?? 0) * 100)}%`,
+    text: `Score range now: ${reveal.scoreBand.low}–${reveal.scoreBand.high} · ${reveal.confidenceLabel ?? 'early read'} (${Math.round((reveal.confidence ?? 0) * 100)}%) · trend ${Math.round((reveal.momentum ?? 0) * 100)}%`,
   }));
 
   if (reveal.whyThisPlan) {
@@ -842,8 +900,7 @@ function renderDiagnosticReveal(reveal) {
     for (const bullet of reveal.evidenceBullets) {
       evidenceList.append(node('li', { text: bullet }));
     }
-    container.append(node('p', { className: 'muted', text: 'Why Helix believes this' }));
-    container.append(evidenceList);
+    container.append(detailsBlock('Why Helix believes this', [evidenceList]));
   }
 
   const leakList = node('div', { className: 'stack' });
@@ -861,10 +918,11 @@ function renderDiagnosticReveal(reveal) {
 
   container.append(leakList);
   if (reveal.firstRecommendedAction) {
+    const nextMove = studentActionCopy(reveal.firstRecommendedAction);
     const ctaWrap = node('div', { className: 'stack' });
     ctaWrap.append(node('strong', { text: 'Start here next' }));
-    ctaWrap.append(node('p', { text: reveal.firstRecommendedAction.reason }));
-    const button = node('button', { text: reveal.firstRecommendedAction.ctaLabel });
+    ctaWrap.append(node('p', { text: nextMove.reason }));
+    const button = node('button', { text: nextMove.ctaLabel });
     button.addEventListener('click', () => performNextBestAction(reveal.firstRecommendedAction));
     ctaWrap.append(button);
     container.append(ctaWrap);
@@ -1366,38 +1424,23 @@ function renderReview(review) {
 
   const list = node('div', { className: 'stack' });
   const remediationCards = review.remediationCards ?? [];
+  if (remediationCards.length) {
+    const firstCard = remediationCards[0];
+    const focusCard = node('article', { className: 'review-item' });
+    focusCard.append(node('strong', { text: 'Do this first' }));
+    focusCard.append(node('p', { text: `${firstCard.skill}: ${firstCard.misconception}` }));
+    focusCard.append(node('p', { className: 'muted', text: firstCard.correctionRule }));
+    const primaryRetryButton = node('button', { text: 'Try this again' });
+    primaryRetryButton.addEventListener('click', async () => startRetryLoop(firstCard.retryAction?.itemId ?? firstCard.itemId));
+    focusCard.append(primaryRetryButton);
+    list.append(focusCard);
+  }
+
   for (const cardData of remediationCards) {
     const card = node('article', { className: 'review-item' });
     card.append(node('strong', { text: `${formatSectionName(cardData.section)} · ${cardData.skill}` }));
-    card.append(node('p', { text: `Misconception: ${cardData.misconception}` }));
-    card.append(node('p', { className: 'muted', text: `Decisive clue: ${cardData.decisiveClue}` }));
-    card.append(node('p', { className: 'muted', text: `Correction rule: ${cardData.correctionRule}` }));
-    if (cardData.teachCard) {
-      card.append(node('p', { className: 'notice', text: `${cardData.teachCard.title}: ${cardData.teachCard.summary}` }));
-      if (Array.isArray(cardData.teachCard.objectives) && cardData.teachCard.objectives.length) {
-        const objectiveList = node('ul', { className: 'list compact' });
-        for (const objective of cardData.teachCard.objectives.slice(0, 2)) {
-          objectiveList.append(node('li', { text: objective }));
-        }
-        card.append(objectiveList);
-      }
-    }
-    if (cardData.workedExample?.prompt) {
-      card.append(node('p', { className: 'review-rationale', text: `Worked example: ${cardData.workedExample.prompt}` }));
-      if (Array.isArray(cardData.workedExample.walkthrough) && cardData.workedExample.walkthrough.length) {
-        const walkthrough = node('ol', { className: 'list compact' });
-        for (const step of cardData.workedExample.walkthrough.slice(0, 3)) {
-          walkthrough.append(node('li', { text: step }));
-        }
-        card.append(walkthrough);
-      }
-    }
-    if (cardData.retryItem?.prompt) {
-      card.append(node('p', { className: 'review-rationale', text: `Retry focus: ${cardData.retryItem.prompt}` }));
-    }
-    if (cardData.transferItem?.prompt) {
-      card.append(node('p', { className: 'muted', text: `Near-transfer: ${cardData.transferItem.prompt}` }));
-    }
+    card.append(node('p', { text: `What went wrong: ${cardData.misconception}` }));
+    card.append(node('p', { className: 'muted', text: `Fix rule: ${cardData.correctionRule}` }));
     card.append(node('p', {
       className: 'muted',
       text: `Confidence: ${cardData.confidenceBefore ?? '—'} -> ${cardData.confidenceAfter ?? '—'} · revisit ${cardData.nextScheduledRevisit ?? 'soon'}`,
@@ -1409,19 +1452,46 @@ function renderReview(review) {
       }));
     }
     const retryButton = node('button', {
-      className: 'secondary',
-      text: cardData.retryAction?.ctaLabel ?? 'Start retry loop',
+      text: 'Try this again',
     });
     retryButton.addEventListener('click', async () => startRetryLoop(cardData.retryAction?.itemId ?? cardData.itemId));
     card.append(retryButton);
+    const detailChildren = [node('p', { className: 'muted', text: `What to notice: ${cardData.decisiveClue}` })];
+    if (cardData.teachCard) {
+      detailChildren.push(node('p', { className: 'notice', text: `${cardData.teachCard.title}: ${cardData.teachCard.summary}` }));
+      if (Array.isArray(cardData.teachCard.objectives) && cardData.teachCard.objectives.length) {
+        const objectiveList = node('ul', { className: 'list compact' });
+        for (const objective of cardData.teachCard.objectives.slice(0, 2)) {
+          objectiveList.append(node('li', { text: objective }));
+        }
+        detailChildren.push(objectiveList);
+      }
+    }
+    if (cardData.workedExample?.prompt) {
+      detailChildren.push(node('p', { className: 'review-rationale', text: `See one example: ${cardData.workedExample.prompt}` }));
+      if (Array.isArray(cardData.workedExample.walkthrough) && cardData.workedExample.walkthrough.length) {
+        const walkthrough = node('ol', { className: 'list compact' });
+        for (const step of cardData.workedExample.walkthrough.slice(0, 3)) {
+          walkthrough.append(node('li', { text: step }));
+        }
+        detailChildren.push(walkthrough);
+      }
+    }
+    if (cardData.retryItem?.prompt) {
+      detailChildren.push(node('p', { className: 'review-rationale', text: `Try again: ${cardData.retryItem.prompt}` }));
+    }
+    if (cardData.transferItem?.prompt) {
+      detailChildren.push(node('p', { className: 'muted', text: `Try a close variant: ${cardData.transferItem.prompt}` }));
+    }
     if (cardData.transferAction?.itemId) {
       const transferButton = node('button', {
         className: 'secondary',
-        text: cardData.transferAction.ctaLabel ?? 'Try near-transfer',
+        text: 'Try a close variant',
       });
       transferButton.addEventListener('click', async () => startRetryLoop(cardData.transferAction.itemId));
-      card.append(transferButton);
+      detailChildren.push(transferButton);
     }
+    card.append(detailsBlock('See the fix', detailChildren));
     list.append(card);
   }
 
@@ -1714,6 +1784,7 @@ function handleLogout() {
   state.goalProfile = null;
   state.nextBestAction = null;
   state.diagnosticReveal = null;
+  state.dashboardExpanded = false;
   showLogin();
 }
 
@@ -1833,6 +1904,7 @@ async function loadDashboard() {
       $('#diagnosticStatus').textContent = dashboard.profile.lastSessionSummary || 'No active diagnostic session.';
     }
     syncSessionControls();
+    syncDashboardDetails();
   } catch (error) {
     $('#diagnosticStatus').textContent = error.message;
   }
@@ -1843,8 +1915,14 @@ $('#refreshDashboard').addEventListener('click', async () => {
   await loadReviewRecommendations();
 });
 
+$('#toggleDashboardDetails')?.addEventListener('click', () => {
+  state.dashboardExpanded = !state.dashboardExpanded;
+  syncDashboardDetails();
+});
+
 async function startDiagnosticSession() {
   try {
+    state.dashboardExpanded = false;
     state.showDiagnosticPreflight = false;
     state.dismissDiagnosticPreflight = false;
     const result = await json('/api/diagnostic/start', {
@@ -1868,6 +1946,7 @@ async function startDiagnosticSession() {
 
 async function startTimedSetSession() {
   try {
+    state.dashboardExpanded = false;
     state.showDiagnosticPreflight = false;
     state.dismissDiagnosticPreflight = false;
     const result = await json('/api/timed-set/start', {
@@ -1909,6 +1988,7 @@ async function startTimedSetSession() {
 
 async function startModuleSession(sectionOverride = null) {
   try {
+    state.dashboardExpanded = false;
     state.showDiagnosticPreflight = false;
     state.dismissDiagnosticPreflight = false;
     const section = sectionOverride ?? $('#moduleSection')?.value ?? 'reading_writing';

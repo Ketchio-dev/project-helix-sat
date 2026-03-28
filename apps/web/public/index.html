@@ -31,10 +31,10 @@
     <main class="shell">
       <header class="hero">
         <div>
-          <p class="eyebrow">Adaptive SAT Intelligence Platform</p>
+          <p class="eyebrow">Your SAT plan, one step at a time</p>
           <h1>Project Helix SAT</h1>
           <p class="subtitle">
-            A runnable MVP vertical slice for diagnostic -> attempt -> review -> reflection -> tutor hint -> projection.
+            Start with one clear next step. Helix keeps the deeper breakdown tucked away until you need it.
           </p>
         </div>
         <div class="hero-actions">
@@ -88,7 +88,7 @@
           <pre id="goalSetupResult">Finish your goal setup to unlock your first personalized plan.</pre>
         </article>
         <article class="card" id="nextBestActionSection" style="display:none;">
-          <h2>Today, do this</h2>
+          <h2>Your next move</h2>
           <div id="nextBestAction"></div>
           <div id="nextBestActionAlternatives"></div>
           <p id="nextBestActionFootnote" class="muted"></p>
@@ -96,10 +96,10 @@
       </section>
 
       <section class="card" id="diagnosticPreflightSection" style="display:none;">
-        <h2>Your 12-minute starting baseline</h2>
+        <h2>Your 12-minute starting point</h2>
         <div id="diagnosticPreflight"></div>
         <div class="row gap">
-          <button id="startDiagnosticFromPreflight">Start baseline diagnostic</button>
+          <button id="startDiagnosticFromPreflight">Start your 12-minute check</button>
           <button id="dismissDiagnosticPreflight" class="secondary">Not now</button>
         </div>
       </section>
@@ -109,66 +109,72 @@
         <div id="diagnosticReveal"></div>
       </section>
 
-      <section class="grid two">
+      <section class="card" id="dashboardToggleSection" style="display:none;">
+        <h2>Want the deeper breakdown?</h2>
+        <p id="dashboardToggleCopy" class="muted">Keep one clear next move on top. Open the full study dashboard only when you want more detail.</p>
+        <button id="toggleDashboardDetails" class="secondary">Show full study dashboard</button>
+      </section>
+
+      <section class="grid two" id="studentSnapshotSection" data-student-dashboard-detail>
         <article class="card">
-          <h2>Learner Snapshot</h2>
+          <h2>Your baseline</h2>
           <div id="profile"></div>
         </article>
         <article class="card">
-          <h2>Projected Score Band</h2>
+          <h2>Your score range now</h2>
           <div id="projection"></div>
         </article>
       </section>
 
-      <section class="grid two">
+      <section class="grid two" id="studentPlanSection" data-student-dashboard-detail>
         <article class="card">
-          <h2>Today's Plan</h2>
+          <h2>Today’s plan</h2>
           <div id="plan"></div>
         </article>
         <article class="card">
-          <h2>Why This Plan</h2>
+          <h2>Why this comes first</h2>
           <div id="planExplanation"></div>
         </article>
       </section>
 
-      <section class="card">
-        <h2>Study Program Path</h2>
+      <section class="card" id="programPathSection" data-student-dashboard-detail>
+        <h2>This month</h2>
         <div id="programPath"></div>
       </section>
 
-      <section class="card">
-        <h2>2-Week Curriculum Path</h2>
+      <section class="card" id="curriculumPathSection" data-student-dashboard-detail>
+        <h2>This week</h2>
         <div id="curriculumPath"></div>
       </section>
 
-      <section class="grid two">
+      <section class="grid two" id="studentSignalsSection" data-student-dashboard-detail>
         <article class="card">
-          <h2>Top Recurring Traps</h2>
+          <h2>Repeat mistakes</h2>
           <div id="errorDna"></div>
         </article>
         <article class="card">
-          <h2>What Changed</h2>
+          <h2>Since last time</h2>
           <div id="whatChanged"></div>
         </article>
       </section>
 
-      <section class="grid two">
+      <section class="grid two" id="studentHistorySection" data-student-dashboard-detail>
         <article class="card">
-          <h2>Weekly Evidence Board</h2>
+          <h2>This week’s progress</h2>
           <div id="weeklyDigest"></div>
         </article>
         <article class="card">
-          <h2>Recent Session History</h2>
+          <h2>Recent sessions</h2>
           <div id="sessionHistory"></div>
         </article>
       </section>
 
-      <section class="grid two">
-        <article class="card">
+      <section class="grid two" id="supportViewSection">
+        <article class="card" id="parentSummaryCard">
           <h2>Parent Snapshot</h2>
           <div id="parentSummary"></div>
         </article>
-        <article class="card">
+        <article class="card" id="teacherBriefCard">
           <h2>Teacher Brief</h2>
           <div id="teacherBrief"></div>
         </article>
@@ -190,7 +196,7 @@
         </article>
       </section>
 
-      <section class="card">
+      <section class="card" id="teacherAssignmentsSection">
         <h2>Teacher Assignments</h2>
         <div id="teacherAssignments"></div>
         <form id="teacherAssignmentForm" class="teacher-assignment-form">
@@ -261,7 +267,7 @@
 
       <section class="grid two">
         <article class="card">
-          <h2>Review Recommendations</h2>
+          <h2>Fix this now</h2>
           <div id="reviewMeta" class="notice">No review data yet.</div>
           <div id="reviewRecommendations"></div>
         </article>

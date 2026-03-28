@@ -5,6 +5,7 @@ import { buildProjectHelixSatAudit, formatProjectHelixSatAudit } from '../packag
 
 const ontology = JSON.parse(fs.readFileSync(new URL('../docs/ontology/skill-ontology.v1.json', import.meta.url), 'utf8'));
 const routerSource = fs.readFileSync(new URL('../services/api/src/router.mjs', import.meta.url), 'utf8');
+const indexSource = fs.readFileSync(new URL('../apps/web/public/index.html', import.meta.url), 'utf8');
 const appSource = fs.readFileSync(new URL('../apps/web/public/app.js', import.meta.url), 'utf8');
 const apiTestSource = fs.readFileSync(new URL('../tests/api.test.mjs', import.meta.url), 'utf8');
 const generatedAuditSnapshot = fs.readFileSync(new URL('../docs/audits/project-helix-sat-coverage.md', import.meta.url), 'utf8');
@@ -67,4 +68,14 @@ test('learner shell includes diagnostic preflight and richer progress narration 
   assert.match(appSource, /getDiagnosticProgressNarrative/);
   assert.match(appSource, /13 questions to build your first score-moving plan/);
   assert.match(appSource, /Helix is sampling both sections to find your real starting band/);
+});
+
+test('learner shell prioritizes one main action and tucks secondary detail away', () => {
+  assert.match(indexSource, /Your next move/);
+  assert.match(indexSource, /Want the deeper breakdown\?/);
+  assert.match(indexSource, /data-student-dashboard-detail/);
+  assert.match(appSource, /studentActionCopy/);
+  assert.match(appSource, /More ways to work/);
+  assert.match(appSource, /Try this again/);
+  assert.match(appSource, /syncDashboardDetails/);
 });
