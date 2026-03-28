@@ -1853,7 +1853,7 @@ async function loadDashboard() {
       throw new Error('No linked learner available for this account.');
     }
 
-    const [dashboard, weeklyDigest, sessionHistory, parentSummary, teacherBrief, teacherAssignments, activeSession, goalProfile, nextBestAction, diagnosticReveal] = await Promise.all([
+    const [dashboard, weeklyDigest, sessionHistory, parentSummary, teacherBrief, teacherAssignments, activeSession, goalProfile, nextBestAction, diagnosticReveal, planExplanation, projectionEvidence, whatChanged] = await Promise.all([
       json(withLearnerContext('/api/dashboard/learner')),
       json(withLearnerContext('/api/reports/weekly')).catch(() => null),
       json(withLearnerContext('/api/sessions/history')).catch(() => null),
@@ -1872,19 +1872,22 @@ async function loadDashboard() {
       (state.userRole === 'student' || state.userRole === 'admin'
         ? json('/api/diagnostic/reveal').catch((error) => ([400, 404].includes(error.status) ? null : Promise.reject(error)))
         : Promise.resolve(null)),
+      json(withLearnerContext('/api/plan/explanation')).catch(() => null),
+      json(withLearnerContext('/api/projection/evidence')).catch(() => null),
+      json(withLearnerContext('/api/progress/what-changed')).catch(() => null),
     ]);
 
     renderGoalProfile(goalProfile);
     renderNextBestAction(nextBestAction);
     renderDiagnosticReveal(diagnosticReveal);
     renderProfile(dashboard.profile);
-    renderProjection(dashboard.projection, dashboard.projectionEvidence);
+    renderProjection(dashboard.projection, projectionEvidence ?? dashboard.projectionEvidence);
     renderPlan(dashboard.plan);
-    renderPlanExplanation(dashboard.planExplanation);
+    renderPlanExplanation(planExplanation ?? dashboard.planExplanation);
     renderProgramPath(dashboard.programPath);
     renderCurriculumPath(dashboard.curriculumPath);
     renderErrorDna(dashboard.errorDnaSummary);
-    renderWhatChanged(dashboard.whatChanged);
+    renderWhatChanged(whatChanged ?? dashboard.whatChanged);
     renderWeeklyDigest(weeklyDigest ?? dashboard.weeklyDigest ?? null);
     renderReview(dashboard.review);
     renderSessionHistory(sessionHistory);

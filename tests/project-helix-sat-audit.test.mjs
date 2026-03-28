@@ -79,3 +79,13 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(appSource, /Try this again/);
   assert.match(appSource, /syncDashboardDetails/);
 });
+
+
+test('learner shell consumes dedicated evidence contracts instead of relying only on dashboard nesting', () => {
+  assert.match(appSource, /\/api\/plan\/explanation/);
+  assert.match(appSource, /\/api\/projection\/evidence/);
+  assert.match(appSource, /\/api\/progress\/what-changed/);
+  assert.match(appSource, /renderProjection\(dashboard\.projection, projectionEvidence \?\? dashboard\.projectionEvidence\)/);
+  assert.match(appSource, /renderPlanExplanation\(planExplanation \?\? dashboard\.planExplanation\)/);
+  assert.match(appSource, /renderWhatChanged\(whatChanged \?\? dashboard\.whatChanged\)/);
+});
