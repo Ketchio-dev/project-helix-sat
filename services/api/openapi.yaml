@@ -74,6 +74,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DailyPlan'
+  /api/plan/explanation:
+    get:
+      summary: Fetch the canonical learner-facing reason behind today's plan
+      responses:
+        '200':
+          description: Plan explanation payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanExplanation'
   /api/dashboard/learner:
     get:
       summary: Fetch the learner dashboard aggregate
@@ -122,6 +132,26 @@ paths:
       responses:
         '200':
           description: Review recommendations and a reflection prompt
+  /api/progress/what-changed:
+    get:
+      summary: Fetch the learner-facing summary of what changed since the last completed work
+      responses:
+        '200':
+          description: What changed payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatChanged'
+  /api/projection/evidence:
+    get:
+      summary: Fetch the learner-facing evidence behind the current projected score range
+      responses:
+        '200':
+          description: Projection evidence payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectionEvidence'
   /api/sessions/history:
     get:
       summary: Fetch recent learner session history
@@ -410,6 +440,115 @@ components:
       properties:
         errorDna:
           $ref: '#/components/schemas/ErrorDnaMap'
+    PlanExplanation:
+      type: object
+      additionalProperties: false
+      required:
+        - headline
+        - reasons
+        - topTrap
+      properties:
+        headline:
+          type: string
+        reasons:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - blockType
+              - title
+              - reason
+              - expectedBenefit
+            properties:
+              blockType:
+                type: string
+              title:
+                type: string
+              reason:
+                type: string
+              expectedBenefit:
+                type:
+                  - string
+                  - 'null'
+        topTrap:
+          type:
+            - object
+            - 'null'
+          additionalProperties: false
+          required:
+            - tag
+            - label
+            - score
+            - summary
+          properties:
+            tag:
+              type: string
+            label:
+              type: string
+            score:
+              type: number
+            summary:
+              type: string
+    ProjectionEvidence:
+      type: object
+      additionalProperties: false
+      required:
+        - band
+        - confidence
+        - momentum
+        - readiness
+        - status
+        - whyChanged
+      properties:
+        band:
+          type: object
+          additionalProperties: false
+          required:
+            - low
+            - high
+            - rwLow
+            - rwHigh
+            - mathLow
+            - mathHigh
+          properties:
+            low:
+              type: integer
+            high:
+              type: integer
+            rwLow:
+              type: integer
+            rwHigh:
+              type: integer
+            mathLow:
+              type: integer
+            mathHigh:
+              type: integer
+        confidence:
+          type: number
+        momentum:
+          type: number
+        readiness:
+          type: string
+        status:
+          type: string
+        whyChanged:
+          type: array
+          items:
+            type: string
+    WhatChanged:
+      type: object
+      additionalProperties: false
+      required:
+        - headline
+        - bullets
+      properties:
+        headline:
+          type: string
+        bullets:
+          type: array
+          items:
+            type: string
     SessionReviewResponse:
       type: object
       additionalProperties: false

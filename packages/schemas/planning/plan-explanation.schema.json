@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helixsat.dev/schemas/planning/plan-explanation.schema.json",
+  "title": "Plan Explanation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["headline", "reasons", "topTrap"],
+  "properties": {
+    "headline": { "type": "string", "minLength": 1 },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["blockType", "title", "reason", "expectedBenefit"],
+        "properties": {
+          "blockType": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 },
+          "expectedBenefit": { "type": ["string", "null"], "minLength": 1 }
+        }
+      }
+    },
+    "topTrap": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["tag", "label", "score", "summary"],
+      "properties": {
+        "tag": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "score": { "type": "number", "minimum": 0 },
+        "summary": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

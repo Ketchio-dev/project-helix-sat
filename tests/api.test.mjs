@@ -176,6 +176,15 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
     assert.equal(Array.isArray(dashboardBefore.errorDnaSummary), true);
     assert.equal(typeof dashboardBefore.whatChanged.headline, 'string');
 
+    const [planExplanation, projectionEvidence, whatChanged] = await Promise.all([
+      fetch(`${baseUrl}/api/plan/explanation`, { headers: sessions.student.headers }).then((res) => res.json()),
+      fetch(`${baseUrl}/api/projection/evidence`, { headers: sessions.student.headers }).then((res) => res.json()),
+      fetch(`${baseUrl}/api/progress/what-changed`, { headers: sessions.student.headers }).then((res) => res.json()),
+    ]);
+    assert.deepEqual(planExplanation, dashboardBefore.planExplanation);
+    assert.deepEqual(projectionEvidence, dashboardBefore.projectionEvidence);
+    assert.deepEqual(whatChanged, dashboardBefore.whatChanged);
+
     const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
       method: 'POST',
       headers: sessions.student.headers,

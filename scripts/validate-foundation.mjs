@@ -13,8 +13,11 @@ const requiredFiles = [
   'packages/schemas/tutor/hint-response.schema.json',
   'packages/schemas/tutor/error-diagnosis.schema.json',
   'packages/schemas/planning/daily-plan.schema.json',
+  'packages/schemas/planning/plan-explanation.schema.json',
   'packages/schemas/reporting/weekly-report.schema.json',
+  'packages/schemas/reporting/what-changed.schema.json',
   'packages/schemas/scoring/score-prediction.schema.json',
+  'packages/schemas/scoring/projection-evidence.schema.json',
   'packages/schemas/events/event-envelope.schema.json',
   'packages/db/schema.sql',
   'services/api/openapi.yaml'
@@ -77,7 +80,7 @@ for (const table of requiredTables) {
 }
 
 const openapi = readFileSync(join(root, 'services/api/openapi.yaml'), 'utf8');
-for (const fragment of ['openapi: 3.1.0', '/session/active', '/diagnostic/start', '/timed-set/start', '/module/start', '/module/finish', '/plan/today', '/attempt/submit', '/tutor/hint']) {
+for (const fragment of ['openapi: 3.1.0', '/session/active', '/diagnostic/start', '/timed-set/start', '/module/start', '/module/finish', '/plan/today', '/plan/explanation', '/projection/evidence', '/progress/what-changed', '/attempt/submit', '/tutor/hint']) {
   if (!openapi.includes(fragment)) errors.push(`OpenAPI contract missing fragment: ${fragment}`);
 }
 

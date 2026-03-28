@@ -237,6 +237,33 @@ export function createRouter({ store, webRoot }) {
     },
   });
 
+  registerRoute('GET', '/api/plan/explanation', {
+    auth: 'authenticated',
+    learnerAccess: 'read',
+    responseSchema: 'PlanExplanation',
+    async handler({ learnerId }) {
+      return { body: store.getPlanExplanation(learnerId) };
+    },
+  });
+
+  registerRoute('GET', '/api/projection/evidence', {
+    auth: 'authenticated',
+    learnerAccess: 'read',
+    responseSchema: 'ProjectionEvidence',
+    async handler({ learnerId }) {
+      return { body: store.getProjectionEvidence(learnerId) };
+    },
+  });
+
+  registerRoute('GET', '/api/progress/what-changed', {
+    auth: 'authenticated',
+    learnerAccess: 'read',
+    responseSchema: 'WhatChanged',
+    async handler({ learnerId }) {
+      return { body: store.getWhatChanged(learnerId) };
+    },
+  });
+
   registerRoute('GET', '/api/diagnostic/reveal', {
     auth: 'authenticated',
     learnerAccess: 'owner',

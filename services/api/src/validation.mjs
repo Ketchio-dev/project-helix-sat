@@ -96,12 +96,15 @@ const nextBestActionResponseSchema = {
 
 const responseSchemas = new Map([
   ['DailyPlan', loadedSchemas.get('planning/daily-plan.schema.json')],
+  ['PlanExplanation', loadedSchemas.get('planning/plan-explanation.schema.json')],
   ['CurriculumPath', loadedSchemas.get('planning/curriculum-path.schema.json')],
   ['ProgramPath', loadedSchemas.get('planning/program-path.schema.json')],
   ['EventEnvelope', loadedSchemas.get('events/event-envelope.schema.json')],
   ['ScorePrediction', loadedSchemas.get('scoring/score-prediction.schema.json')],
+  ['ProjectionEvidence', loadedSchemas.get('scoring/projection-evidence.schema.json')],
   ['TutorHintResponse', loadedSchemas.get('tutor/hint-response.schema.json')],
   ['WeeklyReport', loadedSchemas.get('reporting/weekly-report.schema.json')],
+  ['WhatChanged', loadedSchemas.get('reporting/what-changed.schema.json')],
   ['AuthSessionResponse', authSessionResponseSchema],
   ['MeResponse', {
     type: 'object',
