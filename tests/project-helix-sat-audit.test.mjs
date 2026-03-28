@@ -61,3 +61,10 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   ]);
   assert.equal(formatProjectHelixSatAudit(audit).trimEnd(), generatedAuditSnapshot.trimEnd());
 });
+
+test('learner shell includes diagnostic preflight and richer progress narration hooks', () => {
+  assert.match(appSource, /diagnosticPreflightSection/);
+  assert.match(appSource, /getDiagnosticProgressNarrative/);
+  assert.match(appSource, /13 questions to build your first score-moving plan/);
+  assert.match(appSource, /Helix is sampling both sections to find your real starting band/);
+});

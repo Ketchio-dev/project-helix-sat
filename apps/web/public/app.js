@@ -8,6 +8,8 @@ const state = {
   goalProfile: null,
   nextBestAction: null,
   diagnosticReveal: null,
+  showDiagnosticPreflight: false,
+  dismissDiagnosticPreflight: false,
   currentItem: null,
   currentSessionId: null,
   currentSessionType: null,
@@ -51,6 +53,8 @@ const json = async (url, options) => {
     state.goalProfile = null;
     state.nextBestAction = null;
     state.diagnosticReveal = null;
+    state.showDiagnosticPreflight = false;
+    state.dismissDiagnosticPreflight = false;
     showLogin();
     const payload = await response.json().catch(() => ({ error: 'Unauthorized' }));
     const error = new Error(payload.error || 'Unauthorized');
@@ -530,6 +534,93 @@ function focusGoalSetup() {
   $('#goalTargetScore')?.focus();
 }
 
+function getDiagnosticPreflightPlan() {
+  const weakArea = state.goalProfile?.selfReportedWeakArea?.trim();
+  const targetScore = state.goalProfile?.targetScore;
+  const dailyMinutes = state.goalProfile?.dailyMinutes;
+  const targetDate = state.goalProfile?.targetTestDate;
+  const bullets = [
+    'Takes about 10–12 minutes across Reading & Writing and Math.',
+    'Helix is checking whether your first score gains should come from concept repair, pacing, or recurring trap cleanup.',
+    'You finish with a score band, confidence read, top score leaks, and one first repair block.',
+  ];
+  if (weakArea) {
+    bullets.splice(2, 0, `Your self-reported weak spot (“${weakArea}”) is used as a light tie-breaker, not as the whole diagnosis.`);
+  }
+  return {
+    title: '13 questions to build your first score-moving plan',
+    promise: targetScore
+      ? `Helix is trying to find the fastest route from your current baseline to ${targetScore}.`
+      : 'Helix is trying to find the fastest route from your current baseline to your target.',
+    meta: [
+      targetDate ? `Test date ${targetDate}` : null,
+      dailyMinutes ? `${dailyMinutes} min/day plan` : null,
+    ].filter(Boolean),
+    bullets,
+  };
+}
+
+function renderDiagnosticPreflight() {
+  const section = $('#diagnosticPreflightSection');
+  const container = $('#diagnosticPreflight');
+  if (!section || !container) return;
+
+  const shouldShow = isStudentSurface()
+    && state.goalProfile?.isComplete
+    && !state.currentSessionId
+    && !state.dismissDiagnosticPreflight
+    && (state.showDiagnosticPreflight || state.nextBestAction?.kind === 'start_diagnostic');
+
+  if (!shouldShow) {
+    section.style.display = 'none';
+    clear(container);
+    return;
+  }
+
+  const plan = getDiagnosticPreflightPlan();
+  section.style.display = 'block';
+  clear(container);
+  container.append(node('p', { className: 'notice', text: plan.title }));
+  container.append(node('p', { text: plan.promise }));
+  if (plan.meta.length) {
+    container.append(node('p', { className: 'muted', text: plan.meta.join(' · ') }));
+  }
+  const list = node('ul', { className: 'list compact' });
+  for (const bullet of plan.bullets) {
+    list.append(node('li', { text: bullet }));
+  }
+  container.append(list);
+}
+
+function openDiagnosticPreflight() {
+  state.dismissDiagnosticPreflight = false;
+  state.showDiagnosticPreflight = true;
+  renderDiagnosticPreflight();
+  $('#diagnosticPreflightSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('#startDiagnosticFromPreflight')?.focus();
+}
+
+function dismissDiagnosticPreflight() {
+  state.dismissDiagnosticPreflight = true;
+  state.showDiagnosticPreflight = false;
+  renderDiagnosticPreflight();
+}
+
+function getDiagnosticProgressNarrative(progress) {
+  const answered = progress?.answered ?? 0;
+  const total = progress?.total ?? 13;
+  if (answered <= 1) {
+    return 'Helix is sampling both sections to find your real starting band.';
+  }
+  if (answered <= Math.floor(total * 0.35)) {
+    return 'Helix is reading whether evidence, grammar, or algebra setup leaks your first points.';
+  }
+  if (answered <= Math.floor(total * 0.7)) {
+    return 'Helix is separating foundation gaps from pressure mistakes so your first plan is actually worth doing.';
+  }
+  return 'Helix is locking your confidence band, top score leaks, and the first session that should move your score fastest.';
+}
+
 function syncManualStartControls(action = state.nextBestAction) {
   const controls = $('#manualStartControls');
   if (!controls) return;
@@ -587,7 +678,7 @@ async function performNextBestAction(action) {
       focusGoalSetup();
       return;
     case 'start_diagnostic':
-      await startDiagnosticSession();
+      openDiagnosticPreflight();
       return;
     case 'resume_active_session':
       $('#itemArea')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -663,6 +754,9 @@ function renderGoalProfile(goalProfile) {
 
 function renderNextBestAction(action) {
   state.nextBestAction = action ?? null;
+  if (action?.kind !== 'start_diagnostic') {
+    state.dismissDiagnosticPreflight = false;
+  }
   const section = $('#nextBestActionSection');
   const container = $('#nextBestAction');
   const alternatives = $('#nextBestActionAlternatives');
@@ -675,6 +769,7 @@ function renderNextBestAction(action) {
     clear(alternatives);
     if (footnote) footnote.textContent = '';
     syncManualStartControls(null);
+    renderDiagnosticPreflight();
     return;
   }
 
@@ -716,6 +811,7 @@ function renderNextBestAction(action) {
   }
 
   syncManualStartControls(action);
+  renderDiagnosticPreflight();
 }
 
 function renderDiagnosticReveal(reveal) {
@@ -1506,6 +1602,10 @@ function renderSessionProgress(progress) {
     return;
   }
   const paceText = activeSummary?.recommendedPaceSec ?? activeSummary?.recommended_pace_sec;
+  if (state.currentSessionType === 'diagnostic') {
+    $('#diagnosticStatus').textContent = `Diagnostic progress: ${progress.answered}/${progress.total} answered. ${getDiagnosticProgressNarrative(progress)}`;
+    return;
+  }
   $('#diagnosticStatus').textContent = isExamSessionType(state.currentSessionType)
     ? `${sessionLabel} progress: ${progress.answered}/${progress.total} answered · ${countdown ? `${formatCountdown(countdown.remainingTimeSec)} remaining · ` : ''}target pace ${paceText ?? 70}s/item`
     : `${sessionLabel} progress: ${progress.answered}/${progress.total} answered.`;
@@ -1745,6 +1845,8 @@ $('#refreshDashboard').addEventListener('click', async () => {
 
 async function startDiagnosticSession() {
   try {
+    state.showDiagnosticPreflight = false;
+    state.dismissDiagnosticPreflight = false;
     const result = await json('/api/diagnostic/start', {
       method: 'POST',
       body: JSON.stringify({}),
@@ -1755,6 +1857,7 @@ async function startDiagnosticSession() {
     clearSessionNotice();
     renderDiagnosticReveal(null);
     renderNextBestAction(null);
+    renderDiagnosticPreflight();
     state.activeSessionEnvelope = { session: result.session, sessionProgress: result.sessionProgress ?? null };
     renderItem(result.currentItem);
     renderSessionProgress(result.sessionProgress);
@@ -1765,6 +1868,8 @@ async function startDiagnosticSession() {
 
 async function startTimedSetSession() {
   try {
+    state.showDiagnosticPreflight = false;
+    state.dismissDiagnosticPreflight = false;
     const result = await json('/api/timed-set/start', {
       method: 'POST',
       body: JSON.stringify({}),
@@ -1804,6 +1909,8 @@ async function startTimedSetSession() {
 
 async function startModuleSession(sectionOverride = null) {
   try {
+    state.showDiagnosticPreflight = false;
+    state.dismissDiagnosticPreflight = false;
     const section = sectionOverride ?? $('#moduleSection')?.value ?? 'reading_writing';
     const realismProfileSelection = $('#moduleRealismProfile')?.value ?? 'standard';
     const realismProfile = realismProfileSelection === 'extended' ? 'extended' : 'standard';
@@ -1849,9 +1956,11 @@ async function startModuleSession(sectionOverride = null) {
   }
 }
 
-$('#startDiagnostic').addEventListener('click', startDiagnosticSession);
+$('#startDiagnostic').addEventListener('click', openDiagnosticPreflight);
 $('#startTimedSet').addEventListener('click', startTimedSetSession);
 $('#startModule').addEventListener('click', () => startModuleSession());
+$('#startDiagnosticFromPreflight')?.addEventListener('click', startDiagnosticSession);
+$('#dismissDiagnosticPreflight')?.addEventListener('click', dismissDiagnosticPreflight);
 
 $('#attemptForm').addEventListener('submit', async (event) => {
   event.preventDefault();
