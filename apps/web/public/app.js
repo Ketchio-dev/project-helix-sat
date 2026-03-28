@@ -687,6 +687,61 @@ function syncDashboardDetails() {
   }
 }
 
+function studentActionCopy(action) {
+  if (!action) return null;
+
+  const title = action.title ?? 'Your next move';
+  const reason = action.reason ?? 'Helix picked one next step to keep your progress moving.';
+  const ctaLabel = action.ctaLabel ?? 'Start';
+
+  switch (action.kind) {
+    case 'complete_goal_setup':
+      return {
+        title: 'Set your target first',
+        reason: 'Pick your score goal, test date, and daily time so Helix can build the right first step.',
+        ctaLabel: 'Set my goal',
+      };
+    case 'start_diagnostic':
+      return {
+        title: 'Find your starting point',
+        reason: 'Take one short 12-minute check so Helix can stop being generic and show your first real score-moving step.',
+        ctaLabel: 'Start your 12-minute check',
+      };
+    case 'resume_active_session':
+      return {
+        title: 'Finish what you started',
+        reason,
+        ctaLabel: 'Resume this session',
+      };
+    case 'start_retry_loop':
+      return {
+        title,
+        reason,
+        ctaLabel: 'Fix this now',
+      };
+    case 'start_timed_set':
+      return {
+        title,
+        reason,
+        ctaLabel: 'Start timed practice',
+      };
+    case 'start_module':
+      return {
+        title,
+        reason,
+        ctaLabel: 'Start practice block',
+      };
+    case 'review_mistakes':
+      return {
+        title,
+        reason,
+        ctaLabel: 'Open my fixes',
+      };
+    default:
+      return { title, reason, ctaLabel };
+  }
+}
+
 function buildAlternativeActions(action) {
   if (!action || !isStudentSurface() || !state.goalProfile?.isComplete) {
     return [];

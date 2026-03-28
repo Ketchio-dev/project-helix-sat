@@ -17,7 +17,8 @@
     "check": "node scripts/validate-foundation.mjs && npm run verify && node --test",
     "check:schemas": "node scripts/validate-foundation.mjs",
     "test": "node --test",
-    "audit:helix": "node scripts/audit-project-helix-sat.mjs"
+    "audit:helix": "node scripts/audit-project-helix-sat.mjs",
+    "smoke:learner": "node scripts/run-playwright-learner-smoke.mjs"
   },
   "engines": {
     "node": ">=22"
