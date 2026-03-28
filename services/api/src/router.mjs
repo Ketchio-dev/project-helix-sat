@@ -374,7 +374,10 @@ export function createRouter({ store, webRoot }) {
     learnerAccess: 'owner',
     requestSchema: 'ModuleStartRequest',
     async handler({ learnerId, body }) {
-      const result = store.startModuleSimulation(learnerId, { section: body?.section });
+      const result = store.startModuleSimulation(learnerId, {
+        section: body?.section,
+        realismProfile: body?.realismProfile,
+      });
       return { body: result, statusCode: result.conflict ? 409 : 201 };
     },
   });

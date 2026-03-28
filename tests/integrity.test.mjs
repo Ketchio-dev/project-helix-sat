@@ -197,6 +197,59 @@ describe('integrity: curriculum lesson bundle', () => {
     assert.match(bundle.workedExample.takeaway, /setup is correct and the final bound is checked/i);
     assert.match(bundle.transferCard.rationalePreview, /verify the requested maximum, minimum, or satisfying value/i);
   });
+
+  it('extends authored lesson phrasing to additional high-value reading and math skills', () => {
+    const seed = createDemoData();
+    const cases = [
+      {
+        skillId: 'rw_command_of_evidence',
+        workedExampleItem: seed.items.rw_evidence_01,
+        transferItem: seed.items.rw_evidence_02,
+        summaryPattern: /receipts check/i,
+        trapPattern: /related to the subject but does not actually prove/i,
+        transferPattern: /justify the claim out loud/i,
+      },
+      {
+        skillId: 'rw_sentence_boundaries',
+        workedExampleItem: seed.items.rw_revision_01,
+        transferItem: seed.items.rw_boundary_02,
+        summaryPattern: /clause questions first/i,
+        trapPattern: /comma splice, run-on, or fragment/i,
+        transferPattern: /label the clauses first/i,
+      },
+      {
+        skillId: 'math_systems_of_linear_equations',
+        workedExampleItem: seed.items.math_systems_02,
+        transferItem: seed.items.math_systems_01,
+        summaryPattern: /one situation told twice/i,
+        trapPattern: /satisfies both relationships/i,
+        transferPattern: /what the solution means/i,
+      },
+      {
+        skillId: 'math_statistics_probability',
+        workedExampleItem: seed.items.math_stats_03,
+        transferItem: seed.items.math_stats_02,
+        summaryPattern: /what the numbers represent/i,
+        trapPattern: /population or event was read too loosely/i,
+        transferPattern: /target statistic or event first/i,
+      },
+    ];
+
+    for (const testCase of cases) {
+      const bundle = buildCurriculumLessonBundle({
+        skillId: testCase.skillId,
+        workedExampleItem: testCase.workedExampleItem,
+        workedExampleRationale: seed.rationales[testCase.workedExampleItem.itemId],
+        transferItem: testCase.transferItem,
+        transferRationale: seed.rationales[testCase.transferItem.itemId],
+      });
+
+      assert.match(bundle.teachCard.summary, testCase.summaryPattern);
+      assert.match(bundle.teachCard.commonTrap, testCase.trapPattern);
+      assert.match(bundle.transferCard.rationalePreview, testCase.transferPattern);
+      assert.ok(bundle.workedExample.walkthrough.length >= 2);
+    }
+  });
 });
 
 describe('integrity: curriculum path generator', () => {

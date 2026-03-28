@@ -21,7 +21,11 @@ const MIN_PASSWORD_LENGTH = 8;
 const DIFFICULTY_RANK = { easy: 0, medium: 1, hard: 2 };
 const MODULE_SESSION_SHAPE = {
   reading_writing: { itemCount: 12, recommendedPaceSec: 95 },
-  math: { itemCount: 12, recommendedPaceSec: 105 },
+  math: {
+    itemCount: 12,
+    recommendedPaceSec: 105,
+    extended: { itemCount: 16, recommendedPaceSec: 100 },
+  },
 };
 
 export function isStudentProducedResponseItem(item) {
@@ -232,6 +236,17 @@ function getSessionElapsedSec(session) {
   const endSource = session.ended_at ? new Date(session.ended_at).getTime() : Date.now();
   const endedAtMs = Number.isNaN(endSource) ? Date.now() : endSource;
   return Math.max(0, Math.floor((endedAtMs - startedAtMs) / 1000));
+}
+
+function getModuleSessionShape(section = 'math', options = {}) {
+  const baseShape = MODULE_SESSION_SHAPE[section] ?? MODULE_SESSION_SHAPE.math;
+  if (options?.realismProfile === 'extended' && baseShape?.extended) {
+    return baseShape.extended;
+  }
+  return {
+    itemCount: baseShape.itemCount,
+    recommendedPaceSec: baseShape.recommendedPaceSec,
+  };
 }
 
 function getExamTiming(session) {
@@ -1877,7 +1892,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       const {
         itemCount: moduleItemCount,
         recommendedPaceSec,
-      } = MODULE_SESSION_SHAPE[section] ?? MODULE_SESSION_SHAPE.math;
+      } = getModuleSessionShape(section, options);
       const moduleItems = selectSessionItems(
         Object.values(state.items),
         api.getSkillStates(userId),

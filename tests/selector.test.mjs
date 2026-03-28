@@ -71,10 +71,22 @@ describe('selectSessionItems', () => {
     assert.ok(result.some((item) => item.item_format === 'grid_in'));
   });
 
+  it('math bank now spreads student-produced-response items across many distinct skills', () => {
+    const gridInSkills = new Set(
+      demoItems
+        .filter((item) => item.section === 'math' && item.item_format === 'grid_in')
+        .map((item) => item.skill),
+    );
+    assert.ok(gridInSkills.size >= 10, `Expected at least 10 math grid-in skills, got ${gridInSkills.size}`);
+    assert.ok(gridInSkills.has('math_systems_of_linear_equations'));
+    assert.ok(gridInSkills.has('math_polynomial_rational'));
+    assert.ok(gridInSkills.has('math_nonlinear_equations'));
+  });
+
   it('larger math module_simulation blocks surface multiple student-produced-response items when the bank supports them', () => {
-    const result = selectSessionItems(demoItems, [], 'module_simulation', 12, [], {}, { section: 'math' });
-    assert.equal(result.length, 12);
-    assert.ok(result.filter((item) => item.item_format === 'grid_in').length >= 3);
+    const result = selectSessionItems(demoItems, [], 'module_simulation', 16, [], {}, { section: 'math' });
+    assert.equal(result.length, 16);
+    assert.ok(result.filter((item) => item.item_format === 'grid_in').length >= 4);
   });
 
 

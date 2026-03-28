@@ -304,6 +304,7 @@ const requestSchemas = new Map([
     additionalProperties: false,
     properties: {
       section: { enum: ['reading_writing', 'math'] },
+      realismProfile: { enum: ['standard', 'extended'] },
     },
   }],
   ['ReviewRetryStartRequest', {

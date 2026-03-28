@@ -60,7 +60,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EmptyRequest'
+              $ref: '#/components/schemas/ModuleStartRequest'
       responses:
         '201':
           description: Module simulation session created
@@ -280,6 +280,20 @@ components:
     EmptyRequest:
       type: object
       additionalProperties: false
+    ModuleStartRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        section:
+          type: string
+          enum:
+            - reading_writing
+            - math
+        realismProfile:
+          type: string
+          enum:
+            - standard
+            - extended
     SessionIdRequest:
       type: object
       additionalProperties: false

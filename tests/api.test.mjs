@@ -525,6 +525,12 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
     assert.equal(lastAttemptResult.summary.payload.completed, true);
     assert.equal(lastAttemptResult.summary.payload.section, 'math');
     assert.equal(typeof lastAttemptResult.summary.payload.remainingTimeSec, 'number');
+    assert.equal('correctAnswer' in lastAttemptResult, false);
+    assert.equal('distractorTag' in lastAttemptResult, false);
+    assert.equal('review' in lastAttemptResult, false);
+    assert.equal('projection' in lastAttemptResult, false);
+    assert.equal('plan' in lastAttemptResult, false);
+    assert.equal('nextItem' in lastAttemptResult, false);
 
     const finished = await fetch(`${baseUrl}/api/module/finish`, {
       method: 'POST',
@@ -551,6 +557,58 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
     assert.equal(moduleHistory.moduleSummary.sessionId, moduleSimulation.session.id);
   });
 });
+
+test('store can start an extended math module shape without leaking exam review fields', () => {
+  const store = createStore();
+  const moduleSimulation = store.startModuleSimulation('demo-student', {
+    section: 'math',
+    realismProfile: 'extended',
+  });
+
+  assert.equal(moduleSimulation.session.type, 'module_simulation');
+  assert.equal(moduleSimulation.session.section, 'math');
+  assert.equal(moduleSimulation.timing.timeLimitSec, 1600);
+  assert.equal(moduleSimulation.timing.recommendedPaceSec, 100);
+  assert.equal(moduleSimulation.items.length, 16);
+  assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 4);
+
+  const attempt = store.submitAttempt({
+    userId: 'demo-student',
+    itemId: moduleSimulation.currentItem.itemId,
+    ...buildAttemptAnswer(moduleSimulation.currentItem.itemId),
+    sessionId: moduleSimulation.session.id,
+    mode: 'exam',
+    confidenceLevel: 3,
+    responseTimeMs: 90000,
+  });
+
+  assert.equal(attempt.sessionType, 'module_simulation');
+  assert.equal(typeof attempt.attemptId, 'string');
+  assert.equal('correctAnswer' in attempt, false);
+  assert.equal('distractorTag' in attempt, false);
+  assert.equal('review' in attempt, false);
+  assert.equal('projection' in attempt, false);
+  assert.equal('plan' in attempt, false);
+  assert.equal('nextItem' in attempt, false);
+});
+
+test('api can start an extended math module shape through the module-start contract', async () => {
+  await withAuthedServer(async (baseUrl, sessions) => {
+    const moduleSimulation = await fetch(`${baseUrl}/api/module/start`, {
+      method: 'POST',
+      headers: sessions.student.headers,
+      body: JSON.stringify({ section: 'math', realismProfile: 'extended' }),
+    }).then((res) => res.json());
+
+    assert.equal(moduleSimulation.session.type, 'module_simulation');
+    assert.equal(moduleSimulation.session.section, 'math');
+    assert.equal(moduleSimulation.timing.timeLimitSec, 1600);
+    assert.equal(moduleSimulation.timing.recommendedPaceSec, 100);
+    assert.equal(moduleSimulation.items.length, 16);
+    assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 4);
+  });
+});
+
 
 test('api returns session history for the authenticated learner', async () => {
   await withAuthedServer(async (baseUrl, sessions) => {

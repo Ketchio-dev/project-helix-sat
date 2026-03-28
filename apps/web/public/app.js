@@ -1805,9 +1805,13 @@ async function startTimedSetSession() {
 async function startModuleSession(sectionOverride = null) {
   try {
     const section = sectionOverride ?? $('#moduleSection')?.value ?? 'reading_writing';
+    const realismProfileSelection = $('#moduleRealismProfile')?.value ?? 'standard';
+    const realismProfile = section === 'math' && realismProfileSelection === 'extended'
+      ? 'extended'
+      : 'standard';
     const result = await json('/api/module/start', {
       method: 'POST',
-      body: JSON.stringify({ section }),
+      body: JSON.stringify({ section, realismProfile }),
     });
     state.currentSessionId = result.session.id;
     state.currentSessionType = result.session.type;
