@@ -90,8 +90,8 @@ async function main() {
 
     await page.locator('#diagnosticRevealSection').waitFor({ state: 'visible' });
     await page.locator('#diagnosticReveal').getByText('Score range now:', { exact: false }).waitFor();
-    await page.getByText('Start here next').waitFor();
-    await page.getByText('Why Helix believes this').waitFor();
+    await page.locator('#diagnosticReveal').getByText('Start here next').waitFor();
+    await page.locator('#diagnosticReveal').getByText('Why Helix believes this').waitFor();
     await page.locator('#diagnosticReveal').getByRole('button', { name: 'Take the 2-minute win' }).click();
 
     for (let index = 0; index < 5; index += 1) {

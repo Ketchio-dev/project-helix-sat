@@ -92,6 +92,7 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(appSource, /Take the 2-minute win/);
   assert.match(appSource, /renderQuickWinSummary/);
   assert.match(appSource, /renderLatestSessionOutcome/);
+  assert.match(appSource, /function renderErrorDna/);
   assert.match(appSource, /buildLearnerNarrative/);
   assert.match(appSource, /renderLearnerNarrative/);
   assert.match(appSource, /Score signal:/);

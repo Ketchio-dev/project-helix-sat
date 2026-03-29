@@ -1150,6 +1150,35 @@ function renderDiagnosticReveal(reveal) {
   }
 }
 
+function renderErrorDna(errorDnaSummary) {
+  const container = $('#errorDna');
+  clear(container);
+
+  const entries = Array.isArray(errorDnaSummary)
+    ? errorDnaSummary.filter((entry) => entry?.label || entry?.summary || entry?.score)
+    : Object.entries(errorDnaSummary ?? {})
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([tag, score]) => ({
+          label: tag.replaceAll('_', ' '),
+          summary: `${tag.replaceAll('_', ' ')} is still appearing in recent work.`,
+          score,
+        }));
+
+  if (!entries.length) {
+    container.append(node('p', { className: 'muted', text: 'No dominant error signals yet.' }));
+    return;
+  }
+
+  for (const entry of entries) {
+    const card = node('article', { className: 'review-item' });
+    card.append(node('strong', { text: entry.label }));
+    card.append(node('p', { text: entry.summary }));
+    card.append(node('span', { className: 'muted', text: `Signal strength: ${entry.score}` }));
+    container.append(card);
+  }
+}
+
 function renderLearnerNarrative(narrative) {
   const section = $('#learnerNarrativeSection');
   const container = $('#learnerNarrative');
