@@ -110,6 +110,10 @@ async function main() {
     await page.getByRole('button', { name: 'Show full study dashboard' }).click();
     await page.locator('#returnPath').getByText('Completion streak:', { exact: false }).waitFor();
     await page.locator('#weeklyDigest').getByText('Next week opportunity', { exact: false }).waitFor();
+    await page.locator('#moduleSection').selectOption('math');
+    await page.locator('#moduleRealismProfile').selectOption('exam');
+    await page.locator('#startModule').click();
+    await page.locator('#diagnosticStatus').getByText('Module Simulation (Math) progress: 0/22 answered', { exact: false }).waitFor();
 
   } finally {
     await browser.close();

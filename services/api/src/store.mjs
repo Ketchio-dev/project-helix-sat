@@ -1559,6 +1559,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         expired,
         completed: progress.isComplete || expired,
         readinessSignal,
+        realismProfile,
         section: session.section ?? sectionBreakdown[0]?.section ?? sectionBreakdown[0]?.key ?? null,
         focusDomain,
         sectionBreakdown,

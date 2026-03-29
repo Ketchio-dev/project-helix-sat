@@ -1,3 +1,4 @@
+import { describeReviewLessonPack } from './review-lesson-pack.js';
 import { normalizeTeacherAssignments, normalizeTeacherBrief } from './teacher-view-model.js';
 
 const state = {
@@ -782,7 +783,7 @@ function syncManualStartControls(action = state.nextBestAction) {
     return;
   }
 
-  const shouldHideForFocus = Boolean(action);
+  const shouldHideForFocus = Boolean(action) && !state.dashboardExpanded;
   controls.style.display = shouldHideForFocus ? 'none' : 'flex';
 }
 
@@ -817,6 +818,7 @@ function syncDashboardDetails() {
   if (teacherAssignmentsSection) {
     teacherAssignmentsSection.style.display = state.userRole === 'teacher' ? '' : 'none';
   }
+  syncManualStartControls();
 }
 
 function studentActionCopy(action) {
@@ -1659,6 +1661,12 @@ function renderModuleSummary(summary) {
     over_time: 'Over time',
     ahead: 'Ahead',
   };
+  const realismProfile = normalized.realismProfile ?? normalized.realism_profile ?? 'standard';
+  const realismLabelMap = {
+    standard: 'Standard practice',
+    extended: 'Extended practice',
+    exam: 'Exam profile',
+  };
   const statusClass = paceStatus === 'on_pace' || paceStatus === 'on_target'
     ? 'pill success'
     : paceStatus === 'not_started'
@@ -1672,6 +1680,7 @@ function renderModuleSummary(summary) {
     node('span', { className: 'pill', text: `${normalized.answered ?? 0}/${normalized.total ?? 0} answered` }),
     node('span', { className: statusClass, text: paceLabelMap[paceStatus] ?? paceStatus }),
     node('span', { className: 'pill', text: normalized.examMode || normalized.exam_mode ? 'Exam mode' : 'Reviewable' }),
+    node('span', { className: 'pill', text: realismLabelMap[realismProfile] ?? realismProfile }),
   ]);
 
   const readiness = normalized.readinessIndicator ?? normalized.readiness_indicator ?? normalized.readinessSignal ?? normalized.readiness_signal ?? normalized.readiness;
@@ -1694,7 +1703,7 @@ function renderModuleSummary(summary) {
   if (section || focusDomain) {
     card.append(node('p', {
       className: 'notice',
-      text: `Blueprint: ${section ?? '—'}${focusDomain ? ` · ${focusDomain}` : ''}`,
+      text: `Blueprint: ${section ?? '—'}${focusDomain ? ` · ${focusDomain}` : ''}${realismProfile ? ` · ${realismLabelMap[realismProfile] ?? realismProfile}` : ''}`,
     }));
   }
 
@@ -1901,6 +1910,7 @@ function renderReview(review) {
 
   for (const cardData of remediationCards) {
     const card = node('article', { className: 'review-item' });
+    const lessonPack = describeReviewLessonPack(cardData);
     card.append(node('strong', { text: `${formatSectionName(cardData.section)} · ${cardData.skill}` }));
     card.append(node('p', { text: `What went wrong: ${cardData.misconception}` }));
     card.append(node('p', { className: 'muted', text: `Fix rule: ${cardData.correctionRule}` }));
@@ -1920,31 +1930,25 @@ function renderReview(review) {
     retryButton.addEventListener('click', async () => startRetryLoop(cardData.retryAction?.itemId ?? cardData.itemId));
     card.append(retryButton);
     const detailChildren = [node('p', { className: 'muted', text: `What to notice: ${cardData.decisiveClue}` })];
-    if (cardData.teachCard) {
-      detailChildren.push(node('p', { className: 'notice', text: `${cardData.teachCard.title}: ${cardData.teachCard.summary}` }));
-      if (Array.isArray(cardData.teachCard.objectives) && cardData.teachCard.objectives.length) {
-        const objectiveList = node('ul', { className: 'list compact' });
-        for (const objective of cardData.teachCard.objectives.slice(0, 2)) {
-          objectiveList.append(node('li', { text: objective }));
+    if (lessonPack.steps.length) {
+      const stepGrid = node('div', { className: 'lesson-pack-grid' });
+      for (const step of lessonPack.steps) {
+        const stepCard = node('div', { className: 'lesson-pack-step' });
+        stepCard.append(node('strong', { text: step.title }));
+        stepCard.append(node('p', {
+          className: step.key === 'teach' ? 'notice' : step.key === 'transfer' ? 'muted' : 'review-rationale',
+          text: step.body,
+        }));
+        if (step.bullets.length) {
+          const bulletList = node(step.key === 'worked_example' ? 'ol' : 'ul', { className: 'list compact' });
+          for (const bullet of step.bullets) {
+            bulletList.append(node('li', { text: bullet }));
+          }
+          stepCard.append(bulletList);
         }
-        detailChildren.push(objectiveList);
+        stepGrid.append(stepCard);
       }
-    }
-    if (cardData.workedExample?.prompt) {
-      detailChildren.push(node('p', { className: 'review-rationale', text: `See one example: ${cardData.workedExample.prompt}` }));
-      if (Array.isArray(cardData.workedExample.walkthrough) && cardData.workedExample.walkthrough.length) {
-        const walkthrough = node('ol', { className: 'list compact' });
-        for (const step of cardData.workedExample.walkthrough.slice(0, 3)) {
-          walkthrough.append(node('li', { text: step }));
-        }
-        detailChildren.push(walkthrough);
-      }
-    }
-    if (cardData.retryItem?.prompt) {
-      detailChildren.push(node('p', { className: 'review-rationale', text: `Try again: ${cardData.retryItem.prompt}` }));
-    }
-    if (cardData.transferItem?.prompt) {
-      detailChildren.push(node('p', { className: 'muted', text: `Try a close variant: ${cardData.transferItem.prompt}` }));
+      detailChildren.push(stepGrid);
     }
     if (cardData.transferAction?.itemId) {
       const transferButton = node('button', {
@@ -1954,7 +1958,7 @@ function renderReview(review) {
       transferButton.addEventListener('click', async () => startRetryLoop(cardData.transferAction.itemId));
       detailChildren.push(transferButton);
     }
-    card.append(detailsBlock('See the fix', detailChildren));
+    card.append(detailsBlock(lessonPack.summaryText, detailChildren));
     list.append(card);
   }
 
@@ -2475,7 +2479,9 @@ async function startModuleSession(sectionOverride = null) {
     state.dismissDiagnosticPreflight = false;
     const section = sectionOverride ?? $('#moduleSection')?.value ?? 'reading_writing';
     const realismProfileSelection = $('#moduleRealismProfile')?.value ?? 'standard';
-    const realismProfile = realismProfileSelection === 'extended' ? 'extended' : 'standard';
+    const realismProfile = ['standard', 'extended', 'exam'].includes(realismProfileSelection)
+      ? realismProfileSelection
+      : 'standard';
     const result = await json('/api/module/start', {
       method: 'POST',
       body: JSON.stringify({ section, realismProfile }),

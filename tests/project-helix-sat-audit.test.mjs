@@ -8,6 +8,7 @@ const packageJson = JSON.parse(fs.readFileSync(new URL('../package.json', import
 const routerSource = fs.readFileSync(new URL('../services/api/src/router.mjs', import.meta.url), 'utf8');
 const indexSource = fs.readFileSync(new URL('../apps/web/public/index.html', import.meta.url), 'utf8');
 const appSource = fs.readFileSync(new URL('../apps/web/public/app.js', import.meta.url), 'utf8');
+const reviewLessonPackSource = fs.readFileSync(new URL('../apps/web/public/review-lesson-pack.js', import.meta.url), 'utf8');
 const readmeSource = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
 const contentReadmeSource = fs.readFileSync(new URL('../content/README.md', import.meta.url), 'utf8');
 const apiTestSource = fs.readFileSync(new URL('../tests/api.test.mjs', import.meta.url), 'utf8');
@@ -86,6 +87,7 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(indexSource, /Keep tomorrow easy/);
   assert.match(indexSource, /Want the deeper breakdown\?/);
   assert.match(indexSource, /data-student-dashboard-detail/);
+  assert.match(indexSource, /Exam Profile/);
   assert.match(appSource, /studentActionCopy/);
   assert.match(appSource, /Completion streak:/);
   assert.match(appSource, /Next week opportunity/);
@@ -98,6 +100,10 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(appSource, /Score signal:/);
   assert.match(appSource, /renderStudyModes/);
   assert.match(appSource, /renderReturnPath/);
+  assert.match(appSource, /Standard practice/);
+  assert.match(appSource, /Exam profile/);
+  assert.match(appSource, /describeReviewLessonPack/);
+  assert.match(reviewLessonPackSource, /Open lesson pack/);
   assert.match(appSource, /More ways to work/);
   assert.match(appSource, /Try this again/);
   assert.match(appSource, /syncDashboardDetails/);
@@ -116,6 +122,8 @@ test('repo ships release-bar gating and a no-dependency playwright learner smoke
   assert.match(smokeRunnerSource, /#quickWinSection/);
   assert.match(smokeRunnerSource, /Completion streak:/);
   assert.match(smokeRunnerSource, /Next week opportunity/);
+  assert.match(smokeRunnerSource, /selectOption\('exam'\)/);
+  assert.match(smokeRunnerSource, /0\/22 answered/);
 });
 
 test('docs stay aligned with cookie auth and current audit claims', () => {

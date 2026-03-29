@@ -266,6 +266,19 @@ input:disabled + span {
   color: var(--text);
   font-size: 0.95rem;
 }
+.lesson-pack-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+.lesson-pack-step {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  background: #f8faff;
+}
+.lesson-pack-step p {
+  margin: 0.35rem 0 0;
+}
 .list.compact {
   margin-top: 0.25rem;
 }
