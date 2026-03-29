@@ -982,6 +982,10 @@ test('api returns a richer diagnostic reveal after diagnostic completion and unl
       headers: registered.headers,
     }).then((res) => res.json());
     assert.equal(dashboard.latestQuickWinSummary.sessionType, 'quick_win');
+    assert.equal(dashboard.latestSessionOutcome.sessionType, 'quick_win');
+    assert.equal(typeof dashboard.latestSessionOutcome.headline, 'string');
+    assert.ok(Array.isArray(dashboard.latestSessionOutcome.evidenceBullets));
+    assert.equal(typeof dashboard.latestSessionOutcome.primaryAction.kind, 'string');
 
     const nextAction = await fetch(`${baseUrl}/api/next-best-action`, {
       headers: registered.headers,
@@ -1058,6 +1062,60 @@ test('api returns a weekly digest with strengths, risks, and focus after learner
     assert.ok(['declining', 'flat', 'improving', 'strong'].includes(digest.projected_momentum));
     assert.equal(typeof digest.parent_summary, 'string');
     assert.equal(typeof digest.teacher_brief, 'string');
+  });
+});
+
+test('api normalizes the latest learner session into one session outcome surface', async () => {
+  await withServer(async (baseUrl) => {
+    const registered = await registerSession(baseUrl, {
+      name: 'Session Outcome Student',
+      email: nextUniqueEmail('session-outcome-student'),
+      password: 'pass1234',
+    });
+
+    await fetch(`${baseUrl}/api/goal-profile`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({
+        targetScore: 1430,
+        targetTestDate: '2026-11-14',
+        dailyMinutes: 35,
+        selfReportedWeakArea: 'timing',
+      }),
+    });
+
+    const timedSet = await fetch(`${baseUrl}/api/timed-set/start`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({}),
+    }).then((res) => res.json());
+
+    for (const item of timedSet.items) {
+      await fetch(`${baseUrl}/api/attempt/submit`, {
+        method: 'POST',
+        headers: registered.headers,
+        body: JSON.stringify({
+          itemId: item.itemId,
+          ...buildAttemptAnswer(item.itemId),
+          sessionId: timedSet.session.id,
+          mode: 'exam',
+          confidenceLevel: 3,
+          responseTimeMs: 25000,
+        }),
+      });
+    }
+
+    const dashboard = await fetch(`${baseUrl}/api/dashboard/learner`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+
+    assert.equal(dashboard.latestSessionOutcome.sessionType, 'timed_set');
+    assert.equal(typeof dashboard.latestSessionOutcome.headline, 'string');
+    assert.equal(typeof dashboard.latestSessionOutcome.subheadline, 'string');
+    assert.equal(Array.isArray(dashboard.latestSessionOutcome.metrics), true);
+    assert.equal(Array.isArray(dashboard.latestSessionOutcome.evidenceBullets), true);
+    assert.equal(typeof dashboard.latestSessionOutcome.nextStep, 'string');
+    assert.equal(typeof dashboard.latestSessionOutcome.primaryAction.kind, 'string');
   });
 });
 

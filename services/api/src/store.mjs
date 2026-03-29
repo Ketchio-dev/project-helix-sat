@@ -1382,6 +1382,36 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       return latestModule ? api.getModuleSummary(latestModule.id) : null;
     },
 
+    getLatestSessionOutcome(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const latestCompleted = Object.values(state.sessions)
+        .filter((session) => session.user_id === userId && session.ended_at && ['quick_win', 'timed_set', 'module_simulation'].includes(session.type))
+        .sort((left, right) => new Date(right.ended_at) - new Date(left.ended_at))[0] ?? null;
+
+      if (!latestCompleted) return null;
+
+      const nextBestAction = api.getNextBestAction(userId);
+      if (latestCompleted.type === 'quick_win') {
+        return toSessionOutcomePayload({
+          summary: api.getQuickWinSummary(latestCompleted.id),
+          nextBestAction,
+        });
+      }
+      if (latestCompleted.type === 'timed_set') {
+        return toSessionOutcomePayload({
+          summary: api.getTimedSetSummary(latestCompleted.id),
+          nextBestAction,
+        });
+      }
+      if (isModuleSession(latestCompleted)) {
+        return toSessionOutcomePayload({
+          summary: api.getModuleSummary(latestCompleted.id),
+          nextBestAction,
+        });
+      }
+      return null;
+    },
+
     getQuickWinSummary(sessionId) {
       const session = api.getSession(sessionId);
       if (!session || session.type !== 'quick_win') {
@@ -1867,6 +1897,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         comebackState: api.getComebackState(userId),
         studyModes: api.getStudyModes(userId),
         tomorrowPreview: api.getTomorrowPreview(userId),
+        latestSessionOutcome: api.getLatestSessionOutcome(userId),
         latestQuickWinSummary: api.getLatestQuickWinSummary(userId),
         latestTimedSetSummary: api.getLatestTimedSetSummary(userId),
         latestModuleSummary: api.getLatestModuleSummary(userId),
@@ -2519,6 +2550,9 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         diagnosticReveal: session.type === 'diagnostic' && sessionProgress.isComplete
           ? api.getDiagnosticReveal(userId, sessionId)
           : null,
+        latestSessionOutcome: sessionProgress.isComplete && ['quick_win', 'timed_set', 'module_simulation'].includes(session.type)
+          ? api.getLatestSessionOutcome(userId)
+          : null,
         review: api.getReviewRecommendations(userId),
         sessionProgress,
         sessionType: session.type,
@@ -2548,6 +2582,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         session,
         sessionProgress: summarizeSessionProgress(api.getSessionItems(sessionId)),
         timedSummary: api.getTimedSetSummary(sessionId),
+        latestSessionOutcome: api.getLatestSessionOutcome(userId),
         projection: api.getProjection(userId),
         plan: api.getPlan(userId),
         review: api.getReviewRecommendations(userId),
@@ -2579,6 +2614,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         session,
         sessionProgress: summarizeSessionProgress(api.getSessionItems(sessionId)),
         moduleSummary: api.getModuleSummary(sessionId),
+        latestSessionOutcome: api.getLatestSessionOutcome(userId),
         projection: api.getProjection(userId),
         plan: api.getPlan(userId),
         review: api.getReviewRecommendations(userId),
@@ -2878,6 +2914,91 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       reason: `${daysAway} day${daysAway === 1 ? '' : 's'} away is enough to justify a lighter re-entry. ${action.reason}`,
       ctaLabel: 'Start the return block',
       estimatedMinutes: Math.min(action.estimatedMinutes ?? 15, 15),
+    };
+  }
+
+  function toSessionOutcomePayload({ summary, nextBestAction = null }) {
+    if (!summary?.sessionType) return null;
+
+    if (summary.sessionType === 'quick_win') {
+      const focusLabel = summary.focusSkill ? formatSkillLabel(summary.focusSkill) : 'your focus skill';
+      const evidenceBullets = [
+        `${summary.correct ?? 0}/${summary.total ?? 0} correct in a short confidence-building loop.`,
+        summary.accuracy !== null ? `${Math.round((summary.accuracy ?? 0) * 100)}% accuracy on ${focusLabel.toLowerCase()}.` : null,
+        summary.comebackPrompt ?? null,
+      ].filter(Boolean);
+      return {
+        sessionId: summary.sessionId,
+        sessionType: summary.sessionType,
+        completedAt: summary.endedAt ?? null,
+        headline: summary.headline ?? `Quick win completed on ${focusLabel}`,
+        subheadline: `${focusLabel} now has one fresh successful rep.`,
+        statusPill: 'Quick win banked',
+        metrics: [
+          ['Accuracy', summary.accuracy === null ? '—' : `${Math.round((summary.accuracy ?? 0) * 100)}%`],
+          ['Answered', `${summary.answered ?? 0}/${summary.total ?? 0}`],
+        ],
+        evidenceBullets,
+        nextStep: summary.nextAction ?? null,
+        primaryAction: nextBestAction,
+      };
+    }
+
+    if (summary.sessionType === 'timed_set') {
+      const paceLabel = humanizeIdentifier(summary.paceStatus ?? 'on_pace').toLowerCase();
+      const evidenceBullets = [
+        `${summary.correct ?? 0}/${summary.total ?? 0} correct under timed conditions.`,
+        summary.averageResponseTimeMs ? `Average pace was ${Math.round(summary.averageResponseTimeMs / 1000)} seconds per item (${paceLabel}).` : `Pace signal is ${paceLabel}.`,
+        summary.expired ? 'This set hit the time limit, so Helix is weighting pacing more heavily.' : null,
+      ].filter(Boolean);
+      return {
+        sessionId: summary.sessionId,
+        sessionType: summary.sessionType,
+        completedAt: summary.endedAt ?? null,
+        headline: summary.expired
+          ? 'Timed evidence says pacing still leaks points'
+          : (summary.accuracy ?? 0) >= 0.67
+            ? 'Timed evidence looks usable'
+            : 'Timed evidence says repair still beats more speed',
+        subheadline: 'Helix is translating this timed set into the next repair or pace decision.',
+        statusPill: summary.expired ? 'Timed pressure caught up' : 'Timed signal updated',
+        metrics: [
+          ['Accuracy', summary.accuracy === null ? '—' : `${Math.round((summary.accuracy ?? 0) * 100)}%`],
+          ['Average time', summary.averageResponseTimeMs ? `${Math.round(summary.averageResponseTimeMs / 1000)}s/item` : '—'],
+          ['Pace', humanizeIdentifier(summary.paceStatus ?? 'on_pace')],
+        ],
+        evidenceBullets,
+        nextStep: summary.nextAction ?? null,
+        primaryAction: nextBestAction,
+      };
+    }
+
+    const sectionText = summary.section ? sectionLabel(summary.section) : 'module';
+    const focusDomain = summary.focusDomain ? humanizeIdentifier(summary.focusDomain) : null;
+    const evidenceBullets = [
+      `${summary.correct ?? 0}/${summary.total ?? 0} correct across the latest ${sectionText.toLowerCase()} block.`,
+      summary.averageResponseTimeMs ? `Average pace was ${Math.round(summary.averageResponseTimeMs / 1000)} seconds per item.` : null,
+      focusDomain ? `${focusDomain} carried the strongest domain signal in this block.` : null,
+    ].filter(Boolean);
+    return {
+      sessionId: summary.sessionId,
+      sessionType: summary.sessionType,
+      completedAt: summary.endedAt ?? null,
+      headline: summary.readinessSignal === 'ready_to_extend'
+        ? `${sectionText} module says you can extend`
+        : summary.readinessSignal === 'repair_before_next_module'
+          ? `${sectionText} module says repair comes before more volume`
+          : `${sectionText} module refreshed your evidence`,
+      subheadline: 'Helix is using the latest module to decide whether to extend, stabilize, or repair first.',
+      statusPill: 'Module signal updated',
+      metrics: [
+        ['Accuracy', summary.accuracy === null ? '—' : `${Math.round((summary.accuracy ?? 0) * 100)}%`],
+        ['Average time', summary.averageResponseTimeMs ? `${Math.round(summary.averageResponseTimeMs / 1000)}s/item` : '—'],
+        ['Readiness', humanizeIdentifier(summary.readinessSignal ?? 'needs_evidence')],
+      ],
+      evidenceBullets,
+      nextStep: summary.nextAction ?? null,
+      primaryAction: nextBestAction,
     };
   }
 

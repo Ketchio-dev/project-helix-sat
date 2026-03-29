@@ -19,6 +19,7 @@ const state = {
   latestQuickWinSummary: null,
   latestTimedSetSummary: null,
   latestModuleSummary: null,
+  latestSessionOutcome: null,
   activeSessionEnvelope: null,
   sessionTimerHandle: null,
 };
@@ -56,6 +57,7 @@ const json = async (url, options) => {
     state.nextBestAction = null;
     state.diagnosticReveal = null;
     state.latestQuickWinSummary = null;
+    state.latestSessionOutcome = null;
     state.showDiagnosticPreflight = false;
     state.dismissDiagnosticPreflight = false;
     showLogin();
@@ -168,6 +170,103 @@ function formatSectionName(section) {
   if (section === 'reading_writing') return 'Reading & Writing';
   if (section === 'math') return 'Math';
   return section.charAt(0).toUpperCase() + section.slice(1).replace(/_/g, ' ');
+}
+
+function normalizeLatestSessionOutcome(source) {
+  const raw = source?.latestSessionOutcome
+    ?? source?.sessionOutcome
+    ?? source?.quickWinSummary
+    ?? source?.timedSummary
+    ?? source?.moduleSummary
+    ?? source
+    ?? null;
+
+  if (!raw) return null;
+
+  const sessionType = raw.sessionType ?? raw.session_type ?? raw.type ?? raw.kind ?? null;
+  const sessionLabel = raw.sessionLabel ?? raw.label ?? (sessionType ? toDisplaySessionType(sessionType) : 'Session');
+  const headline = raw.headline ?? raw.title ?? raw.summaryTitle ?? raw.summary_title ?? `${sessionLabel} outcome`;
+  const scoreBand = raw.scoreBand
+    ?? (raw.projected_total_low !== undefined && raw.projected_total_high !== undefined
+      ? { low: raw.projected_total_low, high: raw.projected_total_high }
+      : null);
+  const endedAt = raw.endedAt ?? raw.ended_at ?? raw.completedAt ?? raw.completed_at ?? null;
+  const startedAt = raw.startedAt ?? raw.started_at ?? null;
+  const summary = raw.summary
+    ?? raw.message
+    ?? raw.comebackPrompt
+    ?? raw.nextAction
+    ?? raw.whyThisPlan
+    ?? null;
+  const evidenceBullets = Array.isArray(raw.evidenceBullets)
+    ? raw.evidenceBullets
+    : Array.isArray(raw.evidence)
+      ? raw.evidence
+      : [];
+  const nextAction = raw.nextAction ?? raw.recommendedAction ?? raw.followUp ?? null;
+  const status = raw.status
+    ?? (raw.completed || raw.completedAt || raw.completed_at ? 'completed' : raw.expired ? 'expired' : 'in progress');
+  const metrics = [];
+
+  if (scoreBand?.low !== undefined && scoreBand?.high !== undefined) {
+    metrics.push(`Score range now: ${scoreBand.low}–${scoreBand.high}`);
+  }
+  if (raw.accuracy !== undefined && raw.accuracy !== null) {
+    metrics.push(`Accuracy: ${formatPercent(raw.accuracy)}`);
+  } else if (raw.correct !== undefined && raw.total !== undefined) {
+    metrics.push(`Accuracy: ${raw.correct}/${raw.total}`);
+  }
+  if (raw.timeLimitSec !== undefined && raw.timeLimitSec !== null) {
+    metrics.push(`Time limit: ${formatSeconds(raw.timeLimitSec)}`);
+  }
+  if (raw.recommendedPaceSec !== undefined && raw.recommendedPaceSec !== null) {
+    metrics.push(`Recommended pace: ${formatSeconds(raw.recommendedPaceSec)}`);
+  }
+  if (raw.readinessIndicator || raw.readinessSignal || raw.readiness_signal) {
+    metrics.push(String(raw.readinessIndicator ?? raw.readinessSignal ?? raw.readiness_signal));
+  }
+  if (endedAt) {
+    metrics.push(`Ended: ${formatDateTime(endedAt)}`);
+  }
+
+  const resolvedEvidence = evidenceBullets.length
+    ? evidenceBullets
+    : [
+        raw.whyThisPlan,
+        raw.comebackPrompt,
+        raw.readinessIndicator ?? raw.readinessSignal ?? raw.readiness_signal,
+        raw.nextAction,
+      ].filter(Boolean);
+
+  return {
+    ...raw,
+    sessionType,
+    sessionLabel,
+    headline,
+    summary,
+    scoreBand,
+    startedAt,
+    endedAt,
+    status,
+    evidenceBullets: resolvedEvidence,
+    metrics,
+    nextAction,
+    ctaLabel: raw.ctaLabel ?? 'Continue',
+  };
+}
+
+function selectLatestSessionOutcome(candidates = []) {
+  const normalized = candidates.map(normalizeLatestSessionOutcome).filter(Boolean);
+  if (!normalized.length) return null;
+
+  const timestampOf = (outcome) => {
+    const value = outcome.endedAt ?? outcome.completedAt ?? outcome.completed_at ?? outcome.startedAt ?? outcome.started_at;
+    const timestamp = value ? new Date(value).getTime() : Number.NEGATIVE_INFINITY;
+    return Number.isNaN(timestamp) ? Number.NEGATIVE_INFINITY : timestamp;
+  };
+
+  normalized.sort((left, right) => timestampOf(right) - timestampOf(left));
+  return normalized[0];
 }
 
 function isExamSessionType(value) {
@@ -1155,9 +1254,11 @@ function renderQuickWinSummary(summary) {
   const normalized = summary?.quickWinSummary ?? summary ?? null;
   state.latestQuickWinSummary = normalized;
 
-  if (!isStudentSurface() || !normalized) {
+  if (!normalized || (isStudentSurface() && state.latestSessionOutcome)) {
     section.style.display = 'none';
-    container.append(node('p', { className: 'muted', text: 'No quick-win result yet.' }));
+    if (!normalized) {
+      container.append(node('p', { className: 'muted', text: 'No quick-win result yet.' }));
+    }
     return;
   }
 
@@ -1180,6 +1281,74 @@ function renderQuickWinSummary(summary) {
   }
   if (normalized.nextAction) {
     card.append(node('p', { className: 'muted', text: `Next: ${normalized.nextAction}` }));
+  }
+
+  container.append(card);
+}
+
+function renderLatestSessionOutcome(outcome) {
+  const section = $('#sessionOutcomeSection');
+  const container = $('#sessionOutcome');
+  const legacySection = $('#legacySessionSummarySection');
+  const quickWinSection = $('#quickWinSection');
+  if (!section || !container) return;
+  clear(container);
+
+  const normalized = outcome ?? null;
+  state.latestSessionOutcome = normalized;
+
+  const shouldShow = isStudentSurface() && normalized;
+  section.style.display = shouldShow ? 'block' : 'none';
+  if (legacySection) {
+    legacySection.style.display = shouldShow ? 'none' : '';
+  }
+  if (quickWinSection) {
+    quickWinSection.style.display = shouldShow ? 'none' : quickWinSection.style.display;
+  }
+
+  if (!shouldShow) {
+    return;
+  }
+
+  const card = node('article', { className: 'timed-summary-item' });
+  card.append(node('h3', { text: normalized.headline ?? 'Session outcome' }));
+
+  const pillRow = node('div', { className: 'session-status-row' }, [
+    node('span', { className: 'pill success', text: normalized.statusPill ?? 'Evidence updated' }),
+    node('span', { className: 'pill', text: toDisplaySessionType(normalized.sessionType ?? 'session') }),
+    node('span', { className: 'pill', text: formatDateTime(normalized.completedAt) }),
+  ]);
+  card.append(pillRow);
+
+  if (normalized.subheadline) {
+    card.append(node('p', { text: normalized.subheadline }));
+  }
+
+  if (Array.isArray(normalized.metrics) && normalized.metrics.length) {
+    card.append(kvRows(normalized.metrics));
+  }
+
+  if (Array.isArray(normalized.evidenceBullets) && normalized.evidenceBullets.length) {
+    const list = node('ul', { className: 'list compact' });
+    for (const bullet of normalized.evidenceBullets) {
+      list.append(node('li', { text: bullet }));
+    }
+    card.append(detailsBlock('Why this matters', [list], true));
+  }
+
+  if (normalized.nextStep) {
+    card.append(node('p', { className: 'notice', text: `Next step: ${normalized.nextStep}` }));
+  }
+
+  const copy = studentActionCopy(normalized.primaryAction ?? null);
+  if (normalized.primaryAction && copy) {
+    const wrap = node('div', { className: 'stack' });
+    wrap.append(node('strong', { text: 'Do this next' }));
+    wrap.append(node('p', { className: 'muted', text: copy.reason }));
+    const button = node('button', { text: copy.ctaLabel });
+    button.addEventListener('click', () => performNextBestAction(normalized.primaryAction));
+    wrap.append(button);
+    card.append(wrap);
   }
 
   container.append(card);
@@ -2096,6 +2265,7 @@ async function loadDashboard() {
     renderWeeklyDigest(weeklyDigest ?? dashboard.weeklyDigest ?? null);
     renderReview(dashboard.review);
     renderSessionHistory(sessionHistory);
+    renderLatestSessionOutcome(dashboard.latestSessionOutcome ?? null);
     renderStudyModes(dashboard.studyModes ?? []);
     renderReturnPath(dashboard.tomorrowPreview ?? null, dashboard.comebackState ?? null);
     renderQuickWinSummary(dashboard.latestQuickWinSummary);

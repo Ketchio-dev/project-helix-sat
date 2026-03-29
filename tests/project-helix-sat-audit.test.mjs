@@ -77,6 +77,7 @@ test('learner shell includes diagnostic preflight and richer progress narration 
 test('learner shell prioritizes one main action and tucks secondary detail away', () => {
   assert.match(indexSource, /Your next move/);
   assert.match(indexSource, /Quick Win/);
+  assert.match(indexSource, /What changed in your last session/);
   assert.match(indexSource, /If you only have a short block/);
   assert.match(indexSource, /Keep tomorrow easy/);
   assert.match(indexSource, /Want the deeper breakdown\?/);
@@ -84,6 +85,7 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(appSource, /studentActionCopy/);
   assert.match(appSource, /Take the 2-minute win/);
   assert.match(appSource, /renderQuickWinSummary/);
+  assert.match(appSource, /renderLatestSessionOutcome/);
   assert.match(appSource, /renderStudyModes/);
   assert.match(appSource, /renderReturnPath/);
   assert.match(appSource, /More ways to work/);
