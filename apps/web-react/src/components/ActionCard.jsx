@@ -1,0 +1,44 @@
+export default function ActionCard({ action, onStart }) {
+  if (!action) return null
+
+  const title = action.title || action.label || 'Start practicing'
+  const description = action.reason || action.description || action.subtitle || ''
+  const kind = action.kind || action.actionType || action.type || 'quick-win'
+  const sessionType = action.sessionType || action.session_type || kind
+  const ctaLabel = action.ctaLabel || action.cta_label || 'Begin'
+  const minutes = action.estimatedMinutes || action.estimated_minutes || null
+
+  const handleClick = () => {
+    if (kind === 'resume_active_session') {
+      // Resume is handled by SessionNotice, but if user clicks here too
+      onStart('resume', { sessionType })
+    } else {
+      onStart(sessionType, { section: action.section, itemId: action.itemId })
+    }
+  }
+
+  return (
+    <div className="border border-neutral-200 rounded-lg p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-neutral-400 uppercase tracking-wide mb-2">
+            Recommended next
+          </p>
+          <h2 className="text-lg font-semibold text-[#111] mb-1.5">{title}</h2>
+          {description && (
+            <p className="text-sm text-neutral-500 leading-relaxed">{description}</p>
+          )}
+          {minutes && (
+            <p className="text-xs text-neutral-400 mt-2">~{minutes} min</p>
+          )}
+        </div>
+        <button
+          onClick={handleClick}
+          className="shrink-0 text-sm font-medium text-white bg-[#2563eb] rounded-md px-5 py-2.5 hover:bg-[#1d4ed8] transition-colors"
+        >
+          {ctaLabel}
+        </button>
+      </div>
+    </div>
+  )
+}

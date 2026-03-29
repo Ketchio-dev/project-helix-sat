@@ -3,31 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Project Helix SAT</title>
+    <title>Helix SAT</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <div id="loginSection" class="auth-shell" style="display:none;">
-      <section class="card auth-intro">
-        <p class="eyebrow">Project Helix SAT</p>
-        <h1>Calm prep, clear next steps.</h1>
+      <section class="auth-intro">
+        <p class="eyebrow">Helix SAT</p>
+        <h1>Focused prep.<br>Real score gains.</h1>
         <p class="subtitle">
-          Log in to continue your study path or create a student account to start with a clean baseline.
+          Adaptive practice that learns your patterns and puts the right work in front of you every session.
         </p>
         <ul class="auth-points">
-          <li>One next move at a time</li>
+          <li>One clear next move, every time</li>
           <li>Practice, review, and reflection in one place</li>
-          <li>Steady pacing over noisy gamification</li>
+          <li>Steady progress without the noise</li>
         </ul>
       </section>
 
-      <section class="card auth-panel">
+      <section class="auth-panel">
         <div class="auth-block">
           <h2>Sign in</h2>
-          <p class="muted">Return to your plan and pick up the next session.</p>
+          <p class="muted">Continue your study path.</p>
           <div class="auth-fields">
-            <input id="loginEmail" type="email" placeholder="Email" />
-            <input id="loginPassword" type="password" placeholder="Password" />
+            <input id="loginEmail" type="email" placeholder="Email address" autocomplete="email" />
+            <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" />
             <button id="loginButton">Sign In</button>
             <span id="loginError" class="danger"></span>
           </div>
@@ -37,11 +37,11 @@
 
         <div class="auth-block">
           <h2>Create account</h2>
-          <p class="muted">Set up a student profile and start from your goal.</p>
+          <p class="muted">Start with a clean baseline assessment.</p>
           <div class="auth-fields">
-            <input id="registerName" type="text" placeholder="Full name" />
-            <input id="registerEmail" type="email" placeholder="Email" />
-            <input id="registerPassword" type="password" placeholder="Password (8+ chars)" />
+            <input id="registerName" type="text" placeholder="Full name" autocomplete="name" />
+            <input id="registerEmail" type="email" placeholder="Email address" autocomplete="email" />
+            <input id="registerPassword" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" />
             <button id="registerButton" class="secondary">Create Account</button>
             <span id="registerError" class="danger"></span>
           </div>
@@ -51,128 +51,268 @@
 
     <div id="appSection" class="app-frame" style="display:none;">
     <main class="shell">
+
+      <!-- ZONE A: Top Bar -->
       <header class="topbar">
-        <div class="topbar-copy">
-          <div class="topbar-title-row">
-            <span class="product-mark">Helix SAT</span>
-            <span class="topbar-separator" aria-hidden="true"></span>
-            <h1>Student workspace</h1>
-          </div>
-          <p class="topbar-context">Recommended work first. Deeper controls stay tucked away.</p>
+        <div class="topbar-left">
+          <span class="product-mark">Helix SAT</span>
         </div>
-        <div class="topbar-aside">
-          <div class="topbar-actions">
-            <span id="userRoleBadge" class="badge role-badge"></span>
-            <button id="refreshDashboard" class="secondary">Refresh</button>
-            <button id="logoutButton" class="ghost">Logout</button>
-          </div>
+        <div class="topbar-right">
+          <span id="userRoleBadge" class="badge role-badge"></span>
+          <button id="refreshDashboard" class="ghost">Refresh</button>
+          <button id="logoutButton" class="ghost">Log out</button>
         </div>
       </header>
 
-      <div id="sessionNotice" class="session-notice hidden" aria-live="polite"></div>
-      <div id="sessionTimer" class="session-timer hidden" aria-live="polite"></div>
+      <!-- ZONE B: Action Zone -->
+      <div class="zone-action">
+        <div id="sessionNotice" class="session-notice hidden" aria-live="polite"></div>
+        <div id="sessionTimer" class="session-timer hidden" aria-live="polite"></div>
 
-      <details id="manualStartControls" class="manual-start-disclosure" style="display:none;">
-        <summary>Start a different block</summary>
-        <div class="manual-start-panel">
-          <p class="control-label">Use these when you want something other than the recommended next move.</p>
-          <div class="manual-start-grid">
-            <button id="startDiagnostic" class="secondary">Start your 12-minute check</button>
-            <button id="startTimedSet" class="secondary">Start Timed Set</button>
-            <select id="moduleSection" aria-label="Module section">
-              <option value="reading_writing">RW Module</option>
-              <option value="math">Math Module</option>
-            </select>
-            <select id="moduleRealismProfile" aria-label="Module realism profile">
-              <option value="standard">Standard Module</option>
-              <option value="extended">Extended Module</option>
-              <option value="exam">Exam Profile</option>
-            </select>
-            <button id="startModule" class="secondary">Start practice block</button>
+        <section class="grid two workspace-primary-grid">
+          <article class="card dense-card" id="goalSetupSection" style="display:none;">
+            <h2>Goal setup</h2>
+            <p class="notice">Tell Helix what score you want, when you're testing, and how much time you have. We'll use it to shape your first adaptive plan.</p>
+            <form id="goalSetupForm" class="teacher-assignment-form">
+              <label>
+                Goal score
+                <input id="goalTargetScore" type="number" min="400" max="1600" step="10" value="1400" />
+              </label>
+              <label>
+                Test date
+                <input id="goalTargetDate" type="date" />
+              </label>
+              <label>
+                Daily study time (minutes)
+                <input id="goalDailyMinutes" type="number" min="5" max="600" step="5" value="30" />
+              </label>
+              <label>
+                What feels weakest right now?
+                <input id="goalWeakArea" type="text" placeholder="e.g. punctuation, algebra, inference questions" />
+              </label>
+              <div class="row gap">
+                <button type="submit">Save Goal Profile</button>
+              </div>
+            </form>
+            <pre id="goalSetupResult">Finish your goal setup to unlock your first personalized plan.</pre>
+          </article>
+          <article class="card dense-card primary-panel" id="nextBestActionSection" style="display:none;">
+            <h2>Next block</h2>
+            <div id="nextBestAction"></div>
+            <div id="nextBestActionAlternatives"></div>
+            <p id="nextBestActionFootnote" class="muted"></p>
+          </article>
+        </section>
+
+        <section class="card dense-card" id="diagnosticPreflightSection" style="display:none;">
+          <h2>Your 12-minute starting point</h2>
+          <div id="diagnosticPreflight"></div>
+          <div class="row gap">
+            <button id="startDiagnosticFromPreflight">Start 12-minute check</button>
+            <button id="dismissDiagnosticPreflight" class="secondary">Not now</button>
           </div>
-        </div>
-      </details>
+        </section>
 
-      <div class="workspace-grid">
-        <div class="workspace-main">
-      <section class="grid two workspace-primary-grid">
-        <article class="card dense-card" id="goalSetupSection" style="display:none;">
-          <h2>Set Your Goal</h2>
-          <p class="notice">Tell Helix what score you want, when you’re testing, and how much time you have. We’ll use it to shape your first adaptive plan.</p>
-          <form id="goalSetupForm" class="teacher-assignment-form">
-            <label>
-              Goal score
-              <input id="goalTargetScore" type="number" min="400" max="1600" step="10" value="1400" />
-            </label>
-            <label>
-              Test date
-              <input id="goalTargetDate" type="date" />
-            </label>
-            <label>
-              Daily study time (minutes)
-              <input id="goalDailyMinutes" type="number" min="5" max="600" step="5" value="30" />
-            </label>
-            <label>
-              What feels weakest right now?
-              <input id="goalWeakArea" type="text" placeholder="e.g. punctuation, algebra, inference questions" />
-            </label>
-            <div class="row gap">
-              <button type="submit">Save Goal Profile</button>
+        <section class="card dense-card" id="diagnosticRevealSection" style="display:none;">
+          <h2>Diagnostic signal</h2>
+          <div id="diagnosticReveal"></div>
+        </section>
+
+        <section class="card dense-card" id="learnerNarrativeSection" style="display:none;">
+          <h2>Why this is next</h2>
+          <div id="learnerNarrative"></div>
+        </section>
+
+        <section class="card dense-card" id="sessionOutcomeSection" style="display:none;">
+          <h2>Last session</h2>
+          <div id="sessionOutcome"></div>
+        </section>
+
+        <div class="workspace-grid">
+          <div class="workspace-main">
+            <section class="card dense-card rail-card" id="studyModesSection" style="display:none;">
+              <h2>Short on time?</h2>
+              <div id="studyModes"></div>
+            </section>
+            <section class="card dense-card rail-card" id="returnPathSection" style="display:none;">
+              <h2>Tomorrow</h2>
+              <div id="returnPath"></div>
+            </section>
+          </div>
+          <aside class="workspace-rail">
+            <section class="card dense-card rail-card" id="dashboardToggleSection" style="display:none;">
+              <h2>Full dashboard</h2>
+              <p id="dashboardToggleCopy" class="muted">Expand to see your full progress and plan details.</p>
+              <button id="toggleDashboardDetails" class="secondary">Show full dashboard</button>
+            </section>
+          </aside>
+        </div>
+
+        <details id="manualStartControls" class="manual-start-disclosure" style="display:none;">
+          <summary>Start a different block</summary>
+          <div class="manual-start-panel">
+            <p class="control-label">Use these when you want something other than the recommended next move.</p>
+            <div class="manual-start-grid">
+              <button id="startDiagnostic" class="secondary">Start 12-minute check</button>
+              <button id="startTimedSet" class="secondary">Start timed set</button>
+              <select id="moduleSection" aria-label="Module section">
+                <option value="reading_writing">RW Module</option>
+                <option value="math">Math Module</option>
+              </select>
+              <select id="moduleRealismProfile" aria-label="Module realism profile">
+                <option value="standard">Standard Module</option>
+                <option value="extended">Extended Module</option>
+                <option value="exam">Exam Profile</option>
+              </select>
+              <button id="startModule" class="secondary">Start practice block</button>
             </div>
-          </form>
-          <pre id="goalSetupResult">Finish your goal setup to unlock your first personalized plan.</pre>
-        </article>
-        <article class="card dense-card primary-panel" id="nextBestActionSection" style="display:none;">
-          <h2>Next block</h2>
-          <div id="nextBestAction"></div>
-          <div id="nextBestActionAlternatives"></div>
-          <p id="nextBestActionFootnote" class="muted"></p>
-        </article>
-      </section>
-
-      <section class="card dense-card" id="diagnosticPreflightSection" style="display:none;">
-        <h2>Your 12-minute starting point</h2>
-        <div id="diagnosticPreflight"></div>
-        <div class="row gap">
-          <button id="startDiagnosticFromPreflight">Start your 12-minute check</button>
-          <button id="dismissDiagnosticPreflight" class="secondary">Not now</button>
-        </div>
-      </section>
-
-      <section class="card dense-card" id="diagnosticRevealSection" style="display:none;">
-        <h2>Diagnostic signal</h2>
-        <div id="diagnosticReveal"></div>
-      </section>
-
-      <section class="card dense-card" id="learnerNarrativeSection" style="display:none;">
-        <h2>Why this is next</h2>
-        <div id="learnerNarrative"></div>
-      </section>
-
-      <section class="card dense-card" id="sessionOutcomeSection" style="display:none;">
-        <h2>Last session</h2>
-        <div id="sessionOutcome"></div>
-      </section>
-        </div>
-
-        <aside class="workspace-rail">
-      <section class="card dense-card rail-card" id="studyModesSection" style="display:none;">
-          <h2>Short on time?</h2>
-          <div id="studyModes"></div>
-        </section>
-        <section class="card dense-card rail-card" id="returnPathSection" style="display:none;">
-          <h2>Tomorrow</h2>
-          <div id="returnPath"></div>
-        </section>
-
-      <section class="card dense-card rail-card" id="dashboardToggleSection" style="display:none;">
-        <h2>Full dashboard</h2>
-        <p id="dashboardToggleCopy" class="muted">Keep one clear next move on top. Open the full study dashboard only when you want more detail.</p>
-        <button id="toggleDashboardDetails" class="secondary">Show full study dashboard</button>
-      </section>
-        </aside>
+          </div>
+        </details>
       </div>
 
+      <!-- ZONE C: Practice Zone -->
+      <div class="zone-practice">
+        <section class="practice-workspace">
+          <h2>Practice Item</h2>
+          <div id="diagnosticStatus" class="notice"></div>
+          <div id="itemArea"></div>
+          <form id="attemptForm" class="attempt-form hidden">
+            <label>
+              Confidence
+              <select id="confidenceLevel">
+                <option value="1">1 — guessing</option>
+                <option value="2">2 — low</option>
+                <option value="3" selected>3 — medium</option>
+                <option value="4">4 — high</option>
+              </select>
+            </label>
+            <label>
+              Mode
+              <select id="modeSelect">
+                <option value="learn" selected>Learn mode</option>
+                <option value="review">Review mode</option>
+                <option value="exam">Exam mode</option>
+              </select>
+            </label>
+            <div class="row gap">
+              <button type="submit">Submit Attempt</button>
+              <button type="button" id="getHint">Get Tutor Hint</button>
+              <button type="button" id="finishTimedSet" class="hidden secondary">Finish timed set</button>
+              <button type="button" id="finishModule" class="hidden secondary">Finish module</button>
+            </div>
+          </form>
+        </section>
+      </div>
+
+      <!-- ZONE D: Feedback Zone -->
+      <div class="zone-feedback">
+        <section class="grid two">
+          <article class="card">
+            <h2>Fix this now</h2>
+            <div id="reviewMeta" class="notice">No review data yet.</div>
+            <div id="reviewRecommendations"></div>
+          </article>
+          <article class="card">
+            <h2>Reflection</h2>
+            <p id="reflectionPrompt" class="notice">Complete a diagnostic or load the dashboard to get a reflection prompt.</p>
+            <form id="reflectionForm" class="reflection-form">
+              <label for="reflectionResponse">Your rule for next time</label>
+              <textarea id="reflectionResponse" rows="6" placeholder="Write the mistake pattern you want to catch next time."></textarea>
+              <div class="row gap">
+                <button type="submit">Save Reflection</button>
+              </div>
+            </form>
+            <pre id="reflectionResult">No reflection saved yet.</pre>
+          </article>
+        </section>
+      </div>
+
+      <!-- ZONE E: Details (subtle) -->
+      <div class="zone-details">
+        <section class="grid two">
+          <article class="detail-block">
+            <h2>Last attempt</h2>
+            <pre id="attemptResult">No attempts yet.</pre>
+          </article>
+          <article class="detail-block">
+            <h2>Tutor hint</h2>
+            <pre id="hintResult">Hints appear here.</pre>
+          </article>
+        </section>
+
+        <section class="card" id="sessionReviewSection" style="display:none;">
+          <h2>Session review</h2>
+          <div id="sessionReviewDetail"></div>
+        </section>
+
+        <section class="card" id="quickWinSection" style="display:none;">
+          <h2>Quick Win</h2>
+          <div id="quickWinSummary"></div>
+        </section>
+
+        <section class="grid two" id="legacySessionSummarySection">
+          <article class="detail-block">
+            <h2>Timed set summary</h2>
+            <div id="timedSetSummary"></div>
+          </article>
+          <article class="detail-block">
+            <h2>Module summary</h2>
+            <div id="moduleSummary"></div>
+          </article>
+        </section>
+      </div>
+
+      <!-- ZONE F: Support/Admin (role-gated) -->
+      <section class="grid two" id="supportViewSection">
+        <article class="card" id="parentSummaryCard">
+          <h2>Parent snapshot</h2>
+          <div id="parentSummary"></div>
+        </article>
+        <article class="card" id="teacherBriefCard">
+          <h2>Teacher brief</h2>
+          <div id="teacherBrief"></div>
+        </article>
+      </section>
+
+      <section class="card" id="teacherAssignmentsSection">
+        <h2>Teacher assignments</h2>
+        <div id="teacherAssignments"></div>
+        <form id="teacherAssignmentForm" class="teacher-assignment-form">
+          <label>
+            Title
+            <input id="teacherAssignmentTitle" type="text" placeholder="e.g. Scope repair warm-up" />
+          </label>
+          <label>
+            Objective
+            <textarea id="teacherAssignmentObjective" rows="3" placeholder="What should the student accomplish in this assignment?"></textarea>
+          </label>
+          <div class="grid two compact-grid">
+            <label>
+              Minutes
+              <input id="teacherAssignmentMinutes" type="number" min="5" step="5" value="20" />
+            </label>
+            <label>
+              Focus skill
+              <input id="teacherAssignmentFocusSkill" type="text" placeholder="e.g. rw_text_structure_and_purpose" />
+            </label>
+          </div>
+          <label>
+            Mode
+            <select id="teacherAssignmentMode">
+              <option value="warmup">Warm-up</option>
+              <option value="review" selected>Review</option>
+              <option value="timed_set">Timed set</option>
+              <option value="homework">Homework</option>
+            </select>
+          </label>
+          <div class="row gap">
+            <button type="submit">Save assignment</button>
+          </div>
+        </form>
+        <pre id="teacherAssignmentResult">No teacher assignment saved yet.</pre>
+      </section>
+
+      <!-- ZONE G: Full Dashboard (toggle-gated) -->
       <section class="grid two" id="studentSnapshotSection" data-student-dashboard-detail>
         <article class="card">
           <h2>Your baseline</h2>
@@ -224,138 +364,6 @@
         <article class="card">
           <h2>Recent sessions</h2>
           <div id="sessionHistory"></div>
-        </article>
-      </section>
-
-      <section class="grid two" id="supportViewSection">
-        <article class="card" id="parentSummaryCard">
-          <h2>Parent Snapshot</h2>
-          <div id="parentSummary"></div>
-        </article>
-        <article class="card" id="teacherBriefCard">
-          <h2>Teacher Brief</h2>
-          <div id="teacherBrief"></div>
-        </article>
-      </section>
-
-      <section class="card" id="sessionReviewSection" style="display:none;">
-        <h2>Session Review</h2>
-        <div id="sessionReviewDetail"></div>
-      </section>
-
-      <section class="card" id="quickWinSection" style="display:none;">
-        <h2>Quick Win</h2>
-        <div id="quickWinSummary"></div>
-      </section>
-
-      <section class="grid two" id="legacySessionSummarySection">
-        <article class="card">
-          <h2>Timed Set Summary</h2>
-          <div id="timedSetSummary"></div>
-        </article>
-        <article class="card">
-          <h2>Module Simulation Summary</h2>
-          <div id="moduleSummary"></div>
-        </article>
-      </section>
-
-      <section class="card" id="teacherAssignmentsSection">
-        <h2>Teacher Assignments</h2>
-        <div id="teacherAssignments"></div>
-        <form id="teacherAssignmentForm" class="teacher-assignment-form">
-          <label>
-            Title
-            <input id="teacherAssignmentTitle" type="text" placeholder="e.g. Scope repair warm-up" />
-          </label>
-          <label>
-            Objective
-            <textarea id="teacherAssignmentObjective" rows="3" placeholder="What should the student accomplish in this assignment?"></textarea>
-          </label>
-          <div class="grid two compact-grid">
-            <label>
-              Minutes
-              <input id="teacherAssignmentMinutes" type="number" min="5" step="5" value="20" />
-            </label>
-            <label>
-              Focus skill
-              <input id="teacherAssignmentFocusSkill" type="text" placeholder="e.g. rw_text_structure_and_purpose" />
-            </label>
-          </div>
-          <label>
-            Mode
-            <select id="teacherAssignmentMode">
-              <option value="warmup">Warm-up</option>
-              <option value="review" selected>Review</option>
-              <option value="timed_set">Timed set</option>
-              <option value="homework">Homework</option>
-            </select>
-          </label>
-          <div class="row gap">
-            <button type="submit">Save Assignment</button>
-          </div>
-        </form>
-        <pre id="teacherAssignmentResult">No teacher assignment saved yet.</pre>
-      </section>
-
-      <section class="card">
-        <h2>Practice Item</h2>
-        <div id="diagnosticStatus" class="notice"></div>
-        <div id="itemArea"></div>
-        <form id="attemptForm" class="attempt-form hidden">
-          <label>
-            Confidence
-            <select id="confidenceLevel">
-              <option value="1">1 - guessing</option>
-              <option value="2">2 - low</option>
-              <option value="3" selected>3 - medium</option>
-              <option value="4">4 - high</option>
-            </select>
-          </label>
-          <label>
-            Mode
-            <select id="modeSelect">
-              <option value="learn" selected>Learn mode</option>
-              <option value="review">Review mode</option>
-              <option value="exam">Exam mode</option>
-            </select>
-          </label>
-          <div class="row gap">
-            <button type="submit">Submit Attempt</button>
-            <button type="button" id="getHint">Get Tutor Hint</button>
-            <button type="button" id="finishTimedSet" class="hidden secondary">Finish Timed Set</button>
-            <button type="button" id="finishModule" class="hidden secondary">Finish Module</button>
-          </div>
-        </form>
-      </section>
-
-      <section class="grid two">
-        <article class="card">
-          <h2>Fix this now</h2>
-          <div id="reviewMeta" class="notice">No review data yet.</div>
-          <div id="reviewRecommendations"></div>
-        </article>
-        <article class="card">
-          <h2>Reflection</h2>
-          <p id="reflectionPrompt" class="notice">Complete a diagnostic or load the dashboard to get a reflection prompt.</p>
-          <form id="reflectionForm" class="reflection-form">
-            <label for="reflectionResponse">Your rule for next time</label>
-            <textarea id="reflectionResponse" rows="6" placeholder="Write the mistake pattern you want to catch next time."></textarea>
-            <div class="row gap">
-              <button type="submit">Save Reflection</button>
-            </div>
-          </form>
-          <pre id="reflectionResult">No reflection saved yet.</pre>
-        </article>
-      </section>
-
-      <section class="grid two">
-        <article class="card">
-          <h2>Last Attempt Result</h2>
-          <pre id="attemptResult">No attempts yet.</pre>
-        </article>
-        <article class="card">
-          <h2>Tutor Hint</h2>
-          <pre id="hintResult">Hints appear here.</pre>
         </article>
       </section>
     </main>
