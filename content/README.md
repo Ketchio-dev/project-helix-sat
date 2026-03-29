@@ -79,6 +79,8 @@ After prompt or content changes:
 
 ```bash
 npm run audit:helix
+npm run audit:helix:bars
+npm run check:docs-truth
 npm run check
 ```
 

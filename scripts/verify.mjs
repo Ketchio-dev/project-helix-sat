@@ -27,6 +27,13 @@ if (releaseBarResult.status !== 0) {
 }
 process.stdout.write(releaseBarResult.stdout);
 
+const docsTruthResult = spawnSync(process.execPath, ['scripts/check-doc-truth.mjs'], { stdio: 'pipe', encoding: 'utf8' });
+if (docsTruthResult.status !== 0) {
+  process.stderr.write(docsTruthResult.stderr || docsTruthResult.stdout);
+  process.exit(docsTruthResult.status ?? 1);
+}
+process.stdout.write(docsTruthResult.stdout);
+
 const manifestPath = join(process.cwd(), 'dist', 'verify-manifest.json');
 mkdirSync(dirname(manifestPath), { recursive: true });
 writeFileSync(manifestPath, JSON.stringify({ built_at: new Date().toISOString(), files_checked: filesToCheck }, null, 2));

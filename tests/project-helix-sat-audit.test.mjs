@@ -101,6 +101,7 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
 test('repo ships release-bar gating and a no-dependency playwright learner smoke runner', () => {
   assert.equal(packageJson.scripts['smoke:learner'], 'node scripts/run-playwright-learner-smoke.mjs');
   assert.equal(packageJson.scripts['audit:helix:bars'], 'node scripts/check-content-release-bars.mjs');
+  assert.equal(packageJson.scripts['check:docs-truth'], 'node scripts/check-doc-truth.mjs');
   assert.match(generatedAuditSnapshot, /## Release bars/);
   assert.match(smokeRunnerSource, /createAppServer/);
   assert.match(smokeRunnerSource, /npm', \['install', '--no-save', 'playwright'\]/);
@@ -122,6 +123,7 @@ test('docs stay aligned with cookie auth and current audit claims', () => {
   assert.doesNotMatch(contentReadmeSource, /Add the smallest safe grid-in/i);
   assert.match(contentReadmeSource, /source of truth/i);
   assert.match(contentReadmeSource, /12-item default \/ 16-item extended/i);
+  assert.match(contentReadmeSource, /npm run check:docs-truth/);
 });
 
 
