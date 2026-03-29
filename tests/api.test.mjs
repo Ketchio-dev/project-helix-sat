@@ -187,6 +187,8 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
     ]);
     assert.deepEqual(planExplanation, dashboardBefore.planExplanation);
     assert.deepEqual(projectionEvidence, dashboardBefore.projectionEvidence);
+    assert.match(projectionEvidence.signalLabel, /estimate|signal/);
+    assert.equal(typeof projectionEvidence.signalExplanation, 'string');
     assert.deepEqual(whatChanged, dashboardBefore.whatChanged);
 
     const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
@@ -933,6 +935,7 @@ test('api returns a richer diagnostic reveal after diagnostic completion and unl
     assert.ok(lastAttempt.diagnosticReveal.scoreBand.low >= 400);
     assert.equal(Array.isArray(lastAttempt.diagnosticReveal.topScoreLeaks), true);
     assert.equal(typeof lastAttempt.diagnosticReveal.confidenceLabel, 'string');
+    assert.equal(typeof lastAttempt.diagnosticReveal.confidenceExplanation, 'string');
     assert.equal(typeof lastAttempt.diagnosticReveal.whyThisPlan, 'string');
     assert.ok(Array.isArray(lastAttempt.diagnosticReveal.evidenceBullets));
     assert.ok(lastAttempt.diagnosticReveal.evidenceBullets.length >= 2);
@@ -944,6 +947,7 @@ test('api returns a richer diagnostic reveal after diagnostic completion and unl
     }).then((res) => res.json());
     assert.equal(reveal.sessionId, diagnostic.session.id);
     assert.equal(typeof reveal.confidenceLabel, 'string');
+    assert.equal(typeof reveal.confidenceExplanation, 'string');
     assert.equal(typeof reveal.whyThisPlan, 'string');
     assert.ok(reveal.evidenceBullets.some((bullet) => bullet.includes('Baseline completed')));
     assert.equal(reveal.firstRecommendedAction.kind, 'start_quick_win');

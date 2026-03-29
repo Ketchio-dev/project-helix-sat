@@ -185,10 +185,33 @@ function formatSkillLabel(skillId = '') {
   return humanizeIdentifier(`${skillId}`.replace(/^rw_/, '').replace(/^math_/, ''));
 }
 
-function toConfidenceLabel(confidence = 0) {
-  if (confidence >= 0.6) return 'strong starting signal';
-  if (confidence >= 0.45) return 'usable signal';
-  return 'early read';
+function getProjectionSignal({ confidence = 0, status = 'low_evidence', minimumAttemptsNeeded = 0 } = {}) {
+  if (status === 'insufficient_evidence' || confidence < 0.3) {
+    return {
+      label: 'early estimate',
+      explanation: minimumAttemptsNeeded > 0
+        ? `Helix needs about ${minimumAttemptsNeeded} more meaningful attempts before this range settles.`
+        : 'Helix is still reading your starting point, so this range should be treated as an early estimate.',
+    };
+  }
+
+  if (status === 'low_evidence' || confidence < 0.6) {
+    return {
+      label: 'building signal',
+      explanation: minimumAttemptsNeeded > 0
+        ? `Helix has enough evidence to steer your plan, but another ${minimumAttemptsNeeded} strong attempts should tighten the range.`
+        : 'Helix can steer the next plan now, but the range is still building rather than locked.',
+    };
+  }
+
+  return {
+    label: 'stable signal',
+    explanation: 'Helix has enough recent evidence across sections to treat this range as a stable coaching signal.',
+  };
+}
+
+function toConfidenceLabel(projection = {}) {
+  return getProjectionSignal(projection).label;
 }
 
 function addDays(date, days) {
@@ -695,6 +718,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         ? Number((lastAccuracy - previousAccuracy).toFixed(2))
         : null;
 
+      const signal = getProjectionSignal(projection);
       const reasons = [
         weakestSkill
           ? `The biggest drag is ${formatSkillLabel(weakestSkill.skill_id)}, where mastery and timed mastery are still below your stronger lanes.`
@@ -719,6 +743,8 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           mathHigh: projection.math_high,
         },
         confidence: projection.confidence,
+        signalLabel: signal.label,
+        signalExplanation: signal.explanation,
         momentum: projection.momentum_score ?? 0,
         readiness: projection.readiness_indicator,
         status: projection.status,
@@ -1887,7 +1913,8 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       const plan = api.getPlan(userId);
       const firstBlock = plan.blocks?.find((block) => block.block_type !== 'reflection') ?? plan.blocks?.[0] ?? null;
       const leakLead = topScoreLeaks[0] ?? null;
-      const confidenceLabel = toConfidenceLabel(projection.confidence);
+      const signal = getProjectionSignal(projection);
+      const confidenceLabel = signal.label;
       const latestQuickWinSummary = api.getLatestQuickWinSummary(userId);
 
       let firstRecommendedAction = api.getNextBestAction(userId, { preferSessionStart: true });
@@ -1940,6 +1967,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         },
         confidence: projection.confidence,
         confidenceLabel,
+        confidenceExplanation: signal.explanation,
         momentum: projection.momentum_score ?? 0,
         topScoreLeaks,
         whyThisPlan,

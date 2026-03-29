@@ -4,7 +4,7 @@
   "title": "Projection Evidence",
   "type": "object",
   "additionalProperties": false,
-  "required": ["band", "confidence", "momentum", "readiness", "status", "whyChanged"],
+  "required": ["band", "confidence", "signalLabel", "signalExplanation", "momentum", "readiness", "status", "whyChanged"],
   "properties": {
     "band": {
       "type": "object",
@@ -20,6 +20,8 @@
       }
     },
     "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "signalLabel": { "type": "string", "enum": ["early estimate", "building signal", "stable signal"] },
+    "signalExplanation": { "type": "string", "minLength": 1 },
     "momentum": { "type": "number", "minimum": 0, "maximum": 1 },
     "readiness": {
       "type": "string",

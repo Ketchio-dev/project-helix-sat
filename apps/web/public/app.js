@@ -456,10 +456,14 @@ function renderProjection(projection, evidence = null) {
       ['Reading & Writing', `${source.rw_low} - ${source.rw_high}`],
       ['Math', `${source.math_low} - ${source.math_high}`],
       ['Ready now', source.readiness_indicator],
+      ['Signal', evidence?.signalLabel ?? 'building signal'],
       ['Certainty', `${Math.round(source.confidence * 100)}%`],
       ['Trend', `${Math.round((source.momentum_score ?? 0) * 100)}%`],
     ]),
   );
+  if (evidence?.signalExplanation) {
+    container.append(node('p', { className: 'muted', text: evidence.signalExplanation }));
+  }
   const reasons = evidence?.whyChanged ?? [];
   if (reasons.length) {
     const list = node('ul', { className: 'list compact' });
@@ -1079,7 +1083,7 @@ function renderDiagnosticReveal(reveal) {
   clear(container);
   container.append(node('p', {
     className: 'notice',
-    text: `Score range now: ${reveal.scoreBand.low}–${reveal.scoreBand.high} · ${reveal.confidenceLabel ?? 'early read'} (${Math.round((reveal.confidence ?? 0) * 100)}%) · trend ${Math.round((reveal.momentum ?? 0) * 100)}%`,
+    text: `Score range now: ${reveal.scoreBand.low}–${reveal.scoreBand.high} · ${reveal.confidenceLabel ?? 'early estimate'} (${Math.round((reveal.confidence ?? 0) * 100)}%) · trend ${Math.round((reveal.momentum ?? 0) * 100)}%`,
   }));
 
   if (reveal.whyThisPlan) {

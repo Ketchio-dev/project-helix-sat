@@ -132,6 +132,8 @@ test('learner shell consumes dedicated evidence contracts instead of relying onl
   assert.match(appSource, /\/api\/projection\/evidence/);
   assert.match(appSource, /\/api\/progress\/what-changed/);
   assert.match(appSource, /renderProjection\(dashboard\.projection, projectionEvidence \?\? dashboard\.projectionEvidence\)/);
+  assert.match(appSource, /\['Signal', evidence\?\.signalLabel \?\? 'building signal'\]/);
+  assert.match(appSource, /evidence\.signalExplanation/);
   assert.match(appSource, /renderPlanExplanation\(planExplanation \?\? dashboard\.planExplanation\)/);
   assert.match(appSource, /renderWhatChanged\(whatChanged \?\? dashboard\.whatChanged\)/);
 });
