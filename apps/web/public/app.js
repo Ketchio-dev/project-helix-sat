@@ -521,10 +521,22 @@ function buildLearnerNarrative({ action = null, planExplanation = null, projecti
     ?? weeklyDigest?.recommended_focus?.[0]
     ?? weeklyDigest?.strengths?.[0]
     ?? 'Keep the next action streak alive and Helix will tighten the plan further.';
+  const lessonArcLine = action?.kind
+    ? {
+        complete_goal_setup: 'Start with the target so the next block knows what it is solving for.',
+        start_diagnostic: 'Measure first, then let Helix choose the fastest next lane.',
+        start_quick_win: 'Learn the rule once, then prove it again on a fresh item.',
+        resume_active_session: 'Finish the active block first so the next lesson can rest on real evidence.',
+        start_retry_loop: 'Fix the trap, see it in a fresh example, then stretch it to a close variant.',
+        start_timed_set: 'Push the repaired skill under time pressure, then review what held up.',
+        start_module: 'Take the section block in exam mode, then inspect which domains bent under time pressure.',
+      }[action.kind] ?? null
+    : null;
 
   return {
     headline: actionCopy?.title ?? 'Keep the next move simple',
     summary: actionCopy?.reason ?? planLine,
+    lessonArcLine,
     signalLine,
     planLine,
     thisWeekLine: weekLine,
@@ -1196,6 +1208,7 @@ function renderLearnerNarrative(narrative) {
   section.style.display = 'block';
   if (narrative.headline) container.append(node('p', { className: 'notice', text: narrative.headline }));
   if (narrative.summary) container.append(node('p', { text: narrative.summary }));
+  if (narrative.lessonArcLine) container.append(node('p', { className: 'muted', text: narrative.lessonArcLine }));
   if (narrative.signalLine) container.append(node('p', { className: 'muted', text: narrative.signalLine }));
   if (narrative.planLine) container.append(node('p', { text: narrative.planLine }));
   if (narrative.thisWeekLine) container.append(node('p', { className: 'muted', text: narrative.thisWeekLine }));
@@ -1963,7 +1976,7 @@ function renderReview(review) {
       transferButton.addEventListener('click', async () => startRetryLoop(cardData.transferAction.itemId));
       detailChildren.push(transferButton);
     }
-    card.append(detailsBlock(lessonPack.summaryText, detailChildren));
+    card.append(detailsBlock(lessonPack.arcText ?? lessonPack.summaryText, detailChildren));
     list.append(card);
   }
 

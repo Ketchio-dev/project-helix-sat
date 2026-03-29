@@ -2,6 +2,26 @@ function hasText(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function buildLessonArcText(steps = []) {
+  const titles = new Set(steps.map((step) => step.title));
+  const arcParts = [];
+
+  if (titles.has('Teach card')) {
+    arcParts.push('Learn the rule');
+  }
+  if (titles.has('Worked example')) {
+    arcParts.push('See it modeled');
+  }
+  if (titles.has('Retry pair')) {
+    arcParts.push('Practice the fix');
+  }
+  if (titles.has('Near-transfer pair')) {
+    arcParts.push('Stretch to a close variant');
+  }
+
+  return arcParts.length ? arcParts.join(' · ') : null;
+}
+
 export function describeReviewLessonPack(cardData = {}) {
   const steps = [];
 
@@ -47,6 +67,7 @@ export function describeReviewLessonPack(cardData = {}) {
 
   return {
     steps,
+    arcText: buildLessonArcText(steps),
     summaryText: steps.length
       ? `Open lesson pack · ${steps.map((step) => step.title).join(' · ')}`
       : 'See the fix',

@@ -87,6 +87,7 @@ test('openapi starter contract exposes learning core routes', () => {
   ]) {
     assert.ok(openapi.includes(route), `${route} should exist in OpenAPI starter contract`);
   }
+  assert.ok(openapi.includes('DashboardLearnerResponse'));
 });
 
 test('starter DB schema includes session_items for session-owned assessment flow', () => {

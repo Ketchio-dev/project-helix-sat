@@ -1,6 +1,6 @@
 # Product completion milestones
 
-Last updated: 2026-03-27
+Last updated: 2026-03-29
 
 Related tracking:
 - `docs/security-integrity-issue-log.md` — resolved and follow-up security/integrity issue record
@@ -25,6 +25,35 @@ The current bottleneck is no longer "can it run?" but "does it feel like a produ
 6. **retention through automatic next actions**
 
 Teacher/parent surfaces remain valuable, but they stay behind learner-product completion unless GTM forces them forward.
+
+## Private beta slice — highest-leverage next work
+
+The next slice toward private beta should stay narrow and reviewable while splitting into three lanes:
+
+### Lane 1 — Strengthen exam/practice realism and learner-surface cohesion
+- Keep the learner shell, diagnostic preflight, reveal, quick-win flow, module flow, and return-path copy telling one consistent story about the next best action.
+- Make practice and exam profiles feel section-specific and honest about their shape instead of like one generic block with different labels.
+- Preserve the current no-new-deps posture and keep the exam path pure: the assessment surfaces should stay assessment-first, not instruction-first.
+
+### Lane 2 — Deepen authored lesson-pack and narrative cohesion
+- Keep remediation cards, learner narrative, and quick-win copy aligned around the same teach card / worked example / retry pair / near-transfer pair progression.
+- Make the top learner flows feel authored end to end, not stitched together from separate UI fragments with slightly different vocabulary.
+- Document the canonical remediation story so reviewable diffs stay easy to inspect across content, UI, and audit copy.
+
+### Lane 3 — Expand Playwright/browser QA and guardrails
+- Extend browser smoke coverage across the activation path: signup, goal setup, diagnostic start, reveal, quick win, dashboard review, and exam-profile module start.
+- Keep the smoke runner checking for duplicate IDs, answer-input handling, and section-specific module progress without introducing new runtime dependencies.
+- Keep guardrails explicit in docs so CI failures point to a concrete product surface instead of a generic smoke failure.
+
+Guardrails for all three lanes:
+- no new dependencies
+- exam pure-ACK
+- reviewable diffs
+
+Current milestone mapping:
+- Lane 1 aligns with issues 4.1 and 4.3
+- Lane 2 aligns with issue 4.5
+- Lane 3 aligns with issue 4.4 and the existing Playwright smoke runner
 
 ---
 

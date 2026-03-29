@@ -321,6 +321,7 @@ export function createRouter({ store, webRoot }) {
     registerRoute('GET', pathname, {
       auth: 'authenticated',
       learnerAccess: 'read',
+      responseSchema: pathname === '/api/dashboard/learner' ? 'DashboardLearnerResponse' : null,
       async handler({ auth, learnerId, url }) {
         switch (pathname) {
           case '/api/plan/today':

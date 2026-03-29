@@ -25,6 +25,10 @@ test('describeReviewLessonPack promotes the full lesson-pack sequence when prese
     lessonPack.summaryText,
     'Open lesson pack · Teach card · Worked example · Retry pair · Near-transfer pair',
   );
+  assert.equal(
+    lessonPack.arcText,
+    'Learn the rule · See it modeled · Practice the fix · Stretch to a close variant',
+  );
   assert.deepEqual(
     lessonPack.steps.map((step) => step.title),
     ['Teach card', 'Worked example', 'Retry pair', 'Near-transfer pair'],
@@ -42,6 +46,7 @@ test('describeReviewLessonPack falls back to the available lesson-pack steps onl
   });
 
   assert.equal(lessonPack.summaryText, 'Open lesson pack · Worked example');
+  assert.equal(lessonPack.arcText, 'See it modeled');
   assert.deepEqual(
     lessonPack.steps,
     [

@@ -102,6 +102,10 @@ paths:
       responses:
         '200':
           description: Learner dashboard payload including profile, projection, plan, error DNA, and review snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardLearnerResponse'
   /api/attempt/submit:
     post:
       summary: Submit a learner attempt
@@ -331,6 +335,99 @@ components:
       $ref: ../../packages/schemas/reporting/weekly-report.schema.json
     LearnerNarrative:
       $ref: ../../packages/schemas/reporting/learner-narrative.schema.json
+    DashboardLearnerResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - profile
+        - projection
+        - projectionEvidence
+        - programPath
+        - curriculumPath
+        - weeklyDigest
+        - plan
+        - planExplanation
+        - learnerNarrative
+        - errorDna
+        - errorDnaSummary
+        - whatChanged
+        - items
+        - review
+        - activeSession
+        - sessionHistory
+        - comebackState
+        - completionStreak
+        - studyModes
+        - tomorrowPreview
+        - latestSessionOutcome
+        - latestQuickWinSummary
+        - latestTimedSetSummary
+        - latestModuleSummary
+      properties:
+        profile:
+          type: object
+        projection:
+          $ref: '#/components/schemas/ScorePrediction'
+        projectionEvidence:
+          $ref: '#/components/schemas/ProjectionEvidence'
+        programPath:
+          $ref: '#/components/schemas/ProgramPath'
+        curriculumPath:
+          $ref: '#/components/schemas/CurriculumPath'
+        weeklyDigest:
+          $ref: '#/components/schemas/WeeklyReport'
+        plan:
+          $ref: '#/components/schemas/DailyPlan'
+        planExplanation:
+          $ref: '#/components/schemas/PlanExplanation'
+        learnerNarrative:
+          $ref: '#/components/schemas/LearnerNarrative'
+        errorDna:
+          type: object
+        errorDnaSummary:
+          type: array
+          items:
+            type: object
+        whatChanged:
+          $ref: '#/components/schemas/WhatChanged'
+        items:
+          type: array
+          items:
+            type: object
+        review:
+          type: object
+        activeSession:
+          type: object
+        sessionHistory:
+          type: array
+          items:
+            type: object
+        comebackState:
+          type: object
+        completionStreak:
+          type: object
+        studyModes:
+          type: array
+          items:
+            type: object
+        tomorrowPreview:
+          type: object
+        latestSessionOutcome:
+          type:
+            - object
+            - 'null'
+        latestQuickWinSummary:
+          type:
+            - object
+            - 'null'
+        latestTimedSetSummary:
+          type:
+            - object
+            - 'null'
+        latestModuleSummary:
+          type:
+            - object
+            - 'null'
     EmptyRequest:
       type: object
       additionalProperties: false

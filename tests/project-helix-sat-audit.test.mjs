@@ -11,6 +11,7 @@ const appSource = fs.readFileSync(new URL('../apps/web/public/app.js', import.me
 const reviewLessonPackSource = fs.readFileSync(new URL('../apps/web/public/review-lesson-pack.js', import.meta.url), 'utf8');
 const readmeSource = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
 const contentReadmeSource = fs.readFileSync(new URL('../content/README.md', import.meta.url), 'utf8');
+const milestonesSource = fs.readFileSync(new URL('../docs/product-completion-milestones.md', import.meta.url), 'utf8');
 const apiTestSource = fs.readFileSync(new URL('../tests/api.test.mjs', import.meta.url), 'utf8');
 const smokeRunnerSource = fs.readFileSync(new URL('../scripts/run-playwright-learner-smoke.mjs', import.meta.url), 'utf8');
 const generatedAuditSnapshot = fs.readFileSync(new URL('../docs/audits/project-helix-sat-coverage.md', import.meta.url), 'utf8');
@@ -98,6 +99,7 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(indexSource, /data-student-dashboard-detail/);
   assert.match(indexSource, /Exam Profile/);
   assert.match(appSource, /studentActionCopy/);
+  assert.match(appSource, /lessonArcLine/);
   assert.match(appSource, /Completion streak:/);
   assert.match(appSource, /Next week opportunity/);
   assert.match(appSource, /Practice now/);
@@ -113,6 +115,7 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(appSource, /Standard practice/);
   assert.match(appSource, /Exam profile/);
   assert.match(appSource, /describeReviewLessonPack/);
+  assert.match(reviewLessonPackSource, /arcText/);
   assert.match(reviewLessonPackSource, /Open lesson pack/);
   assert.match(appSource, /More ways to work/);
   assert.match(appSource, /Try this again/);
@@ -152,6 +155,13 @@ test('docs stay aligned with cookie auth and current audit claims', () => {
   assert.doesNotMatch(contentReadmeSource, /Add the smallest safe grid-in/i);
   assert.match(contentReadmeSource, /source of truth/i);
   assert.match(contentReadmeSource, /12-item default \/ 16-item extended/i);
+  assert.match(milestonesSource, /Private beta slice/i);
+  assert.match(milestonesSource, /Strengthen exam\/practice realism and learner-surface cohesion/i);
+  assert.match(milestonesSource, /Deepen authored lesson-pack and narrative cohesion/i);
+  assert.match(milestonesSource, /Expand Playwright\/browser QA and guardrails/i);
+  assert.match(milestonesSource, /no new dependencies/i);
+  assert.match(milestonesSource, /exam pure-ACK/i);
+  assert.match(milestonesSource, /reviewable diffs/i);
   assert.match(contentReadmeSource, /npm run check:docs-truth/);
 });
 

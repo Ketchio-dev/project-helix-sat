@@ -57,6 +57,7 @@ Current audit status (`npm run audit:helix`):
 - The current generator still emits `single_select` only, so hand-authored grid-ins carry the current math format-realism slice
 
 See `docs/sat-coverage-audit.md` for the narrative audit and `content/README.md` for the content-generation guardrails used in this quality-upgrade slice. For the narrower review brief that defines this first upgrade slice, see `docs/quality/bluebook-khan-slice.md`.
+For the next highest-leverage slice toward private beta, see `docs/product-completion-milestones.md`.
 
 ## Guiding product decisions captured here
 1. Canonical content beats freeform generation.

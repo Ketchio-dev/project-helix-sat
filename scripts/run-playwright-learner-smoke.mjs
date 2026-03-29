@@ -69,6 +69,7 @@ async function main() {
 
     await page.getByRole('heading', { name: 'Your next move' }).waitFor();
     await page.getByRole('button', { name: 'Show full study dashboard' }).waitFor();
+    await page.locator('#learnerNarrative').getByText('Measure first', { exact: false }).waitFor();
 
     await expectHidden(page, '#studentSnapshotSection');
     await expectHidden(page, '#studentPlanSection');
@@ -113,11 +114,15 @@ async function main() {
     await page.locator('#weeklyDigest').getByText('Next week opportunity', { exact: false }).waitFor();
     const reviewRecommendations = page.locator('#reviewRecommendations');
     const firstLessonPack = reviewRecommendations.locator('details').first();
-    await firstLessonPack.getByText('Open lesson pack', { exact: false }).waitFor();
+    await firstLessonPack.getByText('Learn the rule', { exact: false }).waitFor();
     await reviewRecommendations.getByRole('button', { name: 'Try this again' }).first().waitFor();
     await reviewRecommendations.getByRole('button', { name: 'Try a close variant' }).first().waitFor();
     await firstLessonPack.locator('summary').click();
     const lessonPackText = await firstLessonPack.textContent();
+    assert.match(lessonPackText ?? '', /Learn the rule/);
+    assert.match(lessonPackText ?? '', /See it modeled/);
+    assert.match(lessonPackText ?? '', /Practice the fix/);
+    assert.match(lessonPackText ?? '', /Stretch to a close variant/);
     assert.match(lessonPackText ?? '', /Teach card/);
     assert.match(lessonPackText ?? '', /Worked example/);
     assert.match(lessonPackText ?? '', /Retry pair/);
@@ -125,6 +130,7 @@ async function main() {
     await page.locator('#moduleSection').selectOption('math');
     await page.locator('#moduleRealismProfile').selectOption('exam');
     await page.locator('#startModule').click();
+    await page.locator('#moduleSummary').getByText('Exam profile', { exact: false }).waitFor();
     await page.locator('#diagnosticStatus').getByText('Module Simulation (Math) progress: 0/22 answered', { exact: false }).waitFor();
 
   } finally {

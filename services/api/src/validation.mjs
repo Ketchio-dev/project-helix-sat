@@ -95,6 +95,259 @@ const nextBestActionResponseSchema = {
   },
 };
 
+const errorInsightSchema = {
+  type: 'object',
+  required: ['tag', 'label', 'score', 'summary'],
+  additionalProperties: false,
+  properties: {
+    tag: { type: 'string', minLength: 1 },
+    label: { type: 'string', minLength: 1 },
+    score: { type: 'number', minimum: 0 },
+    summary: { type: 'string', minLength: 1 },
+  },
+};
+
+const dashboardProfileResponseSchema = {
+  type: 'object',
+  required: ['id', 'name', 'targetScore', 'targetTestDate', 'dailyMinutes', 'preferredExplanationLanguage', 'lastSessionSummary'],
+  additionalProperties: false,
+  properties: {
+    id: { type: 'string', minLength: 1 },
+    name: { type: 'string', minLength: 1 },
+    targetScore: { type: ['number', 'null'], minimum: 400, maximum: 1600 },
+    targetTestDate: { type: ['string', 'null'] },
+    dailyMinutes: { type: ['number', 'null'], minimum: 5, maximum: 600 },
+    preferredExplanationLanguage: { type: ['string', 'null'] },
+    lastSessionSummary: { type: ['string', 'null'] },
+  },
+};
+
+const dashboardItemChoiceSchema = {
+  type: 'object',
+  required: ['key', 'label', 'text'],
+  additionalProperties: false,
+  properties: {
+    key: { type: 'string', minLength: 1 },
+    label: { type: 'string', minLength: 1 },
+    text: { type: 'string', minLength: 1 },
+  },
+};
+
+const dashboardItemSchema = {
+  type: 'object',
+  required: ['itemId', 'section', 'domain', 'skill', 'difficulty_band', 'item_format', 'stem', 'prompt', 'status', 'tags', 'estimatedTimeSec'],
+  additionalProperties: false,
+  properties: {
+    itemId: { type: 'string', minLength: 1 },
+    section: { enum: ['reading_writing', 'math'] },
+    domain: { type: 'string', minLength: 1 },
+    skill: { type: 'string', minLength: 1 },
+    difficulty_band: { type: 'string', minLength: 1 },
+    item_format: { type: 'string', minLength: 1 },
+    stem: { type: 'string', minLength: 1 },
+    prompt: { type: 'string', minLength: 1 },
+    passage: { type: ['string', 'null'] },
+    choices: {
+      type: ['array', 'null'],
+      items: dashboardItemChoiceSchema,
+    },
+    responseValidation: { type: ['object', 'null'] },
+    status: { type: 'string', minLength: 1 },
+    tags: {
+      type: 'array',
+      items: { type: 'string', minLength: 1 },
+    },
+    estimatedTimeSec: { type: 'integer', minimum: 1 },
+  },
+};
+
+const reviewRecommendationsResponseSchema = {
+  type: 'object',
+  required: ['generatedAt', 'dominantError', 'reflectionPrompt', 'recommendations', 'remediationCards', 'revisitQueue', 'lastReflection'],
+  additionalProperties: false,
+  properties: {
+    generatedAt: { type: 'string', minLength: 1 },
+    dominantError: { type: ['string', 'null'] },
+    reflectionPrompt: { type: 'string', minLength: 1 },
+    recommendations: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['itemId', 'section', 'skill', 'prompt', 'reason', 'recommendedAction', 'rationalePreview', 'errorTag'],
+        additionalProperties: false,
+        properties: {
+          itemId: { type: 'string', minLength: 1 },
+          section: { type: 'string', minLength: 1 },
+          skill: { type: 'string', minLength: 1 },
+          prompt: { type: 'string', minLength: 1 },
+          reason: { type: 'string', minLength: 1 },
+          recommendedAction: { type: 'string', minLength: 1 },
+          rationalePreview: { type: ['string', 'null'] },
+          errorTag: { type: ['string', 'null'] },
+        },
+      },
+    },
+    remediationCards: {
+      type: 'array',
+      items: { type: 'object' },
+    },
+    revisitQueue: {
+      type: 'array',
+      items: { type: 'object' },
+    },
+    lastReflection: {
+      type: ['object', 'null'],
+    },
+  },
+};
+
+const activeSessionEnvelopeSchema = {
+  type: 'object',
+  required: ['hasActiveSession', 'resumeAvailable', 'activeSession'],
+  additionalProperties: false,
+  properties: {
+    hasActiveSession: { type: 'boolean' },
+    resumeAvailable: { type: 'boolean' },
+    resumeReason: { type: ['string', 'null'] },
+    resumeMessage: { type: ['string', 'null'] },
+    activeSession: { type: ['object', 'null'] },
+    session: { type: ['object', 'null'] },
+    sessionItems: {
+      type: ['array', 'null'],
+      items: { type: 'object' },
+    },
+    sessionProgress: {
+      type: ['object', 'null'],
+      properties: sessionProgressSchema.properties,
+      required: sessionProgressSchema.required,
+      additionalProperties: false,
+    },
+    timing: { type: ['object', 'null'] },
+    currentItem: { type: ['object', 'null'] },
+  },
+};
+
+const sessionHistoryEntrySchema = {
+  type: 'object',
+  required: ['sessionId', 'type', 'status', 'section', 'startedAt', 'endedAt', 'examMode', 'timeLimitSec', 'recommendedPaceSec', 'answered', 'totalItems', 'attemptCount', 'attemptsCount', 'correctCount', 'accuracy', 'accuracyRate', 'averageResponseTimeMs', 'lastReflection', 'latestReflection', 'timedSummary', 'moduleSummary'],
+  additionalProperties: false,
+  properties: {
+    sessionId: { type: 'string', minLength: 1 },
+    type: { type: 'string', minLength: 1 },
+    status: { enum: ['active', 'complete'] },
+    section: { type: ['string', 'null'] },
+    startedAt: { type: 'string', minLength: 1 },
+    endedAt: { type: ['string', 'null'] },
+    examMode: { type: 'boolean' },
+    timeLimitSec: { type: ['integer', 'null'], minimum: 1 },
+    recommendedPaceSec: { type: ['integer', 'null'], minimum: 1 },
+    answered: { type: 'integer', minimum: 0 },
+    totalItems: { type: 'integer', minimum: 0 },
+    attemptCount: { type: 'integer', minimum: 0 },
+    attemptsCount: { type: 'integer', minimum: 0 },
+    correctCount: { type: 'integer', minimum: 0 },
+    accuracy: { type: ['number', 'null'], minimum: 0, maximum: 1 },
+    accuracyRate: { type: ['number', 'null'], minimum: 0, maximum: 1 },
+    averageResponseTimeMs: { type: ['integer', 'null'], minimum: 0 },
+    lastReflection: { type: ['string', 'null'] },
+    latestReflection: { type: ['string', 'null'] },
+    timedSummary: { type: ['object', 'null'] },
+    moduleSummary: { type: ['object', 'null'] },
+  },
+};
+
+const dashboardLearnerResponseSchema = {
+  type: 'object',
+  required: ['profile', 'projection', 'projectionEvidence', 'programPath', 'curriculumPath', 'weeklyDigest', 'plan', 'planExplanation', 'learnerNarrative', 'errorDna', 'errorDnaSummary', 'whatChanged', 'items', 'review', 'activeSession', 'sessionHistory', 'comebackState', 'completionStreak', 'studyModes', 'tomorrowPreview', 'latestSessionOutcome', 'latestQuickWinSummary', 'latestTimedSetSummary', 'latestModuleSummary'],
+  additionalProperties: false,
+  properties: {
+    profile: dashboardProfileResponseSchema,
+    projection: loadedSchemas.get('scoring/score-prediction.schema.json'),
+    projectionEvidence: loadedSchemas.get('scoring/projection-evidence.schema.json'),
+    programPath: loadedSchemas.get('planning/program-path.schema.json'),
+    curriculumPath: loadedSchemas.get('planning/curriculum-path.schema.json'),
+    weeklyDigest: loadedSchemas.get('reporting/weekly-report.schema.json'),
+    plan: loadedSchemas.get('planning/daily-plan.schema.json'),
+    planExplanation: loadedSchemas.get('planning/plan-explanation.schema.json'),
+    learnerNarrative: loadedSchemas.get('reporting/learner-narrative.schema.json'),
+    errorDna: {
+      type: 'object',
+      additionalProperties: { type: 'integer', minimum: 0 },
+    },
+    errorDnaSummary: {
+      type: 'array',
+      items: errorInsightSchema,
+    },
+    whatChanged: loadedSchemas.get('reporting/what-changed.schema.json'),
+    items: {
+      type: 'array',
+      items: dashboardItemSchema,
+    },
+    review: reviewRecommendationsResponseSchema,
+    activeSession: activeSessionEnvelopeSchema,
+    sessionHistory: {
+      type: 'array',
+      items: sessionHistoryEntrySchema,
+    },
+    comebackState: {
+      type: 'object',
+      required: ['isReturning', 'daysAway', 'headline', 'prompt', 'lastCompletedAt'],
+      additionalProperties: false,
+      properties: {
+        isReturning: { type: 'boolean' },
+        daysAway: { type: 'integer', minimum: 0 },
+        headline: { type: ['string', 'null'] },
+        prompt: { type: ['string', 'null'] },
+        lastCompletedAt: { type: ['string', 'null'] },
+      },
+    },
+    completionStreak: {
+      type: 'object',
+      required: ['current', 'best', 'lastCompletedDate', 'activeToday', 'atRisk', 'headline', 'prompt'],
+      additionalProperties: false,
+      properties: {
+        current: { type: 'integer', minimum: 0 },
+        best: { type: 'integer', minimum: 0 },
+        lastCompletedDate: { type: ['string', 'null'] },
+        activeToday: { type: 'boolean' },
+        atRisk: { type: 'boolean' },
+        headline: { type: 'string', minLength: 1 },
+        prompt: { type: 'string', minLength: 1 },
+      },
+    },
+    studyModes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['key', 'label', 'minutes', 'summary', 'action'],
+        additionalProperties: false,
+        properties: {
+          key: { type: 'string', minLength: 1 },
+          label: { type: 'string', minLength: 1 },
+          minutes: { type: ['integer', 'null'], minimum: 1 },
+          summary: { type: 'string', minLength: 1 },
+          action: nextBestActionResponseSchema,
+        },
+      },
+    },
+    tomorrowPreview: {
+      type: 'object',
+      required: ['headline', 'reason', 'plannedMinutes', 'action'],
+      additionalProperties: false,
+      properties: {
+        headline: { type: 'string', minLength: 1 },
+        reason: { type: 'string', minLength: 1 },
+        plannedMinutes: { type: ['integer', 'null'], minimum: 1 },
+        action: nextBestActionResponseSchema,
+      },
+    },
+    latestSessionOutcome: { type: ['object', 'null'] },
+    latestQuickWinSummary: { type: ['object', 'null'] },
+    latestTimedSetSummary: { type: ['object', 'null'] },
+    latestModuleSummary: { type: ['object', 'null'] },
+  },
+};
+
 const responseSchemas = new Map([
   ['DailyPlan', loadedSchemas.get('planning/daily-plan.schema.json')],
   ['PlanExplanation', loadedSchemas.get('planning/plan-explanation.schema.json')],
@@ -107,6 +360,7 @@ const responseSchemas = new Map([
   ['WeeklyReport', loadedSchemas.get('reporting/weekly-report.schema.json')],
   ['WhatChanged', loadedSchemas.get('reporting/what-changed.schema.json')],
   ['LearnerNarrative', loadedSchemas.get('reporting/learner-narrative.schema.json')],
+  ['DashboardLearnerResponse', dashboardLearnerResponseSchema],
   ['AuthSessionResponse', authSessionResponseSchema],
   ['MeResponse', {
     type: 'object',

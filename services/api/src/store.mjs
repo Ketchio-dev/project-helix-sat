@@ -245,6 +245,29 @@ function toLearnerPrimaryAction(action = null) {
   }
 }
 
+function toLearnerLessonArc(action = null) {
+  if (!action) return null;
+
+  switch (action.kind) {
+    case 'complete_goal_setup':
+      return 'Start with the target so the next block knows what it is solving for.';
+    case 'start_diagnostic':
+      return 'Measure first, then let Helix choose the fastest next lane.';
+    case 'start_quick_win':
+      return 'Learn the rule once, then prove it again on a fresh item.';
+    case 'resume_active_session':
+      return 'Finish the active block first so the next lesson can rest on real evidence.';
+    case 'start_retry_loop':
+      return 'Fix the trap, see it in a fresh example, then stretch it to a close variant.';
+    case 'start_timed_set':
+      return 'Push the repaired skill under time pressure, then review what held up.';
+    case 'start_module':
+      return 'Take the section block in exam mode, then inspect which domains bent under time pressure.';
+    default:
+      return null;
+  }
+}
+
 function getProjectionSignal({ confidence = 0, status = 'low_evidence', minimumAttemptsNeeded = 0 } = {}) {
   if (status === 'insufficient_evidence' || confidence < 0.3) {
     return {
@@ -1013,6 +1036,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       return {
         headline: primaryAction?.title ?? 'Keep the next move simple',
         summary: primaryAction?.reason ?? planExplanation.headline,
+        lessonArcLine: toLearnerLessonArc(primaryAction),
         signalLine: projectionEvidence?.signalLabel
           ? `Score signal: ${projectionEvidence.signalLabel}. ${projectionEvidence.signalExplanation ?? ''}`.trim()
           : 'Score signal is still forming.',

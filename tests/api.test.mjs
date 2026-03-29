@@ -194,6 +194,7 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
     assert.equal(typeof learnerNarrative.headline, 'string');
     assert.ok(Array.isArray(learnerNarrative.proofPoints));
     assert.ok(learnerNarrative.proofPoints.length >= 1);
+    assert.equal(typeof learnerNarrative.lessonArcLine, 'string');
     assert.deepEqual(whatChanged, dashboardBefore.whatChanged);
 
     const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {

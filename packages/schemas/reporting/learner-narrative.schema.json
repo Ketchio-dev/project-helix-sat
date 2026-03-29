@@ -8,6 +8,7 @@
   "properties": {
     "headline": { "type": "string", "minLength": 1 },
     "summary": { "type": "string", "minLength": 1 },
+    "lessonArcLine": { "type": ["string", "null"], "minLength": 1 },
     "signalLine": { "type": "string", "minLength": 1 },
     "planLine": { "type": "string", "minLength": 1 },
     "thisWeekLine": { "type": "string", "minLength": 1 },
