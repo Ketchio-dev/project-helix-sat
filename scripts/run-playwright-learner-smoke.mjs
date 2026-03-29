@@ -105,6 +105,11 @@ async function main() {
     await page.locator('#quickWinSection').waitFor({ state: 'visible' });
     await page.locator('#quickWinSection h2').waitFor({ state: 'visible' });
 
+    await page.locator('#refreshDashboard').click();
+    await page.getByRole('button', { name: 'Show full study dashboard' }).click();
+    await page.locator('#returnPath').getByText('Completion streak:', { exact: false }).waitFor();
+    await page.locator('#weeklyDigest').getByText('Next week opportunity', { exact: false }).waitFor();
+
   } finally {
     await browser.close();
   }

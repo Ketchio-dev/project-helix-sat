@@ -103,6 +103,8 @@ test('repo ships a no-dependency playwright learner smoke runner', () => {
   assert.match(smokeRunnerSource, /Your 12-minute starting point/);
   assert.match(smokeRunnerSource, /Take the 2-minute win/);
   assert.match(smokeRunnerSource, /#quickWinSection/);
+  assert.match(smokeRunnerSource, /Completion streak:/);
+  assert.match(smokeRunnerSource, /Next week opportunity/);
 });
 
 test('docs stay aligned with cookie auth and current audit claims', () => {
