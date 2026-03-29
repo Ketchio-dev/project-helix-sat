@@ -348,6 +348,7 @@ components:
           enum:
             - standard
             - extended
+            - exam
     SessionIdRequest:
       type: object
       additionalProperties: false

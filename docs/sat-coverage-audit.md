@@ -28,7 +28,7 @@ Project Helix SAT now **covers the full ontology slice in its shipped audit** an
 - First-run diagnostic remains a **13-item baseline** across both sections
 - Timed sets still provide short exam-mode reps
 - Module simulation still defaults to a **12-item** section-specific exam block
-- The learner shell now also exposes **optional 16-item extended modules** for denser Reading/Writing and Math practice, while the standard audit snapshot stays on the default 12-item shape
+- The learner shell now also exposes **optional 16-item extended modules** for denser Reading/Writing and Math practice plus an **exam profile** at 27 Reading/Writing items / 22 Math items, while the standard audit snapshot stays on the default 12-item shape
 - Completed sessions expose **Review Session** actions backed by `/api/session/review`
 - Remediation cards now carry more authored teaching language instead of relying only on raw rationale summaries
 
@@ -65,4 +65,4 @@ Project Helix SAT now **covers the full ontology slice in its shipped audit** an
 
 ## Bottom line
 
-Today the product is a believable **two-section SAT prototype** with a 79-item bank, full ontology-slice coverage in the audit, a 14-item math numeric-entry slice, stronger authored remediation cards, a 13-item onboarding baseline diagnostic, a 12-item default module path, and optional 16-item extended modules for both sections. It is much closer to a real curriculum-backed SAT product than it was a few slices ago, but module realism and deeper authored instruction are still the clearest next bottlenecks.
+Today the product is a believable **two-section SAT prototype** with a 79-item bank, full ontology-slice coverage in the audit, a 14-item math numeric-entry slice, stronger authored remediation cards, a 13-item onboarding baseline diagnostic, a 12-item default module path, optional 16-item extended modules for both sections, and a larger exam profile at 27 Reading/Writing items / 22 Math items. It is much closer to a real curriculum-backed SAT product than it was a few slices ago, but module realism and deeper authored instruction are still the clearest next bottlenecks.

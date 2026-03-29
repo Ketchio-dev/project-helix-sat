@@ -24,11 +24,13 @@ const MODULE_SESSION_SHAPE = {
     itemCount: 12,
     recommendedPaceSec: 95,
     extended: { itemCount: 16, recommendedPaceSec: 90 },
+    exam: { itemCount: 27, recommendedPaceSec: 71, timeLimitSec: 1920 },
   },
   math: {
     itemCount: 12,
     recommendedPaceSec: 105,
     extended: { itemCount: 16, recommendedPaceSec: 100 },
+    exam: { itemCount: 22, recommendedPaceSec: 95, timeLimitSec: 2100 },
   },
 };
 
@@ -330,12 +332,16 @@ function getSessionElapsedSec(session) {
 
 function getModuleSessionShape(section = 'math', options = {}) {
   const baseShape = MODULE_SESSION_SHAPE[section] ?? MODULE_SESSION_SHAPE.math;
+  if (options?.realismProfile === 'exam' && baseShape?.exam) {
+    return baseShape.exam;
+  }
   if (options?.realismProfile === 'extended' && baseShape?.extended) {
     return baseShape.extended;
   }
   return {
     itemCount: baseShape.itemCount,
     recommendedPaceSec: baseShape.recommendedPaceSec,
+    timeLimitSec: baseShape.itemCount * baseShape.recommendedPaceSec,
   };
 }
 
@@ -1496,6 +1502,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       }
 
       const sectionName = session.section ? sectionLabel(session.section) : null;
+      const realismProfile = session.realism_profile ?? 'standard';
 
       let readinessSignal = 'needs_evidence';
       let nextAction = sectionName
@@ -1510,8 +1517,12 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         if (accuracy >= 0.75 && paceStatus === 'on_pace') {
           readinessSignal = 'ready_to_extend';
           nextAction = sectionName
-            ? `Lock in this ${sectionName} pacing with one follow-up timed set, then escalate to a harder ${sectionName} module.`
-            : 'Lock in this pacing with one follow-up timed set, then escalate to a harder section-specific module.';
+            ? (realismProfile === 'exam'
+              ? `You handled the longer ${sectionName} exam profile on pace. Review the misses before repeating another exam-length block.`
+              : `Lock in this ${sectionName} pacing with one follow-up timed set, then escalate to a harder ${sectionName} module.`)
+            : (realismProfile === 'exam'
+              ? 'You handled the longer exam profile on pace. Review the misses before repeating another exam-length block.'
+              : 'Lock in this pacing with one follow-up timed set, then escalate to a harder section-specific module.');
         } else if (accuracy >= 0.5) {
           readinessSignal = 'stabilize_then_repeat';
           nextAction = sectionName
@@ -2389,7 +2400,13 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       const {
         itemCount: moduleItemCount,
         recommendedPaceSec,
+        timeLimitSec,
       } = getModuleSessionShape(section, options);
+      const realismProfile = options?.realismProfile === 'exam'
+        ? 'exam'
+        : options?.realismProfile === 'extended'
+          ? 'extended'
+          : 'standard';
       const moduleItems = selectSessionItems(
         Object.values(state.items),
         api.getSkillStates(userId),
@@ -2407,8 +2424,9 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         user_id: userId,
         type: 'module_simulation',
         exam_mode: true,
-        time_limit_sec: moduleItemCount * recommendedPaceSec,
+        time_limit_sec: timeLimitSec ?? moduleItemCount * recommendedPaceSec,
         recommended_pace_sec: recommendedPaceSec,
+        realism_profile: realismProfile,
         section,
         started_at: new Date().toISOString(),
       };
@@ -2425,7 +2443,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         userId,
         sessionId: session.id,
         eventName: 'module_started',
-        payload: { mode: 'exam', timeLimitSec: session.time_limit_sec, itemCount: assignedItems.length, section },
+        payload: { mode: 'exam', timeLimitSec: session.time_limit_sec, itemCount: assignedItems.length, section, realismProfile },
       }));
       persistState();
       return api.buildSessionPayload(session, { started: true, resumed: false, conflict: false });

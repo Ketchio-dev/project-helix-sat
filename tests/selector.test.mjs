@@ -97,6 +97,21 @@ describe('selectSessionItems', () => {
     assert.ok(new Set(result.map((item) => item.domain)).size >= 4);
   });
 
+  it('exam math module_simulation blocks surface a larger numeric-entry slice', () => {
+    const result = selectSessionItems(demoItems, [], 'module_simulation', 22, [], {}, { section: 'math', realismProfile: 'exam' });
+    assert.equal(result.length, 22);
+    assert.ok(result.filter((item) => item.item_format === 'grid_in').length >= 5);
+    assert.ok(new Set(result.map((item) => item.skill)).size >= 10);
+  });
+
+  it('exam reading-writing module_simulation blocks stay section-pure while scaling breadth', () => {
+    const result = selectSessionItems(demoItems, [], 'module_simulation', 27, [], {}, { section: 'reading_writing', realismProfile: 'exam' });
+    assert.equal(result.length, 27);
+    assert.ok(result.every((item) => item.section === 'reading_writing'));
+    assert.ok(new Set(result.map((item) => item.skill)).size >= 7);
+    assert.ok(new Set(result.map((item) => item.domain)).size >= 4);
+  });
+
 
   it('recentItemIds filters out recently seen items', () => {
     const recentIds = demoItems.slice(0, 3).map((item) => item.itemId);
