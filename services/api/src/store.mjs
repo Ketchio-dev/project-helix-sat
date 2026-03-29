@@ -2476,6 +2476,33 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
 
     startDiagnostic(userId = DEMO_USER_ID) {
       api.getUser(userId);
+      const activeDiagnosticSession = api.getActiveSessions(userId).find((session) => session.type === 'diagnostic') ?? null;
+      if (activeDiagnosticSession) {
+        state.events.push(createEvent({
+          userId,
+          sessionId: activeDiagnosticSession.id,
+          eventName: 'diagnostic_session_resume_required',
+          payload: {
+            requestedSessionType: 'diagnostic',
+            activeSessionType: activeDiagnosticSession.type,
+          },
+        }));
+        persistState();
+
+        return {
+          started: false,
+          resumed: true,
+          conflict: true,
+          reason: 'active_diagnostic_session_exists',
+          requestedSessionType: 'diagnostic',
+          conflictMessage: 'Finish or resume the current diagnostic before starting another one.',
+          activeSession: api.buildSessionPayload(activeDiagnosticSession, {
+            started: false,
+            resumed: true,
+            conflict: true,
+          }),
+        };
+      }
       const learnerProfile = state.learnerProfiles[userId] ?? {};
       const session = {
         id: createId('sess'),

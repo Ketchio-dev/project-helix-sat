@@ -31,6 +31,19 @@ describe('selectSessionItems', () => {
     assert.equal(result.filter((item) => item.section === 'math').length, 8);
     assert.equal(result.filter((item) => item.item_format === 'grid_in').length, 1);
     assert.ok(result.some((item) => item.difficulty_band === 'hard'));
+    assert.ok(new Set(result.filter((item) => item.section === 'reading_writing').map((item) => item.domain)).size >= 3);
+    assert.ok(new Set(result.filter((item) => item.section === 'math').map((item) => item.domain)).size >= 3);
+  });
+
+  it('baseline diagnostic keeps minimum domain breadth across multiple seeds', () => {
+    for (const seed of ['baseline-form-a', 'baseline-form-b', 'baseline-form-c', 'baseline-form-d', 'baseline-form-e']) {
+      const result = selectSessionItems(demoItems, [], 'diagnostic', 13, [], {}, {
+        seed,
+        selfReportedWeakArea: 'algebra',
+      });
+      assert.equal(new Set(result.filter((item) => item.section === 'reading_writing').map((item) => item.domain)).size >= 3, true, `expected >=3 R&W domains for ${seed}`);
+      assert.equal(new Set(result.filter((item) => item.section === 'math').map((item) => item.domain)).size >= 3, true, `expected >=3 Math domains for ${seed}`);
+    }
   });
 
   it('timed_set returns requested count', () => {

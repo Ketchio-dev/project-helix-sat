@@ -393,7 +393,8 @@ export function createRouter({ store, webRoot }) {
     auth: 'authenticated',
     learnerAccess: 'owner',
     async handler({ learnerId }) {
-      return { body: store.startDiagnostic(learnerId), statusCode: 201 };
+      const result = store.startDiagnostic(learnerId);
+      return { body: result, statusCode: result.conflict ? 409 : 201 };
     },
   });
 

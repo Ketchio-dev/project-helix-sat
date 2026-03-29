@@ -22,6 +22,7 @@ export const EVENT_NAMES = [
   'reflection_submitted',
   'teacher_assignment_saved',
   'exam_session_resume_required',
+  'diagnostic_session_resume_required',
   'streak_kept',
   'streak_broken',
 ];

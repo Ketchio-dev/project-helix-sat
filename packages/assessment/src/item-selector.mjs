@@ -215,6 +215,62 @@ function rebalanceDifficulty(items, quotas, candidates, usedIds, usedSkills, ski
   return items;
 }
 
+function countDomains(items = []) {
+  return items.reduce((counts, item) => {
+    counts[item.domain] = (counts[item.domain] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function syncUsedSets(selection, usedIds, usedSkills) {
+  usedIds.clear();
+  usedSkills.clear();
+  selection.forEach((item) => {
+    usedIds.add(item.itemId);
+    usedSkills.add(item.skill);
+  });
+}
+
+function ensureMinimumDomains(selection, candidates, minimumDomains, usedIds, usedSkills, skillOrder, exposureCounts = {}, options = {}) {
+  if (new Set(selection.map((item) => item.domain)).size >= minimumDomains) {
+    return selection;
+  }
+
+  const orderedCandidates = sortDiagnosticCandidates(candidates, skillOrder, exposureCounts);
+  let workingSelection = [...selection];
+  const protectsStudentResponse = options.preserveStudentResponse === true;
+
+  for (const candidate of orderedCandidates) {
+    const currentDomains = new Set(workingSelection.map((item) => item.domain));
+    if (currentDomains.size >= minimumDomains) break;
+    if (usedIds.has(candidate.itemId) || currentDomains.has(candidate.domain)) continue;
+
+    const domainCounts = countDomains(workingSelection);
+    const replaceable = workingSelection
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => domainCounts[item.domain] > 1)
+      .filter(({ item }) => !(protectsStudentResponse && isStudentProducedResponseItem(item)))
+      .sort((left, right) => {
+        const sameDifficultyDelta = Number(right.item.difficulty_band === candidate.difficulty_band)
+          - Number(left.item.difficulty_band === candidate.difficulty_band);
+        if (sameDifficultyDelta !== 0) return sameDifficultyDelta;
+
+        const domainDelta = domainCounts[right.item.domain] - domainCounts[left.item.domain];
+        if (domainDelta !== 0) return domainDelta;
+
+        return compareDiagnostic(left.item, right.item, skillOrder, exposureCounts);
+      });
+
+    const replacement = replaceable[0] ?? null;
+    if (!replacement) continue;
+
+    workingSelection[replacement.index] = candidate;
+    syncUsedSets(workingSelection, usedIds, usedSkills);
+  }
+
+  return workingSelection;
+}
+
 function orderBaselineBlocks(items) {
   const difficultyWeight = { easy: 0, medium: 1, hard: 2 };
   const rw = items
@@ -302,8 +358,32 @@ function selectBaselineDiagnosticItems(items, count, skillOrder, exposureCounts 
 
   rebalanceDifficulty(selectedRw, { easy: 1, medium: 3, hard: 1 }, rwCandidates, usedIds, usedSkills, skillOrder, exposureCounts);
   selectedMath = rebalanceDifficulty(selectedMath, { easy: 1, medium: 5, hard: 2 }, mathCandidates, usedIds, usedSkills, skillOrder, exposureCounts);
+  const combinedSelection = [...selectedRw, ...selectedMath];
+  syncUsedSets(combinedSelection, usedIds, usedSkills);
+  const diversifiedRw = ensureMinimumDomains(
+    selectedRw,
+    rwCandidates,
+    3,
+    usedIds,
+    usedSkills,
+    skillOrder,
+    exposureCounts,
+  );
+  const diversifiedCombined = [...diversifiedRw, ...selectedMath];
+  syncUsedSets(diversifiedCombined, usedIds, usedSkills);
+  const diversifiedMath = ensureMinimumDomains(
+    selectedMath,
+    mathCandidates,
+    3,
+    usedIds,
+    usedSkills,
+    skillOrder,
+    exposureCounts,
+    { preserveStudentResponse: true },
+  );
+  syncUsedSets([...diversifiedRw, ...diversifiedMath], usedIds, usedSkills);
 
-  const combined = [...selectedRw.slice(0, 5), ...selectedMath.slice(0, 8)];
+  const combined = [...diversifiedRw.slice(0, 5), ...diversifiedMath.slice(0, 8)];
   fillSelection(combined, sortDiagnosticCandidates(items, skillOrder, exposureCounts), count, usedIds, usedSkills);
   return orderBaselineBlocks(combined.slice(0, count));
 }

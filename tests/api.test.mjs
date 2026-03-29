@@ -274,6 +274,33 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
   });
 });
 
+test('api blocks starting a second active diagnostic session with a 409 conflict', async () => {
+  await withAuthedServer(async (baseUrl, sessions) => {
+    const firstDiagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
+      method: 'POST',
+      headers: sessions.student.headers,
+      body: JSON.stringify({}),
+    });
+    assert.equal(firstDiagnostic.status, 201);
+    const firstPayload = await firstDiagnostic.json();
+
+    const conflictResponse = await fetch(`${baseUrl}/api/diagnostic/start`, {
+      method: 'POST',
+      headers: sessions.student.headers,
+      body: JSON.stringify({}),
+    });
+    assert.equal(conflictResponse.status, 409);
+    const conflict = await conflictResponse.json();
+    assert.equal(conflict.conflict, true);
+    assert.equal(conflict.reason, 'active_diagnostic_session_exists');
+    assert.equal(conflict.requestedSessionType, 'diagnostic');
+    assert.equal(conflict.activeSession.session.id, firstPayload.session.id);
+    assert.equal(conflict.activeSession.session.type, 'diagnostic');
+    assert.equal(conflict.activeSession.currentItem.itemId, firstPayload.currentItem.itemId);
+    assert.equal(conflict.activeSession.sessionProgress.answered, 0);
+  });
+});
+
 test('api rejects items that do not belong to the active session', async () => {
   await withAuthedServer(async (baseUrl, sessions) => {
     const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {
