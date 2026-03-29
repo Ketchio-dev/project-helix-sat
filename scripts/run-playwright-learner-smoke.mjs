@@ -164,6 +164,54 @@ async function main() {
     await page.locator('#startModule').click();
     await page.locator('#diagnosticStatus').getByText('Module Simulation (Math) progress: 0/22 answered', { exact: false }).waitFor();
 
+    // ── Visual-redesign regression guardrails ──────────
+    const designTokens = await page.evaluate(() => {
+      const root = getComputedStyle(document.documentElement);
+      return {
+        bg: root.getPropertyValue('--bg').trim(),
+        accent: root.getPropertyValue('--accent').trim(),
+        radiusSm: root.getPropertyValue('--radius-sm').trim(),
+        radiusMd: root.getPropertyValue('--radius-md').trim(),
+        radiusLg: root.getPropertyValue('--radius-lg').trim(),
+        transition: root.getPropertyValue('--transition').trim(),
+      };
+    });
+    assert.ok(designTokens.bg, 'CSS variable --bg should be defined');
+    assert.ok(designTokens.accent, 'CSS variable --accent should be defined');
+    assert.ok(designTokens.radiusSm, 'CSS variable --radius-sm should be defined');
+    assert.ok(designTokens.radiusMd, 'CSS variable --radius-md should be defined');
+    assert.ok(designTokens.radiusLg, 'CSS variable --radius-lg should be defined');
+    assert.ok(designTokens.transition, 'CSS variable --transition should be defined');
+
+    const heroStyles = await page.locator('.hero').evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { borderRadius: s.borderRadius, display: s.display };
+    });
+    assert.equal(heroStyles.display, 'flex', 'Hero should use flex layout');
+    assert.ok(parseInt(heroStyles.borderRadius, 10) >= 16, 'Hero border-radius should be >= 16px (premium)');
+
+    const cardStyles = await page.locator('.card').first().evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { borderRadius: s.borderRadius, background: s.backgroundColor };
+    });
+    assert.ok(parseInt(cardStyles.borderRadius, 10) >= 16, 'Card border-radius should be >= 16px');
+
+    const choiceLabels = await page.locator('.choice').count();
+    if (choiceLabels > 0) {
+      const choiceStyles = await page.locator('.choice').first().evaluate((el) => {
+        const s = getComputedStyle(el);
+        return { cursor: s.cursor, borderRadius: s.borderRadius };
+      });
+      assert.equal(choiceStyles.cursor, 'pointer', 'Choice items should have pointer cursor');
+      assert.ok(parseInt(choiceStyles.borderRadius, 10) >= 10, 'Choice border-radius should be >= 10px');
+    }
+
+    const buttonStyles = await page.locator('button').first().evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { transitionDuration: s.transitionDuration, fontWeight: s.fontWeight };
+    });
+    assert.notEqual(buttonStyles.transitionDuration, '0s', 'Buttons should have CSS transitions');
+
   } finally {
     await browser.close();
   }
