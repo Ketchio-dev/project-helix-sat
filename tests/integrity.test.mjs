@@ -1,5 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { createStore } from '../services/api/src/store.mjs';
 import { projectScoreBand } from '../packages/scoring/src/score-predictor.mjs';
 import { generateDailyPlan } from '../packages/assessment/src/daily-plan-generator.mjs';
@@ -8,6 +11,7 @@ import { generateCurriculumPath, generateProgramPath } from '../packages/curricu
 import { inferSkillStage, getCurriculumSkill } from '../packages/curriculum/src/mastery-gates.mjs';
 import { createEvent } from '../packages/telemetry/src/events.mjs';
 import { createDemoData } from '../services/api/src/demo-data.mjs';
+import { createStateStorage } from '../services/api/src/state-storage.mjs';
 
 const DEMO_USER_ID = 'demo-student';
 const DEMO_ITEM_MAP = new Map(
@@ -36,6 +40,36 @@ function buildAttemptPayload(item, sessionId, mode = 'exam') {
     confidenceLevel: 3,
     responseTimeMs: 60000,
   };
+}
+
+
+
+async function withMockedNow(isoString, run) {
+  const RealDate = Date;
+  const fixed = new RealDate(isoString);
+  global.Date = class extends RealDate {
+    constructor(...args) {
+      return args.length ? new RealDate(...args) : new RealDate(fixed);
+    }
+
+    static now() {
+      return fixed.getTime();
+    }
+
+    static parse(value) {
+      return RealDate.parse(value);
+    }
+
+    static UTC(...args) {
+      return RealDate.UTC(...args);
+    }
+  };
+
+  try {
+    return await run();
+  } finally {
+    global.Date = RealDate;
+  }
 }
 
 function buildLearnAttemptPayload(userId, item, sessionId, { correct = true } = {}) {
@@ -558,6 +592,56 @@ describe('integrity: session review only available for completed sessions', () =
     for (const reviewItem of review.items) {
       assert.ok('correctAnswer' in reviewItem, 'each review item must have correctAnswer');
       assert.ok(typeof reviewItem.correctAnswer === 'string');
+    }
+  });
+});
+
+
+describe('integrity: completion streak telemetry', () => {
+  it('persists streak_kept and streak_broken when meaningful sessions land on consecutive and then broken days', async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), 'helix-streak-telemetry-'));
+    const stateFilePath = join(tempDir, 'prototype-state.json');
+    try {
+      const seed = createDemoData();
+      const store = createStore({
+        seed,
+        storage: createStateStorage({ seed, filePath: stateFilePath }),
+      });
+
+      await withMockedNow('2026-03-01T15:00:00.000Z', async () => {
+        const diagnostic = store.startDiagnostic(DEMO_USER_ID);
+        for (const item of diagnostic.items) {
+          store.submitAttempt(buildLearnAttemptPayload(DEMO_USER_ID, DEMO_ITEM_MAP.get(item.itemId), diagnostic.session.id, { correct: true }));
+        }
+      });
+
+      await withMockedNow('2026-03-02T15:00:00.000Z', async () => {
+        const quickWin = store.startQuickWin(DEMO_USER_ID);
+        for (const item of quickWin.items) {
+          store.submitAttempt(buildLearnAttemptPayload(DEMO_USER_ID, DEMO_ITEM_MAP.get(item.itemId), quickWin.session.id, { correct: true }));
+        }
+      });
+
+      await withMockedNow('2026-03-05T15:00:00.000Z', async () => {
+        const timedSet = store.startTimedSet(DEMO_USER_ID);
+        const firstItem = DEMO_ITEM_MAP.get(timedSet.items[0].itemId);
+        store.submitAttempt({
+          ...buildLearnAttemptPayload(DEMO_USER_ID, firstItem, timedSet.session.id, { correct: true }),
+          mode: 'exam',
+        });
+        store.finishTimedSet({ userId: DEMO_USER_ID, sessionId: timedSet.session.id });
+      });
+
+      const persisted = JSON.parse(await readFile(stateFilePath, 'utf8'));
+      const events = persisted.mutableState?.events ?? [];
+      const kept = events.find((event) => event.event_name === 'streak_kept');
+      const broken = events.find((event) => event.event_name === 'streak_broken');
+      assert.ok(kept, 'expected a streak_kept event after consecutive-day completion');
+      assert.ok(broken, 'expected a streak_broken event after a multi-day gap');
+      assert.ok((kept.payload_json?.current ?? 0) >= 2);
+      assert.equal(broken.payload_json?.gapDays, 3);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
     }
   });
 });

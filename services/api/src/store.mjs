@@ -1043,14 +1043,14 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       let best = 1;
       let run = 1;
       for (let index = 1; index < meaningfulDates.length; index += 1) {
-        const previous = differenceInDays(meaningfulDates[index - 1], new Date(`${meaningfulDates[index]}T00:00:00Z`));
+        const previous = dayGapBetween(meaningfulDates[index - 1], meaningfulDates[index]);
         run = previous === 1 ? run + 1 : 1;
         best = Math.max(best, run);
       }
 
       let current = 1;
       for (let index = meaningfulDates.length - 1; index > 0; index -= 1) {
-        const gap = differenceInDays(meaningfulDates[index - 1], new Date(`${meaningfulDates[index]}T00:00:00Z`));
+        const gap = dayGapBetween(meaningfulDates[index - 1], meaningfulDates[index]);
         if (gap !== 1) break;
         current += 1;
       }
@@ -2560,6 +2560,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       const sessionProgress = summarizeSessionProgress(sessionItems);
       const nextSessionItem = api.getCurrentSessionItem(sessionId);
       if (sessionProgress.isComplete) {
+        const previousCompletionStreak = api.getCompletionStreak(userId);
         state.sessions[sessionId].ended_at = new Date().toISOString();
         if (session.type === 'review') {
           const sessionAttempts = api.getSessionAttempts(sessionId);
@@ -2582,6 +2583,13 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
             retrySessionId: sessionId,
           });
         }
+        emitCompletionStreakEvent({
+          userId,
+          sessionId,
+          session: state.sessions[sessionId],
+          sessionProgress,
+          previousCompletionStreak,
+        });
         state.events.push(createEvent({ userId, sessionId, eventName: 'session_completed', payload: { type: session.type } }));
       }
 
@@ -2645,7 +2653,15 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         throw new HttpError(400, 'Session is not a timed set');
       }
       if (!session.ended_at) {
+        const previousCompletionStreak = api.getCompletionStreak(userId);
         session.ended_at = new Date().toISOString();
+        emitCompletionStreakEvent({
+          userId,
+          sessionId,
+          session,
+          sessionProgress: summarizeSessionProgress(api.getSessionItems(sessionId)),
+          previousCompletionStreak,
+        });
         state.events.push(createEvent({ userId, sessionId, eventName: 'session_completed', payload: { type: session.type, finishedEarly: true } }));
       }
       persistState();
@@ -2672,7 +2688,15 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         throw new HttpError(400, 'Session is not a module simulation');
       }
       if (!session.ended_at) {
+        const previousCompletionStreak = api.getCompletionStreak(userId);
         session.ended_at = new Date().toISOString();
+        emitCompletionStreakEvent({
+          userId,
+          sessionId,
+          session,
+          sessionProgress: summarizeSessionProgress(api.getSessionItems(sessionId)),
+          previousCompletionStreak,
+        });
         state.events.push(createEvent({
           userId,
           sessionId,
@@ -2898,13 +2922,81 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
     return (evidence ?? 0) > 0;
   }
 
+  function emitCompletionStreakEvent({ userId, sessionId, session, sessionProgress, previousCompletionStreak = null }) {
+    const streakSession = {
+      type: session?.type,
+      status: 'complete',
+      answered: sessionProgress?.answered ?? 0,
+      attemptCount: api.getSessionAttempts(sessionId).length,
+      totalItems: sessionProgress?.total ?? 0,
+    };
+    if (!isMeaningfulStreakSession(streakSession)) {
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const previous = previousCompletionStreak ?? api.getCompletionStreak(userId);
+    if (previous?.lastCompletedDate === today) {
+      return;
+    }
+
+    const daysSinceLastCompletion = previous?.lastCompletedDate
+      ? differenceInDays(previous.lastCompletedDate)
+      : null;
+    const current = api.getCompletionStreak(userId);
+
+    if (daysSinceLastCompletion === 1) {
+      state.events.push(createEvent({
+        userId,
+        sessionId,
+        eventName: 'streak_kept',
+        payload: {
+          current: current.current,
+          best: current.best,
+          lastCompletedDate: current.lastCompletedDate,
+        },
+      }));
+      return;
+    }
+
+    if (daysSinceLastCompletion !== null && daysSinceLastCompletion > 1 && (previous?.current ?? 0) > 0) {
+      state.events.push(createEvent({
+        userId,
+        sessionId,
+        eventName: 'streak_broken',
+        payload: {
+          previous: previous.current,
+          restartedAt: current.lastCompletedDate,
+          gapDays: daysSinceLastCompletion,
+        },
+      }));
+    }
+  }
+
   function differenceInDays(dateLike, now = new Date()) {
-    const target = new Date(dateLike);
-    if (Number.isNaN(target.getTime())) return 0;
-    const lhs = new Date(now);
-    lhs.setHours(0, 0, 0, 0);
-    target.setHours(0, 0, 0, 0);
+    const lhs = toLocalDateFloor(now);
+    const target = toLocalDateFloor(dateLike);
+    if (!lhs || !target) return 0;
     return Math.max(0, Math.round((lhs.getTime() - target.getTime()) / 86400000));
+  }
+
+  function toLocalDateFloor(dateLike) {
+    if (typeof dateLike === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateLike)) {
+      const [year, month, day] = dateLike.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    const value = new Date(dateLike);
+    if (Number.isNaN(value.getTime())) return null;
+    value.setHours(0, 0, 0, 0);
+    return value;
+  }
+
+  function dayGapBetween(leftDateLike, rightDateLike) {
+    const left = toLocalDateFloor(leftDateLike);
+    const right = toLocalDateFloor(rightDateLike);
+    if (!left || !right) return 0;
+    return Math.max(0, Math.round((right.getTime() - left.getTime()) / 86400000));
   }
 
   function buildRetryLoopAction({
