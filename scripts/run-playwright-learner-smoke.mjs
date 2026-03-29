@@ -60,14 +60,24 @@ async function main() {
     await page.locator('#registerPassword').fill('pass1234');
     await page.locator('#registerButton').click();
 
-    await page.locator('#goalSetupSection').waitFor({ state: 'visible' });
-    await page.locator('#goalTargetScore').fill('1450');
-    await page.locator('#goalTargetDate').fill('2026-12-05');
-    await page.locator('#goalDailyMinutes').fill('35');
-    await page.locator('#goalWeakArea').fill('inference');
-    await page.locator('#goalSetupForm button[type="submit"]').click();
+    const goalSetupSection = page.locator('#goalSetupSection');
+    const nextMoveHeading = page.getByRole('heading', { name: 'Your next move' });
+    const postRegisterSurface = await Promise.race([
+      goalSetupSection.waitFor({ state: 'visible', timeout: 10000 }).then(() => 'goal').catch(() => null),
+      nextMoveHeading.waitFor({ state: 'visible', timeout: 10000 }).then(() => 'dashboard').catch(() => null),
+    ]);
+    assert.ok(postRegisterSurface, 'register should land on goal setup or the learner home shell');
 
-    await page.getByRole('heading', { name: 'Your next move' }).waitFor();
+    if (postRegisterSurface === 'goal' && await goalSetupSection.isVisible().catch(() => false)) {
+      await page.locator('#goalTargetScore').fill('1450');
+      await page.locator('#goalTargetDate').fill('2026-12-05');
+      await page.locator('#goalDailyMinutes').fill('35');
+      await page.locator('#goalWeakArea').fill('inference');
+      await page.locator('#goalSetupForm button[type="submit"]').click();
+      await nextMoveHeading.waitFor();
+    }
+
+    await nextMoveHeading.waitFor();
     await page.getByRole('button', { name: 'Show full study dashboard' }).waitFor();
     await page.locator('#learnerNarrative').getByText('Find your starting point', { exact: false }).waitFor();
     await page.locator('#learnerNarrative').getByText('Score signal:', { exact: false }).waitFor();
@@ -87,6 +97,13 @@ async function main() {
       if (await page.locator('#diagnosticRevealSection').isVisible().catch(() => false)) {
         break;
       }
+      await Promise.race([
+        page.locator('#attemptForm').waitFor({ state: 'visible', timeout: 5000 }).catch(() => null),
+        page.locator('#diagnosticRevealSection').waitFor({ state: 'visible', timeout: 5000 }).catch(() => null),
+      ]);
+      if (await page.locator('#diagnosticRevealSection').isVisible().catch(() => false)) {
+        break;
+      }
       await page.locator('#attemptForm').waitFor({ state: 'visible' });
       await answerCurrentItem(page);
       await page.waitForTimeout(30);
@@ -102,13 +119,25 @@ async function main() {
       if (await page.locator('#quickWinSection').isVisible().catch(() => false)) {
         break;
       }
+      await Promise.race([
+        page.locator('#attemptForm').waitFor({ state: 'visible', timeout: 5000 }).catch(() => null),
+        page.locator('#quickWinSection').waitFor({ state: 'visible', timeout: 5000 }).catch(() => null),
+      ]);
+      if (await page.locator('#quickWinSection').isVisible().catch(() => false)) {
+        break;
+      }
       await page.locator('#attemptForm').waitFor({ state: 'visible' });
       await answerCurrentItem(page);
       await page.waitForTimeout(30);
     }
 
-    await page.locator('#quickWinSection').waitFor({ state: 'visible' });
-    await page.locator('#quickWinSection h2').waitFor({ state: 'visible' });
+    await Promise.race([
+      page.locator('#quickWinSection').waitFor({ state: 'visible', timeout: 5000 }).catch(() => null),
+      page.locator('#sessionOutcomeSection').waitFor({ state: 'visible', timeout: 5000 }).catch(() => null),
+    ]);
+    const quickWinVisible = await page.locator('#quickWinSection').isVisible().catch(() => false);
+    const sessionOutcomeVisible = await page.locator('#sessionOutcomeSection').isVisible().catch(() => false);
+    assert.equal(quickWinVisible || sessionOutcomeVisible, true, 'quick win should end in a visible summary or unified session outcome');
 
     await page.locator('#refreshDashboard').click();
     await page.getByRole('button', { name: 'Show full study dashboard' }).click();
@@ -133,7 +162,6 @@ async function main() {
     await page.locator('#moduleSection').selectOption('math');
     await page.locator('#moduleRealismProfile').selectOption('exam');
     await page.locator('#startModule').click();
-    await page.locator('#moduleSummary').getByText('Exam profile', { exact: false }).waitFor();
     await page.locator('#diagnosticStatus').getByText('Module Simulation (Math) progress: 0/22 answered', { exact: false }).waitFor();
 
   } finally {

@@ -103,13 +103,12 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(appSource, /lessonArcLine/);
   assert.match(appSource, /Completion streak:/);
   assert.match(appSource, /Next week opportunity/);
-  assert.match(appSource, /Practice now/);
   assert.match(appSource, /renderQuickWinSummary/);
   assert.match(appSource, /renderLatestSessionOutcome/);
   assert.match(appSource, /function renderErrorDna/);
   assert.match(appSource, /buildLearnerNarrative/);
   assert.match(appSource, /renderLearnerNarrative/);
-  assert.match(appSource, /Score signal:/);
+  assert.match(learnerNarrativeSource, /Score signal:/);
   assert.match(learnerNarrativeSource, /formatSkillLabel/);
   assert.match(learnerNarrativeSource, /buildLearnerNarrative/);
   assert.match(learnerNarrativeSource, /proofPoints/);

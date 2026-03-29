@@ -331,7 +331,7 @@ const dashboardLearnerResponseSchema = {
       },
     },
     tomorrowPreview: {
-      type: 'object',
+      type: ['object', 'null'],
       required: ['headline', 'reason', 'plannedMinutes', 'action'],
       additionalProperties: false,
       properties: {
