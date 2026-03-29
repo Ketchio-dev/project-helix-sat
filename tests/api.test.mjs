@@ -192,6 +192,10 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
     assert.equal(typeof projectionEvidence.signalExplanation, 'string');
     assert.deepEqual(learnerNarrative, dashboardBefore.learnerNarrative);
     assert.equal(typeof learnerNarrative.headline, 'string');
+    assert.equal(learnerNarrative.primaryAction.kind, 'start_diagnostic');
+    assert.match(learnerNarrative.signalLine, /Score signal:/);
+    assert.match(learnerNarrative.planLine, /Helix/);
+    assert.equal(learnerNarrative.thisWeekLine.length > 0, true);
     assert.ok(Array.isArray(learnerNarrative.proofPoints));
     assert.ok(learnerNarrative.proofPoints.length >= 1);
     assert.equal(typeof learnerNarrative.lessonArcLine, 'string');

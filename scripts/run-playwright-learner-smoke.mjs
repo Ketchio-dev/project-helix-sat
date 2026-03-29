@@ -69,7 +69,9 @@ async function main() {
 
     await page.getByRole('heading', { name: 'Your next move' }).waitFor();
     await page.getByRole('button', { name: 'Show full study dashboard' }).waitFor();
-    await page.locator('#learnerNarrative').getByText('Measure first', { exact: false }).waitFor();
+    await page.locator('#learnerNarrative').getByText('Find your starting point', { exact: false }).waitFor();
+    await page.locator('#learnerNarrative').getByText('Score signal:', { exact: false }).waitFor();
+    await page.locator('#learnerNarrative').getByText('Finish your first session to unlock change tracking.', { exact: false }).waitFor();
 
     await expectHidden(page, '#studentSnapshotSection');
     await expectHidden(page, '#studentPlanSection');
@@ -110,6 +112,7 @@ async function main() {
 
     await page.locator('#refreshDashboard').click();
     await page.getByRole('button', { name: 'Show full study dashboard' }).click();
+    await page.locator('#learnerNarrative').getByText('Score signal:', { exact: false }).waitFor();
     await page.locator('#returnPath').getByText('Completion streak:', { exact: false }).waitFor();
     await page.locator('#weeklyDigest').getByText('Next week opportunity', { exact: false }).waitFor();
     const reviewRecommendations = page.locator('#reviewRecommendations');

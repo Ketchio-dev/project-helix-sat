@@ -8,6 +8,7 @@ const packageJson = JSON.parse(fs.readFileSync(new URL('../package.json', import
 const routerSource = fs.readFileSync(new URL('../services/api/src/router.mjs', import.meta.url), 'utf8');
 const indexSource = fs.readFileSync(new URL('../apps/web/public/index.html', import.meta.url), 'utf8');
 const appSource = fs.readFileSync(new URL('../apps/web/public/app.js', import.meta.url), 'utf8');
+const learnerNarrativeSource = fs.readFileSync(new URL('../apps/web/public/learner-narrative.js', import.meta.url), 'utf8');
 const reviewLessonPackSource = fs.readFileSync(new URL('../apps/web/public/review-lesson-pack.js', import.meta.url), 'utf8');
 const readmeSource = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
 const contentReadmeSource = fs.readFileSync(new URL('../content/README.md', import.meta.url), 'utf8');
@@ -103,13 +104,16 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(appSource, /Completion streak:/);
   assert.match(appSource, /Next week opportunity/);
   assert.match(appSource, /Practice now/);
-  assert.match(appSource, /formatSkillLabel\(action\.focusSkill\)/);
   assert.match(appSource, /renderQuickWinSummary/);
   assert.match(appSource, /renderLatestSessionOutcome/);
   assert.match(appSource, /function renderErrorDna/);
   assert.match(appSource, /buildLearnerNarrative/);
   assert.match(appSource, /renderLearnerNarrative/);
   assert.match(appSource, /Score signal:/);
+  assert.match(learnerNarrativeSource, /formatSkillLabel/);
+  assert.match(learnerNarrativeSource, /buildLearnerNarrative/);
+  assert.match(learnerNarrativeSource, /proofPoints/);
+  assert.match(learnerNarrativeSource, /Practice \$\{formatSkillLabel\(action\.focusSkill\)\}/);
   assert.match(appSource, /renderStudyModes/);
   assert.match(appSource, /renderReturnPath/);
   assert.match(appSource, /Standard practice/);
@@ -135,6 +139,10 @@ test('repo ships release-bar gating and a no-dependency playwright learner smoke
   assert.match(smokeRunnerSource, /Your 12-minute starting point/);
   assert.match(smokeRunnerSource, /name: \/\^Practice \//);
   assert.match(smokeRunnerSource, /#quickWinSection/);
+  assert.match(smokeRunnerSource, /#learnerNarrative/);
+  assert.match(smokeRunnerSource, /Find your starting point/);
+  assert.match(smokeRunnerSource, /Score signal:/);
+  assert.match(smokeRunnerSource, /Finish your first session to unlock change tracking\./);
   assert.match(smokeRunnerSource, /Completion streak:/);
   assert.match(smokeRunnerSource, /Next week opportunity/);
   assert.match(smokeRunnerSource, /#reviewRecommendations/);
