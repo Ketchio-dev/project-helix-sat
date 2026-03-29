@@ -1007,9 +1007,9 @@ function renderNextBestAction(action) {
   const copy = studentActionCopy(action);
   const shell = node('div', { className: 'next-move-layout' });
   const copyBlock = node('div', { className: 'next-move-copy' });
-  copyBlock.append(node('p', { className: 'eyebrow compact', text: 'Recommended now' }));
+  copyBlock.append(node('span', { className: 'section-tag', text: 'Recommended' }));
   copyBlock.append(node('h3', { text: copy.title }));
-  copyBlock.append(node('p', { text: copy.reason }));
+  copyBlock.append(node('p', { className: 'lead-line', text: copy.reason }));
   const meta = [];
   if (action.estimatedMinutes) meta.push(`~${action.estimatedMinutes} min`);
   if (action.section) meta.push(formatSectionName(action.section));
@@ -1063,13 +1063,24 @@ function renderDiagnosticReveal(reveal) {
 
   section.style.display = 'block';
   clear(container);
-  container.append(node('p', {
-    className: 'notice',
-    text: `Score range now: ${reveal.scoreBand.low}–${reveal.scoreBand.high} · ${reveal.confidenceLabel ?? 'early estimate'} (${Math.round((reveal.confidence ?? 0) * 100)}%) · trend ${Math.round((reveal.momentum ?? 0) * 100)}%`,
-  }));
+  const strip = node('div', { className: 'signal-strip' }, [
+    node('div', { className: 'signal-chip' }, [
+      node('strong', { text: 'Score range' }),
+      node('span', { text: `${reveal.scoreBand.low}–${reveal.scoreBand.high}` }),
+    ]),
+    node('div', { className: 'signal-chip' }, [
+      node('strong', { text: 'Signal' }),
+      node('span', { text: reveal.confidenceLabel ?? 'early estimate' }),
+    ]),
+    node('div', { className: 'signal-chip' }, [
+      node('strong', { text: 'Trend' }),
+      node('span', { text: `${Math.round((reveal.momentum ?? 0) * 100)}%` }),
+    ]),
+  ]);
+  container.append(strip);
 
   if (reveal.whyThisPlan) {
-    container.append(node('p', { text: reveal.whyThisPlan }));
+    container.append(node('p', { className: 'lead-line', text: reveal.whyThisPlan }));
   }
 
   if (Array.isArray(reveal.evidenceBullets) && reveal.evidenceBullets.length) {
@@ -1080,7 +1091,7 @@ function renderDiagnosticReveal(reveal) {
     container.append(detailsBlock('Why Helix believes this', [evidenceList]));
   }
 
-  const leakList = node('div', { className: 'stack' });
+  const leakList = node('div', { className: 'compact-grid' });
   for (const leak of reveal.topScoreLeaks ?? []) {
     const card = node('article', { className: 'review-item' });
     card.append(node('strong', { text: leak.label }));
@@ -1096,9 +1107,9 @@ function renderDiagnosticReveal(reveal) {
   container.append(leakList);
   if (reveal.firstRecommendedAction) {
     const nextMove = studentActionCopy(reveal.firstRecommendedAction);
-    const ctaWrap = node('div', { className: 'stack' });
-    ctaWrap.append(node('strong', { text: 'Start here next' }));
-    ctaWrap.append(node('p', { text: nextMove.reason }));
+    const ctaWrap = node('div', { className: 'mini-stack' });
+    ctaWrap.append(node('span', { className: 'section-tag', text: 'Start here' }));
+    ctaWrap.append(node('p', { className: 'lead-line', text: nextMove.reason }));
     const button = node('button', { text: nextMove.ctaLabel });
     button.addEventListener('click', () => performNextBestAction(reveal.firstRecommendedAction));
     ctaWrap.append(button);
@@ -1148,21 +1159,28 @@ function renderLearnerNarrative(narrative) {
   }
 
   section.style.display = 'block';
-  if (narrative.headline) container.append(node('p', { className: 'notice', text: narrative.headline }));
-  if (narrative.summary) container.append(node('p', { text: narrative.summary }));
-  if (narrative.lessonArcLine) container.append(node('p', { className: 'muted', text: narrative.lessonArcLine }));
-  if (narrative.signalLine) container.append(node('p', { className: 'muted', text: narrative.signalLine }));
-  if (narrative.planLine) container.append(node('p', { text: narrative.planLine }));
-  if (narrative.thisWeekLine) container.append(node('p', { className: 'muted', text: narrative.thisWeekLine }));
+  if (narrative.headline) container.append(node('p', { className: 'lead-line', text: narrative.headline }));
+  const lines = [
+    narrative.summary,
+    narrative.planLine,
+    narrative.lessonArcLine,
+    narrative.signalLine,
+    narrative.thisWeekLine,
+    narrative.comebackLine,
+  ].filter(Boolean);
+  if (lines.length) {
+    const list = node('ul', { className: 'list compact' });
+    for (const line of lines.slice(0, 4)) {
+      list.append(node('li', { text: line }));
+    }
+    container.append(list);
+  }
   if (Array.isArray(narrative.proofPoints) && narrative.proofPoints.length) {
     const list = node('ul', { className: 'list compact' });
     for (const point of narrative.proofPoints.slice(0, 3)) {
       list.append(node('li', { text: point }));
     }
     container.append(detailsBlock('Why Helix believes this', [list], true));
-  }
-  if (narrative.comebackLine) {
-    container.append(node('p', { className: 'muted', text: narrative.comebackLine }));
   }
 }
 
@@ -1353,15 +1371,24 @@ function renderLatestSessionOutcome(outcome) {
   const card = node('article', { className: 'timed-summary-item' });
   card.append(node('h3', { text: normalized.headline ?? 'Session outcome' }));
 
-  const pillRow = node('div', { className: 'session-status-row' }, [
-    node('span', { className: 'pill success', text: normalized.statusPill ?? 'Evidence updated' }),
-    node('span', { className: 'pill', text: toDisplaySessionType(normalized.sessionType ?? 'session') }),
-    node('span', { className: 'pill', text: formatDateTime(normalized.completedAt) }),
+  const pillRow = node('div', { className: 'metric-strip' }, [
+    node('div', { className: 'metric-chip' }, [
+      node('strong', { text: 'Status' }),
+      node('span', { text: normalized.statusPill ?? 'Evidence updated' }),
+    ]),
+    node('div', { className: 'metric-chip' }, [
+      node('strong', { text: 'Block' }),
+      node('span', { text: toDisplaySessionType(normalized.sessionType ?? 'session') }),
+    ]),
+    node('div', { className: 'metric-chip' }, [
+      node('strong', { text: 'Finished' }),
+      node('span', { text: formatDateTime(normalized.completedAt) }),
+    ]),
   ]);
   card.append(pillRow);
 
   if (normalized.subheadline) {
-    card.append(node('p', { text: normalized.subheadline }));
+    card.append(node('p', { className: 'lead-line', text: normalized.subheadline }));
   }
 
   if (Array.isArray(normalized.metrics) && normalized.metrics.length) {
@@ -1382,9 +1409,9 @@ function renderLatestSessionOutcome(outcome) {
 
   const copy = studentActionCopy(normalized.primaryAction ?? null);
   if (normalized.primaryAction && copy) {
-    const wrap = node('div', { className: 'stack' });
-    wrap.append(node('strong', { text: 'Do this next' }));
-    wrap.append(node('p', { className: 'muted', text: copy.reason }));
+    const wrap = node('div', { className: 'mini-stack' });
+    wrap.append(node('span', { className: 'section-tag', text: 'Do this next' }));
+    wrap.append(node('p', { className: 'lead-line', text: copy.reason }));
     const button = node('button', { text: copy.ctaLabel });
     button.addEventListener('click', () => performNextBestAction(normalized.primaryAction));
     wrap.append(button);

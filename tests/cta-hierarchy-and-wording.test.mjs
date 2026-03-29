@@ -309,14 +309,14 @@ describe('product wording: HTML section headings are student-facing', () => {
   const html = readFileSync('apps/web/public/index.html', 'utf8');
 
   const EXPECTED_HEADINGS = [
-    'Your next move',
+    'Next block',
     'Your 12-minute starting point',
-    'Your First Reveal',
-    'Why this week works',
-    'Your latest session outcome',
-    'If you only have a short block',
-    'Keep tomorrow easy',
-    'Want the deeper breakdown?',
+    'Diagnostic signal',
+    'Why this is next',
+    'Last session',
+    'Short on time?',
+    'Tomorrow',
+    'Full dashboard',
     'Your baseline',
     'Your score range now',
     'Today\u2019s plan',

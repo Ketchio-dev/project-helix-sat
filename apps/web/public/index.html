@@ -53,9 +53,12 @@
     <main class="shell">
       <header class="topbar">
         <div class="topbar-copy">
-          <p class="eyebrow compact">Helix SAT</p>
-          <h1>Student workspace</h1>
-          <p class="topbar-context">One focused next move first. Deeper controls stay out of the way until you need them.</p>
+          <div class="topbar-title-row">
+            <span class="product-mark">Helix SAT</span>
+            <span class="topbar-separator" aria-hidden="true"></span>
+            <h1>Student workspace</h1>
+          </div>
+          <p class="topbar-context">Recommended work first. Deeper controls stay tucked away.</p>
         </div>
         <div class="topbar-aside">
           <div class="topbar-actions">
@@ -63,34 +66,37 @@
             <button id="refreshDashboard" class="secondary">Refresh</button>
             <button id="logoutButton" class="ghost">Logout</button>
           </div>
-          <details id="manualStartControls" class="manual-start-disclosure" style="display:none;">
-            <summary>Start a different block</summary>
-            <div class="manual-start-panel">
-              <p class="control-label">Use these when you want something other than the recommended next move.</p>
-              <div class="manual-start-grid">
-                <button id="startDiagnostic" class="secondary">Start your 12-minute check</button>
-                <button id="startTimedSet" class="secondary">Start Timed Set</button>
-                <select id="moduleSection" aria-label="Module section">
-                  <option value="reading_writing">RW Module</option>
-                  <option value="math">Math Module</option>
-                </select>
-                <select id="moduleRealismProfile" aria-label="Module realism profile">
-                  <option value="standard">Standard Module</option>
-                  <option value="extended">Extended Module</option>
-                  <option value="exam">Exam Profile</option>
-                </select>
-                <button id="startModule" class="secondary">Start practice block</button>
-              </div>
-            </div>
-          </details>
         </div>
       </header>
 
       <div id="sessionNotice" class="session-notice hidden" aria-live="polite"></div>
       <div id="sessionTimer" class="session-timer hidden" aria-live="polite"></div>
 
-      <section class="grid two">
-        <article class="card" id="goalSetupSection" style="display:none;">
+      <details id="manualStartControls" class="manual-start-disclosure" style="display:none;">
+        <summary>Start a different block</summary>
+        <div class="manual-start-panel">
+          <p class="control-label">Use these when you want something other than the recommended next move.</p>
+          <div class="manual-start-grid">
+            <button id="startDiagnostic" class="secondary">Start your 12-minute check</button>
+            <button id="startTimedSet" class="secondary">Start Timed Set</button>
+            <select id="moduleSection" aria-label="Module section">
+              <option value="reading_writing">RW Module</option>
+              <option value="math">Math Module</option>
+            </select>
+            <select id="moduleRealismProfile" aria-label="Module realism profile">
+              <option value="standard">Standard Module</option>
+              <option value="extended">Extended Module</option>
+              <option value="exam">Exam Profile</option>
+            </select>
+            <button id="startModule" class="secondary">Start practice block</button>
+          </div>
+        </div>
+      </details>
+
+      <div class="workspace-grid">
+        <div class="workspace-main">
+      <section class="grid two workspace-primary-grid">
+        <article class="card dense-card" id="goalSetupSection" style="display:none;">
           <h2>Set Your Goal</h2>
           <p class="notice">Tell Helix what score you want, when you’re testing, and how much time you have. We’ll use it to shape your first adaptive plan.</p>
           <form id="goalSetupForm" class="teacher-assignment-form">
@@ -116,15 +122,15 @@
           </form>
           <pre id="goalSetupResult">Finish your goal setup to unlock your first personalized plan.</pre>
         </article>
-        <article class="card" id="nextBestActionSection" style="display:none;">
-          <h2>Your next move</h2>
+        <article class="card dense-card primary-panel" id="nextBestActionSection" style="display:none;">
+          <h2>Next block</h2>
           <div id="nextBestAction"></div>
           <div id="nextBestActionAlternatives"></div>
           <p id="nextBestActionFootnote" class="muted"></p>
         </article>
       </section>
 
-      <section class="card" id="diagnosticPreflightSection" style="display:none;">
+      <section class="card dense-card" id="diagnosticPreflightSection" style="display:none;">
         <h2>Your 12-minute starting point</h2>
         <div id="diagnosticPreflight"></div>
         <div class="row gap">
@@ -133,37 +139,39 @@
         </div>
       </section>
 
-      <section class="card" id="diagnosticRevealSection" style="display:none;">
-        <h2>Your First Reveal</h2>
+      <section class="card dense-card" id="diagnosticRevealSection" style="display:none;">
+        <h2>Diagnostic signal</h2>
         <div id="diagnosticReveal"></div>
       </section>
 
-      <section class="card" id="learnerNarrativeSection" style="display:none;">
-        <h2>Why this week works</h2>
+      <section class="card dense-card" id="learnerNarrativeSection" style="display:none;">
+        <h2>Why this is next</h2>
         <div id="learnerNarrative"></div>
       </section>
 
-      <section class="card" id="sessionOutcomeSection" style="display:none;">
-        <h2>Your latest session outcome</h2>
+      <section class="card dense-card" id="sessionOutcomeSection" style="display:none;">
+        <h2>Last session</h2>
         <div id="sessionOutcome"></div>
       </section>
+        </div>
 
-      <section class="grid two">
-        <article class="card" id="studyModesSection" style="display:none;">
-          <h2>If you only have a short block</h2>
+        <aside class="workspace-rail">
+      <section class="card dense-card rail-card" id="studyModesSection" style="display:none;">
+          <h2>Short on time?</h2>
           <div id="studyModes"></div>
-        </article>
-        <article class="card" id="returnPathSection" style="display:none;">
-          <h2>Keep tomorrow easy</h2>
+        </section>
+        <section class="card dense-card rail-card" id="returnPathSection" style="display:none;">
+          <h2>Tomorrow</h2>
           <div id="returnPath"></div>
-        </article>
-      </section>
+        </section>
 
-      <section class="card" id="dashboardToggleSection" style="display:none;">
-        <h2>Want the deeper breakdown?</h2>
+      <section class="card dense-card rail-card" id="dashboardToggleSection" style="display:none;">
+        <h2>Full dashboard</h2>
         <p id="dashboardToggleCopy" class="muted">Keep one clear next move on top. Open the full study dashboard only when you want more detail.</p>
         <button id="toggleDashboardDetails" class="secondary">Show full study dashboard</button>
       </section>
+        </aside>
+      </div>
 
       <section class="grid two" id="studentSnapshotSection" data-student-dashboard-detail>
         <article class="card">

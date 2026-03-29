@@ -26,9 +26,11 @@ function runCommand(command, args, { cwd, env } = {}) {
 
 const smokeScript = `
 import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const baseUrl = process.env.HELIX_BASE_URL;
+const screenshotPath = process.env.HELIX_SMOKE_SCREENSHOT;
 assert.ok(baseUrl, 'HELIX_BASE_URL is required');
 
 function uniqueEmail() {
@@ -82,7 +84,7 @@ async function main() {
     await page.locator('#registerButton').click();
 
     const goalSetupSection = page.locator('#goalSetupSection');
-    const nextMoveHeading = page.getByRole('heading', { name: 'Your next move' });
+    const nextMoveHeading = page.getByRole('heading', { name: 'Next block' });
     const postRegisterSurface = await Promise.race([
       goalSetupSection.waitFor({ state: 'visible', timeout: 10000 }).then(() => 'goal').catch(() => null),
       nextMoveHeading.waitFor({ state: 'visible', timeout: 10000 }).then(() => 'dashboard').catch(() => null),
@@ -142,8 +144,8 @@ async function main() {
     }
 
     await page.locator('#diagnosticRevealSection').waitFor({ state: 'visible' });
-    await page.locator('#diagnosticReveal').getByText('Score range now:', { exact: false }).waitFor();
-    await page.locator('#diagnosticReveal').getByText('Start here next').waitFor();
+    await page.locator('#diagnosticReveal').getByText('Score range', { exact: false }).waitFor();
+    await page.locator('#diagnosticReveal').getByText('Start here').waitFor();
     await page.locator('#diagnosticReveal').getByText('Why Helix believes this').waitFor();
     await clickSectionButtonByText(page, '#diagnosticReveal', '^Practice ');
 
@@ -207,6 +209,12 @@ async function main() {
     assert.match(lessonPackText ?? '', /Worked example/);
     assert.match(lessonPackText ?? '', /Retry pair/);
     assert.match(lessonPackText ?? '', /Near-transfer pair/);
+
+    if (screenshotPath) {
+      await mkdir(new URL('.', \`file://\${screenshotPath}\`).pathname, { recursive: true }).catch(() => null);
+      await page.screenshot({ path: screenshotPath });
+    }
+
     await page.evaluate(() => {
       const details = document.querySelector('#manualStartControls');
       if (details) {
@@ -318,7 +326,10 @@ async function main() {
     await runCommand(join(tempDir, 'node_modules/.bin/playwright'), ['install', 'chromium'], { cwd: tempDir });
     await runCommand('node', ['smoke.mjs'], {
       cwd: tempDir,
-      env: { HELIX_BASE_URL: baseUrl },
+      env: {
+        HELIX_BASE_URL: baseUrl,
+        ...(process.env.HELIX_SMOKE_SCREENSHOT ? { HELIX_SMOKE_SCREENSHOT: process.env.HELIX_SMOKE_SCREENSHOT } : {}),
+      },
     });
   } finally {
     server.close();

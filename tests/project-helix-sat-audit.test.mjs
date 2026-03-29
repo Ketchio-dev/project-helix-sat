@@ -90,15 +90,17 @@ test('learner shell includes diagnostic preflight and richer progress narration 
 });
 
 test('learner shell prioritizes one main action and tucks secondary detail away', () => {
-  assert.match(indexSource, /Your next move/);
+  assert.match(indexSource, /Next block/);
   assert.match(indexSource, /Quick Win/);
-  assert.match(indexSource, /Your latest session outcome/);
-  assert.match(indexSource, /Why this week works/);
-  assert.match(indexSource, /If you only have a short block/);
-  assert.match(indexSource, /Keep tomorrow easy/);
-  assert.match(indexSource, /Want the deeper breakdown\?/);
+  assert.match(indexSource, /Last session/);
+  assert.match(indexSource, /Why this is next/);
+  assert.match(indexSource, /Short on time\?/);
+  assert.match(indexSource, /Tomorrow/);
+  assert.match(indexSource, /Full dashboard/);
   assert.match(indexSource, /data-student-dashboard-detail/);
   assert.match(indexSource, /Exam Profile/);
+  assert.match(indexSource, /workspace-grid/);
+  assert.match(indexSource, /workspace-rail/);
   assert.match(appSource, /studentActionCopy/);
   assert.match(appSource, /lessonArcLine/);
   assert.match(appSource, /Completion streak:/);
@@ -136,6 +138,7 @@ test('repo ships release-bar gating and a no-dependency playwright learner smoke
   assert.match(smokeRunnerSource, /npm', \['install', '--no-save', 'playwright'\]/);
   assert.match(smokeRunnerSource, /Show full study dashboard/);
   assert.match(smokeRunnerSource, /Your 12-minute starting point/);
+  assert.match(smokeRunnerSource, /Next block/);
   assert.match(smokeRunnerSource, /clickSectionButtonByText\(page, '#diagnosticReveal', '\^Practice '\)/);
   assert.match(smokeRunnerSource, /#quickWinSection/);
   assert.match(smokeRunnerSource, /#learnerNarrative/);
