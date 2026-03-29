@@ -106,6 +106,7 @@ const responseSchemas = new Map([
   ['TutorHintResponse', loadedSchemas.get('tutor/hint-response.schema.json')],
   ['WeeklyReport', loadedSchemas.get('reporting/weekly-report.schema.json')],
   ['WhatChanged', loadedSchemas.get('reporting/what-changed.schema.json')],
+  ['LearnerNarrative', loadedSchemas.get('reporting/learner-narrative.schema.json')],
   ['AuthSessionResponse', authSessionResponseSchema],
   ['MeResponse', {
     type: 'object',

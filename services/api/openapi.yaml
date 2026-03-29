@@ -154,6 +154,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WhatChanged'
+  /api/learner/narrative:
+    get:
+      summary: Fetch the learner-facing story that connects the next action, score signal, and weekly evidence
+      responses:
+        '200':
+          description: Learner narrative payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearnerNarrative'
   /api/projection/evidence:
     get:
       summary: Fetch the learner-facing evidence behind the current projected score range
@@ -319,6 +329,8 @@ components:
       $ref: ../../packages/schemas/events/event-envelope.schema.json
     WeeklyReport:
       $ref: ../../packages/schemas/reporting/weekly-report.schema.json
+    LearnerNarrative:
+      $ref: ../../packages/schemas/reporting/learner-narrative.schema.json
     EmptyRequest:
       type: object
       additionalProperties: false

@@ -7,6 +7,7 @@ const state = {
   selectedLearnerId: null,
   goalProfile: null,
   nextBestAction: null,
+  learnerNarrative: null,
   diagnosticReveal: null,
   dashboardExpanded: false,
   showDiagnosticPreflight: false,
@@ -55,6 +56,7 @@ const json = async (url, options) => {
     state.selectedLearnerId = null;
     state.goalProfile = null;
     state.nextBestAction = null;
+    state.learnerNarrative = null;
     state.diagnosticReveal = null;
     state.latestQuickWinSummary = null;
     state.latestSessionOutcome = null;
@@ -505,6 +507,30 @@ function renderPlan(plan) {
   if (stopCondition) {
     container.append(node('p', { className: 'muted', text: `When to stop: ${stopCondition}` }));
   }
+}
+
+function buildLearnerNarrative({ action = null, planExplanation = null, projectionEvidence = null, whatChanged = null, weeklyDigest = null } = {}) {
+  const actionCopy = studentActionCopy(action);
+  const signalLine = projectionEvidence?.signalLabel
+    ? `Score signal: ${projectionEvidence.signalLabel}. ${projectionEvidence.signalExplanation ?? ''}`.trim()
+    : 'Score signal is still forming.';
+  const planLine = planExplanation?.headline ?? 'Helix is keeping one clear focus on top.';
+  const changeLine = whatChanged?.headline ?? (Array.isArray(whatChanged?.bullets) ? whatChanged.bullets[0] : null) ?? 'Your first completed session will unlock a clearer change story.';
+  const weekLine = weeklyDigest?.next_week_opportunity
+    ?? weeklyDigest?.recommended_focus?.[0]
+    ?? weeklyDigest?.strengths?.[0]
+    ?? 'Keep the next action streak alive and Helix will tighten the plan further.';
+
+  return {
+    headline: actionCopy?.title ?? 'Keep the next move simple',
+    summary: actionCopy?.reason ?? planLine,
+    signalLine,
+    planLine,
+    thisWeekLine: weekLine,
+    comebackLine: weeklyDigest?.next_week_opportunity ?? null,
+    proofPoints: [changeLine].filter(Boolean),
+    primaryAction: action ?? null,
+  };
 }
 
 function renderPlanExplanation(explanation) {
@@ -1124,31 +1150,33 @@ function renderDiagnosticReveal(reveal) {
   }
 }
 
-function renderErrorDna(errorDnaSummary) {
-  const container = $('#errorDna');
+function renderLearnerNarrative(narrative) {
+  const section = $('#learnerNarrativeSection');
+  const container = $('#learnerNarrative');
+  if (!section || !container) return;
   clear(container);
-  const entries = Array.isArray(errorDnaSummary)
-    ? errorDnaSummary.filter((entry) => entry?.label || entry?.summary || entry?.score)
-    : Object.entries(errorDnaSummary ?? {})
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([tag, score]) => ({
-          label: tag.replaceAll('_', ' '),
-          summary: `${tag.replaceAll('_', ' ')} is still appearing in recent work.`,
-          score,
-        }));
+  state.learnerNarrative = narrative ?? null;
 
-  if (!entries.length) {
-    container.append(node('p', { className: 'muted', text: 'No dominant error signals yet.' }));
+  if (!isStudentSurface() || !narrative || (!state.goalProfile?.isComplete && !narrative.headline && !narrative.summary)) {
+    section.style.display = 'none';
     return;
   }
 
-  for (const entry of entries) {
-    const card = node('article', { className: 'review-item' });
-    card.append(node('strong', { text: entry.label }));
-    card.append(node('p', { text: entry.summary }));
-    card.append(node('span', { className: 'muted', text: `Signal strength: ${entry.score}` }));
-    container.append(card);
+  section.style.display = 'block';
+  if (narrative.headline) container.append(node('p', { className: 'notice', text: narrative.headline }));
+  if (narrative.summary) container.append(node('p', { text: narrative.summary }));
+  if (narrative.signalLine) container.append(node('p', { className: 'muted', text: narrative.signalLine }));
+  if (narrative.planLine) container.append(node('p', { text: narrative.planLine }));
+  if (narrative.thisWeekLine) container.append(node('p', { className: 'muted', text: narrative.thisWeekLine }));
+  if (Array.isArray(narrative.proofPoints) && narrative.proofPoints.length) {
+    const list = node('ul', { className: 'list compact' });
+    for (const point of narrative.proofPoints.slice(0, 3)) {
+      list.append(node('li', { text: point }));
+    }
+    container.append(detailsBlock('Why Helix believes this', [list], true));
+  }
+  if (narrative.comebackLine) {
+    container.append(node('p', { className: 'muted', text: narrative.comebackLine }));
   }
 }
 
@@ -2189,6 +2217,7 @@ function handleLogout() {
   state.selectedLearnerId = null;
   state.goalProfile = null;
   state.nextBestAction = null;
+  state.learnerNarrative = null;
   state.diagnosticReveal = null;
   state.latestQuickWinSummary = null;
   state.dashboardExpanded = false;
@@ -2260,7 +2289,7 @@ async function loadDashboard() {
       throw new Error('No linked learner available for this account.');
     }
 
-    const [dashboard, weeklyDigest, sessionHistory, parentSummary, teacherBrief, teacherAssignments, activeSession, goalProfile, nextBestAction, diagnosticReveal, planExplanation, projectionEvidence, whatChanged] = await Promise.all([
+    const [dashboard, weeklyDigest, sessionHistory, parentSummary, teacherBrief, teacherAssignments, activeSession, goalProfile, nextBestAction, diagnosticReveal, planExplanation, projectionEvidence, learnerNarrativePayload, whatChanged] = await Promise.all([
       json(withLearnerContext('/api/dashboard/learner')),
       json(withLearnerContext('/api/reports/weekly')).catch(() => null),
       json(withLearnerContext('/api/sessions/history')).catch(() => null),
@@ -2281,12 +2310,22 @@ async function loadDashboard() {
         : Promise.resolve(null)),
       json(withLearnerContext('/api/plan/explanation')).catch(() => null),
       json(withLearnerContext('/api/projection/evidence')).catch(() => null),
+      json(withLearnerContext('/api/learner/narrative')).catch(() => null),
       json(withLearnerContext('/api/progress/what-changed')).catch(() => null),
     ]);
+
+    const learnerNarrative = learnerNarrativePayload ?? dashboard.learnerNarrative ?? buildLearnerNarrative({
+      action: nextBestAction,
+      planExplanation: planExplanation ?? dashboard.planExplanation,
+      projectionEvidence: projectionEvidence ?? dashboard.projectionEvidence,
+      whatChanged: whatChanged ?? dashboard.whatChanged,
+      weeklyDigest: weeklyDigest ?? dashboard.weeklyDigest ?? null,
+    });
 
     renderGoalProfile(goalProfile);
     renderNextBestAction(nextBestAction);
     renderDiagnosticReveal(diagnosticReveal);
+    renderLearnerNarrative(learnerNarrative);
     renderProfile(dashboard.profile);
     renderProjection(dashboard.projection, projectionEvidence ?? dashboard.projectionEvidence);
     renderPlan(dashboard.plan);

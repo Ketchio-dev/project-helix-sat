@@ -264,6 +264,15 @@ export function createRouter({ store, webRoot }) {
     },
   });
 
+  registerRoute('GET', '/api/learner/narrative', {
+    auth: 'authenticated',
+    learnerAccess: 'read',
+    responseSchema: 'LearnerNarrative',
+    async handler({ learnerId }) {
+      return { body: store.getLearnerNarrative(learnerId) };
+    },
+  });
+
   registerRoute('GET', '/api/diagnostic/reveal', {
     auth: 'authenticated',
     learnerAccess: 'owner',

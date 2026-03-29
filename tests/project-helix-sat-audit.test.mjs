@@ -81,6 +81,7 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(indexSource, /Your next move/);
   assert.match(indexSource, /Quick Win/);
   assert.match(indexSource, /What changed in your last session/);
+  assert.match(indexSource, /Why this week works/);
   assert.match(indexSource, /If you only have a short block/);
   assert.match(indexSource, /Keep tomorrow easy/);
   assert.match(indexSource, /Want the deeper breakdown\?/);
@@ -91,6 +92,9 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(appSource, /Take the 2-minute win/);
   assert.match(appSource, /renderQuickWinSummary/);
   assert.match(appSource, /renderLatestSessionOutcome/);
+  assert.match(appSource, /buildLearnerNarrative/);
+  assert.match(appSource, /renderLearnerNarrative/);
+  assert.match(appSource, /Score signal:/);
   assert.match(appSource, /renderStudyModes/);
   assert.match(appSource, /renderReturnPath/);
   assert.match(appSource, /More ways to work/);
@@ -130,6 +134,9 @@ test('docs stay aligned with cookie auth and current audit claims', () => {
 test('learner shell consumes dedicated evidence contracts instead of relying only on dashboard nesting', () => {
   assert.match(appSource, /\/api\/plan\/explanation/);
   assert.match(appSource, /\/api\/projection\/evidence/);
+  assert.match(appSource, /\/api\/learner\/narrative/);
+  assert.match(appSource, /renderLearnerNarrative\(/);
+  assert.match(appSource, /Why Helix believes this/);
   assert.match(appSource, /\/api\/progress\/what-changed/);
   assert.match(appSource, /renderProjection\(dashboard\.projection, projectionEvidence \?\? dashboard\.projectionEvidence\)/);
   assert.match(appSource, /\['Signal', evidence\?\.signalLabel \?\? 'building signal'\]/);

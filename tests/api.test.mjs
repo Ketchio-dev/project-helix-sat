@@ -180,15 +180,20 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
     assert.equal(typeof dashboardBefore.comebackState.isReturning, 'boolean');
     assert.ok('tomorrowPreview' in dashboardBefore);
 
-    const [planExplanation, projectionEvidence, whatChanged] = await Promise.all([
+    const [planExplanation, projectionEvidence, learnerNarrative, whatChanged] = await Promise.all([
       fetch(`${baseUrl}/api/plan/explanation`, { headers: sessions.student.headers }).then((res) => res.json()),
       fetch(`${baseUrl}/api/projection/evidence`, { headers: sessions.student.headers }).then((res) => res.json()),
+      fetch(`${baseUrl}/api/learner/narrative`, { headers: sessions.student.headers }).then((res) => res.json()),
       fetch(`${baseUrl}/api/progress/what-changed`, { headers: sessions.student.headers }).then((res) => res.json()),
     ]);
     assert.deepEqual(planExplanation, dashboardBefore.planExplanation);
     assert.deepEqual(projectionEvidence, dashboardBefore.projectionEvidence);
     assert.match(projectionEvidence.signalLabel, /estimate|signal/);
     assert.equal(typeof projectionEvidence.signalExplanation, 'string');
+    assert.deepEqual(learnerNarrative, dashboardBefore.learnerNarrative);
+    assert.equal(typeof learnerNarrative.headline, 'string');
+    assert.ok(Array.isArray(learnerNarrative.proofPoints));
+    assert.ok(learnerNarrative.proofPoints.length >= 1);
     assert.deepEqual(whatChanged, dashboardBefore.whatChanged);
 
     const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, {

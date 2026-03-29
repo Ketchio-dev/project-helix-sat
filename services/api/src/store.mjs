@@ -185,6 +185,64 @@ function formatSkillLabel(skillId = '') {
   return humanizeIdentifier(`${skillId}`.replace(/^rw_/, '').replace(/^math_/, ''));
 }
 
+function toLearnerPrimaryAction(action = null) {
+  if (!action) return null;
+
+  switch (action.kind) {
+    case 'complete_goal_setup':
+      return {
+        ...action,
+        title: 'Set your target first',
+        reason: 'Pick your score goal, test date, and daily time so Helix can build the right first step.',
+        ctaLabel: action.ctaLabel ?? 'Set my goal',
+      };
+    case 'start_diagnostic':
+      return {
+        ...action,
+        title: 'Find your starting point',
+        reason: 'Take one short 12-minute check so Helix can stop being generic and show your first real score-moving step.',
+        ctaLabel: action.ctaLabel ?? 'Start your 12-minute check',
+      };
+    case 'start_quick_win':
+      return {
+        ...action,
+        title: action.title ?? 'Take the 2-minute win',
+        reason: action.reason ?? 'Helix picked a short recovery move that should build momentum without overloading you.',
+        ctaLabel: action.ctaLabel ?? 'Take the 2-minute win',
+      };
+    case 'resume_active_session':
+      return {
+        ...action,
+        title: 'Finish what you started',
+        reason: action.reason ?? 'Your last session already holds the next best evidence; finishing it is the fastest way to tighten the plan.',
+        ctaLabel: action.ctaLabel ?? 'Resume this session',
+      };
+    case 'start_retry_loop':
+      return {
+        ...action,
+        title: action.title ?? 'Fix this now',
+        reason: action.reason ?? 'Helix found one repeatable trap that is worth correcting before you add harder work.',
+        ctaLabel: action.ctaLabel ?? 'Fix this now',
+      };
+    case 'start_timed_set':
+      return {
+        ...action,
+        title: action.title ?? 'Pressure-test your pacing',
+        reason: action.reason ?? 'Helix wants fresh timed evidence before the next plan shift.',
+        ctaLabel: action.ctaLabel ?? 'Start timed practice',
+      };
+    case 'start_module':
+      return {
+        ...action,
+        title: action.title ?? 'Run the next module',
+        reason: action.reason ?? 'Helix is ready to check whether the current fixes hold across a longer block.',
+        ctaLabel: action.ctaLabel ?? 'Start practice block',
+      };
+    default:
+      return action;
+  }
+}
+
 function getProjectionSignal({ confidence = 0, status = 'low_evidence', minimumAttemptsNeeded = 0 } = {}) {
   if (status === 'insufficient_evidence' || confidence < 0.3) {
     return {
@@ -936,6 +994,34 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           ? 'Your baseline is now live.'
           : 'Helix has fresh evidence from your latest completed session.',
         bullets,
+      };
+    },
+
+    getLearnerNarrative(userId = DEMO_USER_ID) {
+      const primaryAction = toLearnerPrimaryAction(api.getNextBestAction(userId));
+      const projectionEvidence = api.getProjectionEvidence(userId);
+      const planExplanation = api.getPlanExplanation(userId);
+      const whatChanged = api.getWhatChanged(userId);
+      const weeklyDigest = api.getWeeklyDigest(userId);
+
+      return {
+        headline: primaryAction?.title ?? 'Keep the next move simple',
+        summary: primaryAction?.reason ?? planExplanation.headline,
+        signalLine: projectionEvidence?.signalLabel
+          ? `Score signal: ${projectionEvidence.signalLabel}. ${projectionEvidence.signalExplanation ?? ''}`.trim()
+          : 'Score signal is still forming.',
+        planLine: planExplanation?.headline ?? 'Helix is keeping one clear focus on top.',
+        thisWeekLine: weeklyDigest?.next_week_opportunity
+          ?? weeklyDigest?.recommended_focus?.[0]
+          ?? weeklyDigest?.strengths?.[0]
+          ?? 'Keep the next action streak alive and Helix will tighten the plan further.',
+        comebackLine: weeklyDigest?.next_week_opportunity ?? null,
+        proofPoints: [
+          whatChanged?.headline,
+          Array.isArray(whatChanged?.bullets) ? whatChanged.bullets[0] : null,
+          Array.isArray(projectionEvidence?.whyChanged) ? projectionEvidence.whyChanged[0] : null,
+        ].filter(Boolean),
+        primaryAction,
       };
     },
 
@@ -1986,6 +2072,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         weeklyDigest: api.getWeeklyDigest(userId),
         plan: api.getPlan(userId),
         planExplanation: api.getPlanExplanation(userId),
+        learnerNarrative: api.getLearnerNarrative(userId),
         errorDna: api.getErrorDna(userId),
         errorDnaSummary: api.getErrorDnaSummary(userId),
         whatChanged: api.getWhatChanged(userId),

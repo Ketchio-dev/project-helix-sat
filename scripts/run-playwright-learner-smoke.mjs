@@ -80,7 +80,7 @@ async function main() {
     await page.locator('#startDiagnosticFromPreflight').click();
 
     for (let index = 0; index < 15; index += 1) {
-      if (await page.getByText('Score range now:', { exact: false }).isVisible().catch(() => false)) {
+      if (await page.locator('#diagnosticRevealSection').isVisible().catch(() => false)) {
         break;
       }
       await page.locator('#attemptForm').waitFor({ state: 'visible' });
@@ -88,7 +88,8 @@ async function main() {
       await page.waitForTimeout(30);
     }
 
-    await page.getByText('Score range now:', { exact: false }).waitFor();
+    await page.locator('#diagnosticRevealSection').waitFor({ state: 'visible' });
+    await page.locator('#diagnosticReveal').getByText('Score range now:', { exact: false }).waitFor();
     await page.getByText('Start here next').waitFor();
     await page.getByText('Why Helix believes this').waitFor();
     await page.locator('#diagnosticReveal').getByRole('button', { name: 'Take the 2-minute win' }).click();

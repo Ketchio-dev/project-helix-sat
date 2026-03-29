@@ -341,7 +341,11 @@ describe('integrity: curriculum lesson bundle', () => {
     assert.equal(bundle.transferCard.id, 'transfer_rw_inferences_v1');
     assert.equal(bundle.transferCard.itemId, transferItem.itemId);
     assert.match(bundle.teachCard.summary, /strongest claim the lines force/i);
+    assert.match(bundle.teachCard.lookForFirst, /line that forces the claim/i);
+    assert.match(bundle.teachCard.ruleOfThumb, /too big for SAT inference/i);
     assert.match(bundle.workedExample.walkthrough[0], /collect the concrete clues first/i);
+    assert.match(bundle.workedExample.mistakePattern, /story-sized conclusion/i);
+    assert.match(bundle.transferCard.transferGoal, /concrete clues/i);
     assert.match(bundle.transferCard.rationalePreview, /prove the answer from one or two exact clues/i);
   });
 
@@ -359,8 +363,12 @@ describe('integrity: curriculum lesson bundle', () => {
 
     assert.match(bundle.teachCard.summary, /write the full linear equation or inequality first/i);
     assert.match(bundle.teachCard.checkFor, /greatest or least valid answer/i);
+    assert.match(bundle.teachCard.lookForFirst, /full equation or inequality/i);
+    assert.match(bundle.teachCard.ruleOfThumb, /check the context rule/i);
     assert.equal(bundle.teachCard.commonTrap, 'Stopping after the algebra boundary without checking which answer actually satisfies the context.');
     assert.match(bundle.workedExample.takeaway, /setup is correct and the final bound is checked/i);
+    assert.match(bundle.workedExample.mistakePattern, /valid maximum, minimum, or satisfying value/i);
+    assert.match(bundle.transferCard.transferGoal, /verify the winning value/i);
     assert.match(bundle.transferCard.rationalePreview, /verify the requested maximum, minimum, or satisfying value/i);
   });
 
@@ -431,6 +439,78 @@ describe('integrity: curriculum lesson bundle', () => {
         trapPattern: /zeros, factors, and excluded values/i,
         transferPattern: /root, a restriction, or an equivalent rewritten form/i,
       },
+      {
+        skillId: 'rw_central_ideas_and_details',
+        workedExampleItem: seed.items.rw_central_ideas_01,
+        transferItem: seed.items.rw_central_ideas_02,
+        summaryPattern: /keeps returning to/i,
+        trapPattern: /broader claim those details are building toward/i,
+        transferPattern: /repeated pattern across the details/i,
+        lookForPattern: /detail pattern the passage repeats/i,
+        rulePattern: /too narrow for the main idea/i,
+        mistakePattern: /umbrella claim/i,
+        transferGoalPattern: /umbrella claim they all support/i,
+      },
+      {
+        skillId: 'math_area_and_perimeter',
+        workedExampleItem: seed.items.math_geometry_02,
+        transferItem: seed.items.math_geometry_03,
+        summaryPattern: /Choose the measure before you calculate/i,
+        trapPattern: /different geometric measure/i,
+        transferPattern: /name the measure before you touch the numbers/i,
+        lookForPattern: /perimeter, area, surface area, or volume/i,
+        rulePattern: /decide what quantity is being measured/i,
+        mistakePattern: /wrong geometric quantity/i,
+        transferGoalPattern: /Name the measure and units first/i,
+      },
+      {
+        skillId: 'math_linear_functions',
+        workedExampleItem: seed.items.math_linear_func_01,
+        transferItem: seed.items.math_linear_func_02,
+        summaryPattern: /constant rate and one starting value/i,
+        trapPattern: /slope or intercept means/i,
+        transferPattern: /identify the rate and start value/i,
+        lookForPattern: /constant rate and the starting value/i,
+        rulePattern: /same slope-and-start story/i,
+        mistakePattern: /rate-plus-start interpretation/i,
+        transferGoalPattern: /Name the rate and starting amount/i,
+      },
+      {
+        skillId: 'math_ratios_rates',
+        workedExampleItem: seed.items.math_ratio_01,
+        transferItem: seed.items.math_ratio_02,
+        summaryPattern: /translation problems/i,
+        trapPattern: /mismatched units or the wrong kind of comparison/i,
+        transferPattern: /lock the units and comparison type/i,
+        lookForPattern: /part-to-part, part-to-whole, or per-unit/i,
+        rulePattern: /before you scale any numbers/i,
+        mistakePattern: /setup drifts away from the story/i,
+        transferGoalPattern: /matching units/i,
+      },
+      {
+        skillId: 'math_circles',
+        workedExampleItem: seed.items.math_circle_01,
+        transferItem: seed.items.math_circle_02,
+        summaryPattern: /diagram-translation questions/i,
+        trapPattern: /wrong measure/i,
+        transferPattern: /identify the circle quantity first/i,
+        lookForPattern: /radius, diameter, arc, sector, tangent, circumference, or area/i,
+        rulePattern: /choose the circle relationship or formula/i,
+        mistakePattern: /quantity the diagram is actually giving/i,
+        transferGoalPattern: /Name the circle quantity first/i,
+      },
+      {
+        skillId: 'math_trigonometry',
+        workedExampleItem: seed.items.math_trig_01,
+        transferItem: seed.items.math_trig_02,
+        summaryPattern: /Match the trig ratio to the sides you actually know/i,
+        trapPattern: /Swapping opposite and adjacent/i,
+        transferPattern: /verify the side labels first/i,
+        lookForPattern: /reference angle and the side labels/i,
+        rulePattern: /No trig ratio until the sides are labeled/i,
+        mistakePattern: /labeling step that tells which ratio fits/i,
+        transferGoalPattern: /Label the sides from the reference angle/i,
+      },
     ];
 
     for (const testCase of cases) {
@@ -444,6 +524,14 @@ describe('integrity: curriculum lesson bundle', () => {
 
       assert.match(bundle.teachCard.summary, testCase.summaryPattern);
       assert.match(bundle.teachCard.commonTrap, testCase.trapPattern);
+      assert.ok(bundle.teachCard.lookForFirst);
+      assert.ok(bundle.teachCard.ruleOfThumb);
+      assert.ok(bundle.workedExample.mistakePattern);
+      assert.ok(bundle.transferCard.transferGoal);
+      if (testCase.lookForPattern) assert.match(bundle.teachCard.lookForFirst, testCase.lookForPattern);
+      if (testCase.rulePattern) assert.match(bundle.teachCard.ruleOfThumb, testCase.rulePattern);
+      if (testCase.mistakePattern) assert.match(bundle.workedExample.mistakePattern, testCase.mistakePattern);
+      if (testCase.transferGoalPattern) assert.match(bundle.transferCard.transferGoal, testCase.transferGoalPattern);
       assert.match(bundle.transferCard.rationalePreview, testCase.transferPattern);
       assert.ok(bundle.workedExample.walkthrough.length >= 2);
     }
