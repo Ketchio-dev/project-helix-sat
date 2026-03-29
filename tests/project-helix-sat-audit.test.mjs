@@ -15,6 +15,15 @@ const apiTestSource = fs.readFileSync(new URL('../tests/api.test.mjs', import.me
 const smokeRunnerSource = fs.readFileSync(new URL('../scripts/run-playwright-learner-smoke.mjs', import.meta.url), 'utf8');
 const generatedAuditSnapshot = fs.readFileSync(new URL('../docs/audits/project-helix-sat-coverage.md', import.meta.url), 'utf8');
 
+function duplicateIds(source) {
+  const counts = new Map();
+  for (const match of source.matchAll(/id="([^"]+)"/g)) {
+    const id = match[1];
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return [...counts.entries()].filter(([, count]) => count > 1);
+}
+
 test('project helix audit captures current MVP coverage and blueprint gaps', () => {
   const audit = buildProjectHelixSatAudit({ ontology, routerSource, appSource, apiTestSource });
 
@@ -81,7 +90,7 @@ test('learner shell includes diagnostic preflight and richer progress narration 
 test('learner shell prioritizes one main action and tucks secondary detail away', () => {
   assert.match(indexSource, /Your next move/);
   assert.match(indexSource, /Quick Win/);
-  assert.match(indexSource, /What changed in your last session/);
+  assert.match(indexSource, /Your latest session outcome/);
   assert.match(indexSource, /Why this week works/);
   assert.match(indexSource, /If you only have a short block/);
   assert.match(indexSource, /Keep tomorrow easy/);
@@ -91,7 +100,8 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(appSource, /studentActionCopy/);
   assert.match(appSource, /Completion streak:/);
   assert.match(appSource, /Next week opportunity/);
-  assert.match(appSource, /Take the 2-minute win/);
+  assert.match(appSource, /Practice now/);
+  assert.match(appSource, /formatSkillLabel\(action\.focusSkill\)/);
   assert.match(appSource, /renderQuickWinSummary/);
   assert.match(appSource, /renderLatestSessionOutcome/);
   assert.match(appSource, /function renderErrorDna/);
@@ -106,7 +116,9 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(reviewLessonPackSource, /Open lesson pack/);
   assert.match(appSource, /More ways to work/);
   assert.match(appSource, /Try this again/);
+  assert.match(appSource, /Try a close variant/);
   assert.match(appSource, /syncDashboardDetails/);
+  assert.equal(duplicateIds(indexSource).length, 0);
 });
 
 test('repo ships release-bar gating and a no-dependency playwright learner smoke runner', () => {
@@ -118,10 +130,14 @@ test('repo ships release-bar gating and a no-dependency playwright learner smoke
   assert.match(smokeRunnerSource, /npm', \['install', '--no-save', 'playwright'\]/);
   assert.match(smokeRunnerSource, /Show full study dashboard/);
   assert.match(smokeRunnerSource, /Your 12-minute starting point/);
-  assert.match(smokeRunnerSource, /Take the 2-minute win/);
+  assert.match(smokeRunnerSource, /name: \/\^Practice \//);
   assert.match(smokeRunnerSource, /#quickWinSection/);
   assert.match(smokeRunnerSource, /Completion streak:/);
   assert.match(smokeRunnerSource, /Next week opportunity/);
+  assert.match(smokeRunnerSource, /#reviewRecommendations/);
+  assert.match(smokeRunnerSource, /Teach card/);
+  assert.match(smokeRunnerSource, /Try a close variant/);
+  assert.match(smokeRunnerSource, /Duplicate ids found/);
   assert.match(smokeRunnerSource, /selectOption\('exam'\)/);
   assert.match(smokeRunnerSource, /0\/22 answered/);
 });

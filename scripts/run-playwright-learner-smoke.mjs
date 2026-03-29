@@ -53,6 +53,7 @@ async function main() {
 
   try {
     await page.goto(baseUrl, { waitUntil: 'networkidle' });
+    await expectUniqueIds(page);
 
     await page.locator('#registerName').fill('Smoke Learner');
     await page.locator('#registerEmail').fill(uniqueEmail());
@@ -92,7 +93,7 @@ async function main() {
     await page.locator('#diagnosticReveal').getByText('Score range now:', { exact: false }).waitFor();
     await page.locator('#diagnosticReveal').getByText('Start here next').waitFor();
     await page.locator('#diagnosticReveal').getByText('Why Helix believes this').waitFor();
-    await page.locator('#diagnosticReveal').getByRole('button', { name: 'Take the 2-minute win' }).click();
+    await page.locator('#diagnosticReveal').getByRole('button', { name: /^Practice / }).click();
 
     for (let index = 0; index < 5; index += 1) {
       if (await page.locator('#quickWinSection').isVisible().catch(() => false)) {
@@ -110,6 +111,17 @@ async function main() {
     await page.getByRole('button', { name: 'Show full study dashboard' }).click();
     await page.locator('#returnPath').getByText('Completion streak:', { exact: false }).waitFor();
     await page.locator('#weeklyDigest').getByText('Next week opportunity', { exact: false }).waitFor();
+    const reviewRecommendations = page.locator('#reviewRecommendations');
+    const firstLessonPack = reviewRecommendations.locator('details').first();
+    await firstLessonPack.getByText('Open lesson pack', { exact: false }).waitFor();
+    await reviewRecommendations.getByRole('button', { name: 'Try this again' }).first().waitFor();
+    await reviewRecommendations.getByRole('button', { name: 'Try a close variant' }).first().waitFor();
+    await firstLessonPack.locator('summary').click();
+    const lessonPackText = await firstLessonPack.textContent();
+    assert.match(lessonPackText ?? '', /Teach card/);
+    assert.match(lessonPackText ?? '', /Worked example/);
+    assert.match(lessonPackText ?? '', /Retry pair/);
+    assert.match(lessonPackText ?? '', /Near-transfer pair/);
     await page.locator('#moduleSection').selectOption('math');
     await page.locator('#moduleRealismProfile').selectOption('exam');
     await page.locator('#startModule').click();
@@ -125,8 +137,17 @@ async function expectHidden(page, selector) {
   assert.equal(visible, false, \`\${selector} should be hidden\`);
 }
 
-async function expectVisible(page, selector) {
-  await page.locator(selector).waitFor({ state: 'visible' });
+async function expectUniqueIds(page) {
+  const duplicateIds = await page.evaluate(() => {
+    const counts = new Map();
+    for (const element of document.querySelectorAll('[id]')) {
+      counts.set(element.id, (counts.get(element.id) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .filter(([, count]) => count > 1)
+      .map(([id, count]) => \`\${id} (\${count})\`);
+  });
+  assert.equal(duplicateIds.length, 0, \`Duplicate ids found: \${duplicateIds.join(', ')}\`);
 }
 
 await main();

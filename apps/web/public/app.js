@@ -845,7 +845,7 @@ function studentActionCopy(action) {
       return {
         title,
         reason,
-        ctaLabel: action.ctaLabel ?? 'Take the 2-minute win',
+        ctaLabel: action.ctaLabel ?? (action.focusSkill ? `Practice ${formatSkillLabel(action.focusSkill)}` : 'Practice now'),
       };
     case 'resume_active_session':
       return {
@@ -1905,6 +1905,11 @@ function renderReview(review) {
     const primaryRetryButton = node('button', { text: 'Try this again' });
     primaryRetryButton.addEventListener('click', async () => startRetryLoop(firstCard.retryAction?.itemId ?? firstCard.itemId));
     focusCard.append(primaryRetryButton);
+    if (firstCard.transferAction?.itemId) {
+      const transferButton = node('button', { className: 'secondary', text: 'Try a close variant' });
+      transferButton.addEventListener('click', async () => startRetryLoop(firstCard.transferAction.itemId));
+      focusCard.append(transferButton);
+    }
     list.append(focusCard);
   }
 
