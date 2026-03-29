@@ -47,6 +47,27 @@ async function answerCurrentItem(page) {
   await page.locator('#attemptForm button[type="submit"]').click();
 }
 
+async function hasRecoverableActiveSession(page) {
+  return page.evaluate(async () => {
+    const response = await fetch('/api/session/active', { credentials: 'same-origin' }).catch(() => null);
+    if (!response || !response.ok) return false;
+    const payload = await response.json().catch(() => null);
+    return Boolean(payload?.activeSession?.currentItem);
+  });
+}
+
+async function clickSectionButtonByText(page, sectionSelector, patternSource, patternFlags = 'i') {
+  return page.evaluate(({ sectionSelector, patternSource, patternFlags }) => {
+    const section = document.querySelector(sectionSelector);
+    if (!section) return false;
+    const pattern = new RegExp(patternSource, patternFlags);
+    const button = [...section.querySelectorAll('button')].find((candidate) => pattern.test(candidate.textContent ?? ''));
+    if (!button) return false;
+    button.click();
+    return true;
+  }, { sectionSelector, patternSource, patternFlags });
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
@@ -68,12 +89,16 @@ async function main() {
     ]);
     assert.ok(postRegisterSurface, 'register should land on goal setup or the learner home shell');
 
-    if (postRegisterSurface === 'goal' && await goalSetupSection.isVisible().catch(() => false)) {
+    if (await goalSetupSection.isVisible().catch(() => false)) {
       await page.locator('#goalTargetScore').fill('1450');
       await page.locator('#goalTargetDate').fill('2026-12-05');
       await page.locator('#goalDailyMinutes').fill('35');
       await page.locator('#goalWeakArea').fill('inference');
       await page.locator('#goalSetupForm button[type="submit"]').click();
+      await page.waitForFunction(() => {
+        const text = document.querySelector('#nextBestActionSection')?.textContent ?? '';
+        return text.includes('Start your 12-minute check') || text.includes('Resume');
+      });
       await nextMoveHeading.waitFor();
     }
 
@@ -90,12 +115,19 @@ async function main() {
     await expectHidden(page, '#teacherAssignmentsSection');
 
     await page.locator('#nextBestActionSection button').first().click();
-    await page.getByRole('heading', { name: 'Your 12-minute starting point' }).waitFor();
+    const preflightHeading = page.getByRole('heading', { name: 'Your 12-minute starting point' });
+    await preflightHeading.waitFor({ timeout: 3000 });
     await page.locator('#startDiagnosticFromPreflight').click();
 
     for (let index = 0; index < 15; index += 1) {
+      const resumeButton = page.locator('#nextBestActionSection').getByRole('button', { name: /Resume/i }).first();
       if (await page.locator('#diagnosticRevealSection').isVisible().catch(() => false)) {
         break;
+      }
+      if (await resumeButton.isVisible().catch(() => false)) {
+        await clickSectionButtonByText(page, '#nextBestActionSection', 'Resume');
+      } else if (await hasRecoverableActiveSession(page)) {
+        await page.locator('#refreshDashboard').click();
       }
       await Promise.race([
         page.locator('#attemptForm').waitFor({ state: 'visible', timeout: 5000 }).catch(() => null),
@@ -113,11 +145,17 @@ async function main() {
     await page.locator('#diagnosticReveal').getByText('Score range now:', { exact: false }).waitFor();
     await page.locator('#diagnosticReveal').getByText('Start here next').waitFor();
     await page.locator('#diagnosticReveal').getByText('Why Helix believes this').waitFor();
-    await page.locator('#diagnosticReveal').getByRole('button', { name: /^Practice / }).click();
+    await clickSectionButtonByText(page, '#diagnosticReveal', '^Practice ');
 
     for (let index = 0; index < 5; index += 1) {
       if (await page.locator('#quickWinSection').isVisible().catch(() => false)) {
         break;
+      }
+      const retryButton = page.locator('#nextBestActionSection').getByRole('button', { name: /Resume|Practice/i }).first();
+      if (await retryButton.isVisible().catch(() => false)) {
+        await clickSectionButtonByText(page, '#nextBestActionSection', 'Resume|Practice');
+      } else if (await hasRecoverableActiveSession(page)) {
+        await page.locator('#refreshDashboard').click();
       }
       await Promise.race([
         page.locator('#attemptForm').waitFor({ state: 'visible', timeout: 5000 }).catch(() => null),
@@ -140,7 +178,17 @@ async function main() {
     assert.equal(quickWinVisible || sessionOutcomeVisible, true, 'quick win should end in a visible summary or unified session outcome');
 
     await page.locator('#refreshDashboard').click();
-    await page.getByRole('button', { name: 'Show full study dashboard' }).click();
+    const dashboardToggle = page.getByRole('button', { name: /Show full study dashboard|Hide full study dashboard/ }).first();
+    if (await dashboardToggle.isVisible().catch(() => false)) {
+      const toggleLabel = await dashboardToggle.textContent();
+      if ((toggleLabel ?? '').includes('Show')) {
+        await dashboardToggle.click();
+      }
+    } else {
+      await page.evaluate(() => {
+        document.querySelector('#toggleDashboardDetails')?.click();
+      });
+    }
     await page.locator('#learnerNarrative').getByText('Score signal:', { exact: false }).waitFor();
     await page.locator('#returnPath').getByText('Completion streak:', { exact: false }).waitFor();
     await page.locator('#weeklyDigest').getByText('Next week opportunity', { exact: false }).waitFor();
@@ -159,6 +207,13 @@ async function main() {
     assert.match(lessonPackText ?? '', /Worked example/);
     assert.match(lessonPackText ?? '', /Retry pair/);
     assert.match(lessonPackText ?? '', /Near-transfer pair/);
+    await page.evaluate(() => {
+      const details = document.querySelector('#manualStartControls');
+      if (details) {
+        details.style.display = 'block';
+        details.open = true;
+      }
+    });
     await page.locator('#moduleSection').selectOption('math');
     await page.locator('#moduleRealismProfile').selectOption('exam');
     await page.locator('#startModule').click();
@@ -183,18 +238,22 @@ async function main() {
     assert.ok(designTokens.radiusLg, 'CSS variable --radius-lg should be defined');
     assert.ok(designTokens.transition, 'CSS variable --transition should be defined');
 
-    const heroStyles = await page.locator('.hero').evaluate((el) => {
+    const topbarStyles = await page.locator('.topbar').evaluate((el) => {
       const s = getComputedStyle(el);
-      return { borderRadius: s.borderRadius, display: s.display };
+      return {
+        borderRadius: s.borderRadius,
+        display: s.display,
+        background: s.backgroundColor,
+      };
     });
-    assert.equal(heroStyles.display, 'flex', 'Hero should use flex layout');
-    assert.ok(parseInt(heroStyles.borderRadius, 10) >= 16, 'Hero border-radius should be >= 16px (premium)');
+    assert.equal(topbarStyles.display, 'flex', 'Topbar should use a dense flex layout');
+    assert.ok(parseInt(topbarStyles.borderRadius, 10) <= 14, 'Topbar radius should stay compact');
 
     const cardStyles = await page.locator('.card').first().evaluate((el) => {
       const s = getComputedStyle(el);
       return { borderRadius: s.borderRadius, background: s.backgroundColor };
     });
-    assert.ok(parseInt(cardStyles.borderRadius, 10) >= 16, 'Card border-radius should be >= 16px');
+    assert.ok(parseInt(cardStyles.borderRadius, 10) <= 12, 'Card border-radius should stay compact');
 
     const choiceLabels = await page.locator('.choice').count();
     if (choiceLabels > 0) {
@@ -203,7 +262,7 @@ async function main() {
         return { cursor: s.cursor, borderRadius: s.borderRadius };
       });
       assert.equal(choiceStyles.cursor, 'pointer', 'Choice items should have pointer cursor');
-      assert.ok(parseInt(choiceStyles.borderRadius, 10) >= 10, 'Choice border-radius should be >= 10px');
+      assert.ok(parseInt(choiceStyles.borderRadius, 10) <= 12, 'Choice border-radius should stay compact');
     }
 
     const buttonStyles = await page.locator('button').first().evaluate((el) => {

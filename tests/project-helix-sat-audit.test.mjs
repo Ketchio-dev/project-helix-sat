@@ -136,7 +136,7 @@ test('repo ships release-bar gating and a no-dependency playwright learner smoke
   assert.match(smokeRunnerSource, /npm', \['install', '--no-save', 'playwright'\]/);
   assert.match(smokeRunnerSource, /Show full study dashboard/);
   assert.match(smokeRunnerSource, /Your 12-minute starting point/);
-  assert.match(smokeRunnerSource, /name: \/\^Practice \//);
+  assert.match(smokeRunnerSource, /clickSectionButtonByText\(page, '#diagnosticReveal', '\^Practice '\)/);
   assert.match(smokeRunnerSource, /#quickWinSection/);
   assert.match(smokeRunnerSource, /#learnerNarrative/);
   assert.match(smokeRunnerSource, /Find your starting point/);

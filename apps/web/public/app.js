@@ -29,6 +29,8 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 
+document.documentElement.classList.add('js-ready');
+
 function isStudentSurface() {
   return state.userRole === 'student' || state.userRole === 'admin';
 }
@@ -878,15 +880,11 @@ async function startRetryLoop(itemId = null) {
     state.currentSessionId = result.session.id;
     state.currentSessionType = result.session.type;
     state.currentSessionProgress = result.sessionProgress ?? null;
-    state.activeSessionEnvelope = {
-      session: result.session,
-      sessionProgress: result.sessionProgress ?? null,
-      currentItem: result.currentItem ?? null,
-    };
+    state.activeSessionEnvelope = await settleStartedSession(result);
     $('#modeSelect').value = 'review';
     clearSessionNotice();
     renderNextBestAction(null);
-    renderItem(result.currentItem);
+    renderItem(state.activeSessionEnvelope.currentItem);
     renderSessionProgress(result.sessionProgress);
     $('#itemArea')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
@@ -903,20 +901,54 @@ async function startQuickWinSession() {
     state.currentSessionId = result.session.id;
     state.currentSessionType = result.session.type;
     state.currentSessionProgress = result.sessionProgress ?? null;
-    state.activeSessionEnvelope = {
-      session: result.session,
-      sessionProgress: result.sessionProgress ?? null,
-      currentItem: result.currentItem ?? null,
-    };
+    state.activeSessionEnvelope = await settleStartedSession(result);
     $('#modeSelect').value = 'learn';
     clearSessionNotice();
     renderNextBestAction(null);
-    renderItem(result.currentItem);
+    renderItem(state.activeSessionEnvelope.currentItem);
     renderSessionProgress(result.sessionProgress);
     $('#itemArea')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
     $('#attemptResult').textContent = error.message;
   }
+}
+
+async function settleStartedSession(result, { attempts = 5, delayMs = 120 } = {}) {
+  const sessionEnvelope = {
+    session: result.session,
+    timing: result.timing ?? result.pacing ?? null,
+    sessionProgress: result.sessionProgress ?? null,
+    currentItem: result.currentItem ?? null,
+    timedSummary: result.timedSummary ?? null,
+    moduleSummary: result.moduleSummary ?? null,
+  };
+
+  if (sessionEnvelope.currentItem) {
+    return sessionEnvelope;
+  }
+
+  for (let index = 0; index < attempts; index += 1) {
+    const activeSession = await loadActiveSession().catch((error) => {
+      if (error.status === 404) return null;
+      throw error;
+    });
+    const activeEnvelope = extractSessionEnvelope(activeSession);
+    if (activeEnvelope?.session?.id === result.session.id && activeEnvelope.currentItem) {
+      return {
+        session: activeEnvelope.session,
+        timing: activeEnvelope.timing ?? result.timing ?? result.pacing ?? null,
+        sessionProgress: activeEnvelope.sessionProgress ?? result.sessionProgress ?? null,
+        currentItem: activeEnvelope.currentItem,
+        timedSummary: activeEnvelope.timedSummary ?? result.timedSummary ?? null,
+        moduleSummary: activeEnvelope.moduleSummary ?? result.moduleSummary ?? null,
+      };
+    }
+    if (index < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  return sessionEnvelope;
 }
 
 function renderGoalProfile(goalProfile) {
@@ -973,18 +1005,24 @@ function renderNextBestAction(action) {
   clear(container);
   clear(alternatives);
   const copy = studentActionCopy(action);
-  container.append(node('h3', { text: copy.title }));
-  container.append(node('p', { text: copy.reason }));
+  const shell = node('div', { className: 'next-move-layout' });
+  const copyBlock = node('div', { className: 'next-move-copy' });
+  copyBlock.append(node('p', { className: 'eyebrow compact', text: 'Recommended now' }));
+  copyBlock.append(node('h3', { text: copy.title }));
+  copyBlock.append(node('p', { text: copy.reason }));
   const meta = [];
   if (action.estimatedMinutes) meta.push(`~${action.estimatedMinutes} min`);
   if (action.section) meta.push(formatSectionName(action.section));
   if (action.sessionType) meta.push(toDisplaySessionType(action.sessionType));
   if (meta.length) {
-    container.append(node('p', { className: 'muted', text: meta.join(' · ') }));
+    copyBlock.append(node('p', { className: 'muted', text: meta.join(' · ') }));
   }
+  const ctaBlock = node('div', { className: 'next-move-cta' });
   const button = node('button', { text: copy.ctaLabel });
   button.addEventListener('click', () => performNextBestAction(action));
-  container.append(button);
+  ctaBlock.append(button);
+  shell.append(copyBlock, ctaBlock);
+  container.append(shell);
 
   const secondaryActions = buildAlternativeActions(action);
   if (secondaryActions.length) {
@@ -2141,7 +2179,7 @@ function renderSessionReview(review) {
 function showLogin() {
   const loginSection = document.getElementById('loginSection');
   const appSection = document.getElementById('appSection');
-  if (loginSection) loginSection.style.display = 'block';
+  if (loginSection) loginSection.style.display = 'grid';
   if (appSection) appSection.style.display = 'none';
   const loginError = $('#loginError');
   const registerError = $('#registerError');
@@ -2301,7 +2339,13 @@ async function loadDashboard() {
     renderParentSummary(parentSummary);
     renderTeacherBrief(teacherBrief);
     renderTeacherAssignments(teacherAssignments);
+    const localSessionInFlight = state.activeSessionEnvelope?.session?.id ?? state.currentSessionId ?? null;
     if (!applySessionEnvelope(extractSessionEnvelope(activeSession))) {
+      if (localSessionInFlight) {
+        syncSessionControls();
+        syncDashboardDetails();
+        return;
+      }
       state.activeSessionEnvelope = null;
       state.currentSessionType = null;
       state.currentSessionId = null;
@@ -2344,8 +2388,8 @@ async function startDiagnosticSession() {
     renderDiagnosticReveal(null);
     renderNextBestAction(null);
     renderDiagnosticPreflight();
-    state.activeSessionEnvelope = { session: result.session, sessionProgress: result.sessionProgress ?? null };
-    renderItem(result.currentItem);
+    state.activeSessionEnvelope = await settleStartedSession(result);
+    renderItem(state.activeSessionEnvelope.currentItem);
     renderSessionProgress(result.sessionProgress);
   } catch (error) {
     $('#diagnosticStatus').textContent = error.message;
@@ -2367,12 +2411,7 @@ async function startTimedSetSession() {
     clearSessionNotice();
     renderDiagnosticReveal(null);
     renderNextBestAction(null);
-    state.activeSessionEnvelope = {
-      session: result.session,
-      timing: result.timing ?? result.pacing ?? null,
-      sessionProgress: result.sessionProgress ?? null,
-      currentItem: result.currentItem ?? null,
-    };
+    state.activeSessionEnvelope = await settleStartedSession(result);
     renderTimedSetSummary({
       sessionType: result.session.type,
       startedAt: result.session.started_at ?? result.session.startedAt,
@@ -2387,7 +2426,7 @@ async function startTimedSetSession() {
       paceStatus: 'not_started',
       nextAction: 'Work through the set in exam mode, then finish to review your pacing.',
     });
-    renderItem(result.currentItem);
+    renderItem(state.activeSessionEnvelope.currentItem);
     renderSessionProgress(result.sessionProgress);
   } catch (error) {
     handleSessionConflict(error, 'Finish or resume the current exam session before starting another timed set.');
@@ -2414,12 +2453,7 @@ async function startModuleSession(sectionOverride = null) {
     clearSessionNotice();
     renderDiagnosticReveal(null);
     renderNextBestAction(null);
-    state.activeSessionEnvelope = {
-      session: result.session,
-      timing: result.timing ?? result.pacing ?? null,
-      sessionProgress: result.sessionProgress ?? null,
-      currentItem: result.currentItem ?? null,
-    };
+    state.activeSessionEnvelope = await settleStartedSession(result);
     renderModuleSummary({
       sessionType: result.session.type,
       startedAt: result.session.started_at ?? result.session.startedAt,
@@ -2439,7 +2473,7 @@ async function startModuleSession(sectionOverride = null) {
       readinessIndicator: result.moduleSummary?.readinessIndicator ?? result.moduleSummary?.readiness_indicator ?? result.moduleSummary?.readinessSignal ?? result.moduleSummary?.readiness_signal ?? result.readinessIndicator ?? 'Module started',
       nextAction: result.moduleSummary?.nextAction ?? result.moduleSummary?.next_action ?? 'Complete the module in exam mode, then finish to review your pacing and breakdown.',
     });
-    renderItem(result.currentItem);
+    renderItem(state.activeSessionEnvelope.currentItem);
     renderSessionProgress(result.sessionProgress);
   } catch (error) {
     handleSessionConflict(error, 'Finish or resume the current exam session before starting another module simulation.');

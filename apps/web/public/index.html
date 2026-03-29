@@ -7,54 +7,82 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div id="loginSection" style="display:none; max-width:360px; margin:80px auto; padding:24px; border:1px solid #ddd; border-radius:8px;">
-      <h2 style="margin-top:0;">Project Helix SAT</h2>
-      <p style="color:#666; margin-bottom:20px;">Sign in to continue</p>
-      <div style="display:flex; flex-direction:column; gap:12px;">
-        <input id="loginEmail" type="email" placeholder="Email" style="padding:8px; border:1px solid #ccc; border-radius:4px; font-size:14px;" />
-        <input id="loginPassword" type="password" placeholder="Password" style="padding:8px; border:1px solid #ccc; border-radius:4px; font-size:14px;" />
-        <button id="loginButton" style="padding:10px; background:#1a73e8; color:#fff; border:none; border-radius:4px; font-size:14px; cursor:pointer;">Sign In</button>
-        <span id="loginError" style="color:#d93025; font-size:13px;"></span>
-      </div>
-      <hr style="margin:20px 0; border:none; border-top:1px solid #e0e0e0;" />
-      <p style="color:#666; margin-bottom:12px;">New here? Create a student account.</p>
-      <div style="display:flex; flex-direction:column; gap:12px;">
-        <input id="registerName" type="text" placeholder="Full name" style="padding:8px; border:1px solid #ccc; border-radius:4px; font-size:14px;" />
-        <input id="registerEmail" type="email" placeholder="Email" style="padding:8px; border:1px solid #ccc; border-radius:4px; font-size:14px;" />
-        <input id="registerPassword" type="password" placeholder="Password (8+ chars)" style="padding:8px; border:1px solid #ccc; border-radius:4px; font-size:14px;" />
-        <button id="registerButton" style="padding:10px; background:#0f8a4b; color:#fff; border:none; border-radius:4px; font-size:14px; cursor:pointer;">Create Account</button>
-        <span id="registerError" style="color:#d93025; font-size:13px;"></span>
-      </div>
+    <div id="loginSection" class="auth-shell" style="display:none;">
+      <section class="card auth-intro">
+        <p class="eyebrow">Project Helix SAT</p>
+        <h1>Calm prep, clear next steps.</h1>
+        <p class="subtitle">
+          Log in to continue your study path or create a student account to start with a clean baseline.
+        </p>
+        <ul class="auth-points">
+          <li>One next move at a time</li>
+          <li>Practice, review, and reflection in one place</li>
+          <li>Steady pacing over noisy gamification</li>
+        </ul>
+      </section>
+
+      <section class="card auth-panel">
+        <div class="auth-block">
+          <h2>Sign in</h2>
+          <p class="muted">Return to your plan and pick up the next session.</p>
+          <div class="auth-fields">
+            <input id="loginEmail" type="email" placeholder="Email" />
+            <input id="loginPassword" type="password" placeholder="Password" />
+            <button id="loginButton">Sign In</button>
+            <span id="loginError" class="danger"></span>
+          </div>
+        </div>
+
+        <div class="auth-divider"><span>New here?</span></div>
+
+        <div class="auth-block">
+          <h2>Create account</h2>
+          <p class="muted">Set up a student profile and start from your goal.</p>
+          <div class="auth-fields">
+            <input id="registerName" type="text" placeholder="Full name" />
+            <input id="registerEmail" type="email" placeholder="Email" />
+            <input id="registerPassword" type="password" placeholder="Password (8+ chars)" />
+            <button id="registerButton" class="secondary">Create Account</button>
+            <span id="registerError" class="danger"></span>
+          </div>
+        </div>
+      </section>
     </div>
 
-    <div id="appSection" style="display:none;">
+    <div id="appSection" class="app-frame" style="display:none;">
     <main class="shell">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">Your SAT plan, one step at a time</p>
-          <h1>Project Helix SAT</h1>
-          <p class="subtitle">
-            Start with one clear next step. Helix keeps the deeper breakdown tucked away until you need it.
-          </p>
+      <header class="topbar">
+        <div class="topbar-copy">
+          <p class="eyebrow compact">Helix SAT</p>
+          <h1>Student workspace</h1>
+          <p class="topbar-context">One focused next move first. Deeper controls stay out of the way until you need them.</p>
         </div>
-        <div class="hero-actions">
-          <span id="userRoleBadge" style="padding:4px 10px; border-radius:12px; font-size:12px; font-weight:600; background:#e8f0fe; color:#1a73e8; align-self:center;"></span>
-          <button id="refreshDashboard">Refresh</button>
-          <div id="manualStartControls" class="row gap" style="display:none;">
-            <button id="startDiagnostic">Start your 12-minute check</button>
-            <button id="startTimedSet">Start Timed Set</button>
-            <select id="moduleSection" aria-label="Module section">
-              <option value="reading_writing">RW Module</option>
-              <option value="math">Math Module</option>
-            </select>
-            <select id="moduleRealismProfile" aria-label="Module realism profile">
-              <option value="standard">Standard Module</option>
-              <option value="extended">Extended Module</option>
-              <option value="exam">Exam Profile</option>
-            </select>
-            <button id="startModule">Start practice block</button>
+        <div class="topbar-aside">
+          <div class="topbar-actions">
+            <span id="userRoleBadge" class="badge role-badge"></span>
+            <button id="refreshDashboard" class="secondary">Refresh</button>
+            <button id="logoutButton" class="ghost">Logout</button>
           </div>
-          <button id="logoutButton" style="background:#f1f3f4; color:#5f6368;">Logout</button>
+          <details id="manualStartControls" class="manual-start-disclosure" style="display:none;">
+            <summary>Start a different block</summary>
+            <div class="manual-start-panel">
+              <p class="control-label">Use these when you want something other than the recommended next move.</p>
+              <div class="manual-start-grid">
+                <button id="startDiagnostic" class="secondary">Start your 12-minute check</button>
+                <button id="startTimedSet" class="secondary">Start Timed Set</button>
+                <select id="moduleSection" aria-label="Module section">
+                  <option value="reading_writing">RW Module</option>
+                  <option value="math">Math Module</option>
+                </select>
+                <select id="moduleRealismProfile" aria-label="Module realism profile">
+                  <option value="standard">Standard Module</option>
+                  <option value="extended">Extended Module</option>
+                  <option value="exam">Exam Profile</option>
+                </select>
+                <button id="startModule" class="secondary">Start practice block</button>
+              </div>
+            </div>
+          </details>
         </div>
       </header>
 
