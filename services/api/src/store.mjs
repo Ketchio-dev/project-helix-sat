@@ -920,6 +920,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       const skillStates = [...api.getSkillStates(userId)];
       const curriculumPath = api.getCurriculumPath(userId);
       const sessionHistory = api.getSessionHistory(userId, 10);
+      const completionStreak = api.getCompletionStreak(userId);
       const review = api.getReviewRecommendations(userId);
       const revisitQueue = api.getReviewRevisitQueue(userId, { includeFuture: true });
       const today = new Date();
@@ -986,6 +987,14 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         recommendedFocus.push('Complete one focused session so Helix can recommend the next score-moving block.');
       }
 
+      const nextWeekOpportunity = retryLead?.skill
+        ? `Next week’s biggest opportunity is to make ${formatSkillLabel(retryLead.skill).toLowerCase()} stick without needing another rescue loop.`
+        : curriculumPath.anchorSkill?.label
+          ? `Next week’s biggest opportunity is to move ${curriculumPath.anchorSkill.label.toLowerCase()} from repair into faster, more durable evidence.`
+          : weakestLabel
+            ? `Next week’s biggest opportunity is to stabilize ${weakestLabel.toLowerCase()} so it stops dragging the score band down.`
+            : 'Next week’s biggest opportunity appears after one more completed session.';
+
       const projectedMomentum = projection.momentum_score >= 0.75
         ? 'strong'
         : projection.momentum_score >= 0.55
@@ -1001,10 +1010,72 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         risks,
         recommended_focus: recommendedFocus.slice(0, 3),
         projected_momentum: projectedMomentum,
+        completion_streak: completionStreak,
+        next_week_opportunity: nextWeekOpportunity,
         parent_summary: `${profile.name} is ${completedSessions.length ? 'building' : 'starting'} a weekly rhythm. The clearest next gain comes from ${retryLead?.skill ? formatSkillLabel(retryLead.skill) : (weakestLabel ?? 'the next focused practice block')}.`,
         teacher_brief: topTrap
           ? `Cluster support around ${topTrap.label.toLowerCase()} and monitor whether the next retry loop sticks.`
           : `Collect one more completed session before narrowing the weekly intervention focus.`,
+      };
+    },
+
+    getCompletionStreak(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const meaningfulDates = [...new Set(
+        api.getSessionHistory(userId, 180)
+          .filter((session) => session.status === 'complete' && isMeaningfulStreakSession(session))
+          .map((session) => (session.endedAt ?? session.startedAt ?? '').slice(0, 10))
+          .filter(Boolean),
+      )].sort();
+
+      if (!meaningfulDates.length) {
+        return {
+          current: 0,
+          best: 0,
+          lastCompletedDate: null,
+          activeToday: false,
+          atRisk: false,
+          headline: 'Start your first streak',
+          prompt: 'Finish one meaningful block today and Helix will start counting the chain.',
+        };
+      }
+
+      let best = 1;
+      let run = 1;
+      for (let index = 1; index < meaningfulDates.length; index += 1) {
+        const previous = differenceInDays(meaningfulDates[index - 1], new Date(`${meaningfulDates[index]}T00:00:00Z`));
+        run = previous === 1 ? run + 1 : 1;
+        best = Math.max(best, run);
+      }
+
+      let current = 1;
+      for (let index = meaningfulDates.length - 1; index > 0; index -= 1) {
+        const gap = differenceInDays(meaningfulDates[index - 1], new Date(`${meaningfulDates[index]}T00:00:00Z`));
+        if (gap !== 1) break;
+        current += 1;
+      }
+
+      const lastCompletedDate = meaningfulDates.at(-1) ?? null;
+      const daysSinceLastCompletion = lastCompletedDate ? differenceInDays(lastCompletedDate) : null;
+      const activeToday = daysSinceLastCompletion === 0;
+      const atRisk = daysSinceLastCompletion === 1;
+      const headline = current === 1
+        ? '1-day completion streak'
+        : `${current}-day completion streak`;
+      const prompt = activeToday
+        ? 'You already kept the chain alive today.'
+        : atRisk
+          ? 'One completed block today keeps the streak alive.'
+          : 'Finish one meaningful block today to restart the chain.';
+
+      return {
+        current,
+        best,
+        lastCompletedDate,
+        activeToday,
+        atRisk,
+        headline,
+        prompt,
       };
     },
 
@@ -1895,6 +1966,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         activeSession: api.getActiveSession(userId),
         sessionHistory: api.getSessionHistory(userId, 5),
         comebackState: api.getComebackState(userId),
+        completionStreak: api.getCompletionStreak(userId),
         studyModes: api.getStudyModes(userId),
         tomorrowPreview: api.getTomorrowPreview(userId),
         latestSessionOutcome: api.getLatestSessionOutcome(userId),
@@ -2812,6 +2884,18 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       section,
       focusSkill,
     };
+  }
+
+  function isMeaningfulStreakSession(session) {
+    if (!session || session.status !== 'complete') return false;
+    if (!['diagnostic', 'quick_win', 'review', 'timed_set', 'module_simulation'].includes(session.type)) {
+      return false;
+    }
+    const answered = Number.isFinite(session.answered) ? session.answered : null;
+    const attemptCount = Number.isFinite(session.attemptCount) ? session.attemptCount : null;
+    const totalItems = Number.isFinite(session.totalItems) ? session.totalItems : null;
+    const evidence = [attemptCount, answered, totalItems].find((value) => Number.isFinite(value));
+    return (evidence ?? 0) > 0;
   }
 
   function differenceInDays(dateLike, now = new Date()) {

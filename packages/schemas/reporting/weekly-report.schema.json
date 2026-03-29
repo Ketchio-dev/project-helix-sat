@@ -9,7 +9,9 @@
     "period_end",
     "strengths",
     "risks",
-    "recommended_focus"
+    "recommended_focus",
+    "completion_streak",
+    "next_week_opportunity"
   ],
   "properties": {
     "period_start": {
@@ -37,6 +39,48 @@
       "items": {
         "type": "string"
       }
+    },
+    "completion_streak": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current",
+        "best",
+        "lastCompletedDate",
+        "activeToday",
+        "atRisk",
+        "headline",
+        "prompt"
+      ],
+      "properties": {
+        "current": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "best": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lastCompletedDate": {
+          "type": ["string", "null"],
+          "format": "date"
+        },
+        "activeToday": {
+          "type": "boolean"
+        },
+        "atRisk": {
+          "type": "boolean"
+        },
+        "headline": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        }
+      }
+    },
+    "next_week_opportunity": {
+      "type": "string"
     },
     "projected_momentum": {
       "type": "string",

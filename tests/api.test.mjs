@@ -1060,8 +1060,19 @@ test('api returns a weekly digest with strengths, risks, and focus after learner
     assert.ok(digest.risks.length >= 1);
     assert.ok(digest.recommended_focus.length >= 1);
     assert.ok(['declining', 'flat', 'improving', 'strong'].includes(digest.projected_momentum));
+    assert.equal(typeof digest.completion_streak.current, 'number');
+    assert.equal(typeof digest.completion_streak.best, 'number');
+    assert.equal(typeof digest.completion_streak.headline, 'string');
+    assert.equal(typeof digest.completion_streak.prompt, 'string');
+    assert.equal(typeof digest.next_week_opportunity, 'string');
     assert.equal(typeof digest.parent_summary, 'string');
     assert.equal(typeof digest.teacher_brief, 'string');
+
+    const dashboard = await fetch(`${baseUrl}/api/dashboard/learner`, {
+      headers: registered.headers,
+    }).then((res) => res.json());
+    assert.equal(typeof dashboard.completionStreak.current, 'number');
+    assert.equal(typeof dashboard.completionStreak.headline, 'string');
   });
 });
 

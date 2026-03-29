@@ -1175,7 +1175,17 @@ function renderWeeklyDigest(digest) {
   const strengths = (Array.isArray(digest?.strengths) ? digest.strengths : []).filter(Boolean);
   const risks = (Array.isArray(digest?.risks) ? digest.risks : []).filter(Boolean);
   const focus = (Array.isArray(digest?.recommended_focus) ? digest.recommended_focus : []).filter(Boolean);
-  const hasContent = Boolean(digest?.period_start || digest?.period_end || strengths.length || risks.length || focus.length);
+  const streak = digest?.completion_streak ?? null;
+  const nextWeekOpportunity = digest?.next_week_opportunity ?? null;
+  const hasContent = Boolean(
+    digest?.period_start
+    || digest?.period_end
+    || strengths.length
+    || risks.length
+    || focus.length
+    || streak?.headline
+    || nextWeekOpportunity,
+  );
   if (!hasContent) {
     container.append(node('p', { className: 'muted', text: 'Weekly evidence will appear after Helix has a little more completed work to summarize.' }));
     return;
@@ -1185,6 +1195,18 @@ function renderWeeklyDigest(digest) {
     className: 'notice',
     text: `${digest.period_start ?? 'This week'} → ${digest.period_end ?? 'in progress'} · momentum ${digest.projected_momentum ?? 'flat'}`,
   }));
+
+  if (streak?.headline) {
+    container.append(node('p', { className: 'muted', text: `Completion streak: ${streak.headline}${streak.best > streak.current ? ` · best ${streak.best} days` : ''}` }));
+    if (streak.prompt) {
+      container.append(node('p', { text: streak.prompt }));
+    }
+  }
+
+  if (nextWeekOpportunity) {
+    container.append(node('p', { className: 'muted', text: 'Next week opportunity' }));
+    container.append(node('p', { text: nextWeekOpportunity }));
+  }
 
   const sections = [
     ['Strengths', strengths],
@@ -1388,13 +1410,13 @@ function renderStudyModes(modes = []) {
   container.append(grid);
 }
 
-function renderReturnPath(preview, comebackState) {
+function renderReturnPath(preview, comebackState, completionStreak) {
   const section = $('#returnPathSection');
   const container = $('#returnPath');
   if (!section || !container) return;
   clear(container);
 
-  const shouldShow = isStudentSurface() && (preview || comebackState?.isReturning);
+  const shouldShow = isStudentSurface() && (preview || comebackState?.isReturning || completionStreak?.headline);
   if (!shouldShow) {
     section.style.display = 'none';
     return;
@@ -1406,6 +1428,13 @@ function renderReturnPath(preview, comebackState) {
     container.append(node('p', { className: 'notice', text: comebackState.headline ?? 'Welcome back' }));
     if (comebackState.prompt) {
       container.append(node('p', { text: comebackState.prompt }));
+    }
+  }
+
+  if (completionStreak?.headline) {
+    container.append(node('p', { className: 'muted', text: `Completion streak: ${completionStreak.headline}${completionStreak.best > completionStreak.current ? ` · best ${completionStreak.best} days` : ''}` }));
+    if (completionStreak.prompt) {
+      container.append(node('p', { className: 'muted', text: completionStreak.prompt }));
     }
   }
 
@@ -2267,7 +2296,7 @@ async function loadDashboard() {
     renderSessionHistory(sessionHistory);
     renderLatestSessionOutcome(dashboard.latestSessionOutcome ?? null);
     renderStudyModes(dashboard.studyModes ?? []);
-    renderReturnPath(dashboard.tomorrowPreview ?? null, dashboard.comebackState ?? null);
+    renderReturnPath(dashboard.tomorrowPreview ?? null, dashboard.comebackState ?? null, dashboard.completionStreak ?? null);
     renderQuickWinSummary(dashboard.latestQuickWinSummary);
     renderTimedSetSummary(dashboard.latestTimedSetSummary);
     renderModuleSummary(dashboard.latestModuleSummary);

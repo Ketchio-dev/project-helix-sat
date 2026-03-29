@@ -83,6 +83,8 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(indexSource, /Want the deeper breakdown\?/);
   assert.match(indexSource, /data-student-dashboard-detail/);
   assert.match(appSource, /studentActionCopy/);
+  assert.match(appSource, /Completion streak:/);
+  assert.match(appSource, /Next week opportunity/);
   assert.match(appSource, /Take the 2-minute win/);
   assert.match(appSource, /renderQuickWinSummary/);
   assert.match(appSource, /renderLatestSessionOutcome/);
