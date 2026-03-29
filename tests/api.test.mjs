@@ -175,6 +175,10 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
     assert.equal(Array.isArray(dashboardBefore.projectionEvidence.whyChanged), true);
     assert.equal(Array.isArray(dashboardBefore.errorDnaSummary), true);
     assert.equal(typeof dashboardBefore.whatChanged.headline, 'string');
+    assert.equal(Array.isArray(dashboardBefore.studyModes), true);
+    assert.ok(dashboardBefore.studyModes.length >= 1);
+    assert.equal(typeof dashboardBefore.comebackState.isReturning, 'boolean');
+    assert.ok('tomorrowPreview' in dashboardBefore);
 
     const [planExplanation, projectionEvidence, whatChanged] = await Promise.all([
       fetch(`${baseUrl}/api/plan/explanation`, { headers: sessions.student.headers }).then((res) => res.json()),

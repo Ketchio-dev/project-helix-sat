@@ -714,7 +714,7 @@ function studentActionCopy(action) {
       return {
         title,
         reason,
-        ctaLabel: 'Take the 2-minute win',
+        ctaLabel: action.ctaLabel ?? 'Take the 2-minute win',
       };
     case 'resume_active_session':
       return {
@@ -726,19 +726,19 @@ function studentActionCopy(action) {
       return {
         title,
         reason,
-        ctaLabel: 'Fix this now',
+        ctaLabel: action.ctaLabel ?? 'Fix this now',
       };
     case 'start_timed_set':
       return {
         title,
         reason,
-        ctaLabel: 'Start timed practice',
+        ctaLabel: action.ctaLabel ?? 'Start timed practice',
       };
     case 'start_module':
       return {
         title,
         reason,
-        ctaLabel: 'Start practice block',
+        ctaLabel: action.ctaLabel ?? 'Start practice block',
       };
     case 'review_mistakes':
       return {
@@ -1183,6 +1183,79 @@ function renderQuickWinSummary(summary) {
   }
 
   container.append(card);
+}
+
+function renderStudyModes(modes = []) {
+  const section = $('#studyModesSection');
+  const container = $('#studyModes');
+  if (!section || !container) return;
+  clear(container);
+
+  if (!isStudentSurface() || !Array.isArray(modes) || !modes.length) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  const grid = node('div', { className: 'grid three compact-grid' });
+
+  for (const mode of modes) {
+    const card = node('article', { className: 'review-item' });
+    card.append(node('strong', { text: mode.label ?? 'Study mode' }));
+    card.append(node('p', { className: 'muted', text: `${mode.minutes ?? '—'} min` }));
+    card.append(node('p', { text: mode.summary ?? 'A prepared block is ready.' }));
+    const copy = studentActionCopy(mode.action ?? null);
+    if (copy?.reason) {
+      card.append(node('p', { className: 'muted', text: copy.reason }));
+    }
+    if (mode.action) {
+      const button = node('button', { className: 'secondary', text: copy?.ctaLabel ?? 'Start' });
+      button.addEventListener('click', () => performNextBestAction(mode.action));
+      card.append(button);
+    }
+    grid.append(card);
+  }
+
+  container.append(grid);
+}
+
+function renderReturnPath(preview, comebackState) {
+  const section = $('#returnPathSection');
+  const container = $('#returnPath');
+  if (!section || !container) return;
+  clear(container);
+
+  const shouldShow = isStudentSurface() && (preview || comebackState?.isReturning);
+  if (!shouldShow) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+
+  if (comebackState?.isReturning) {
+    container.append(node('p', { className: 'notice', text: comebackState.headline ?? 'Welcome back' }));
+    if (comebackState.prompt) {
+      container.append(node('p', { text: comebackState.prompt }));
+    }
+  }
+
+  if (!preview) {
+    container.append(node('p', { className: 'muted', text: 'Tomorrow’s first block appears here once Helix has enough evidence to line it up.' }));
+    return;
+  }
+
+  container.append(node('h3', { text: preview.headline ?? 'Tomorrow’s first block' }));
+  container.append(node('p', { text: preview.reason ?? 'Helix already prepared the next block.' }));
+  if (preview.plannedMinutes) {
+    container.append(node('p', { className: 'muted', text: `Planned time: ${preview.plannedMinutes} min` }));
+  }
+  const copy = studentActionCopy(preview.action ?? null);
+  if (preview.action && copy) {
+    const button = node('button', { className: 'secondary', text: copy.ctaLabel });
+    button.addEventListener('click', () => performNextBestAction(preview.action));
+    container.append(button);
+  }
 }
 
 function renderTimedSetSummary(summary) {
@@ -2023,6 +2096,8 @@ async function loadDashboard() {
     renderWeeklyDigest(weeklyDigest ?? dashboard.weeklyDigest ?? null);
     renderReview(dashboard.review);
     renderSessionHistory(sessionHistory);
+    renderStudyModes(dashboard.studyModes ?? []);
+    renderReturnPath(dashboard.tomorrowPreview ?? null, dashboard.comebackState ?? null);
     renderQuickWinSummary(dashboard.latestQuickWinSummary);
     renderTimedSetSummary(dashboard.latestTimedSetSummary);
     renderModuleSummary(dashboard.latestModuleSummary);

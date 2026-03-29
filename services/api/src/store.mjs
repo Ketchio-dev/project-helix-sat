@@ -197,6 +197,10 @@ function addDays(date, days) {
   return next;
 }
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function chooseModuleSection(items = [], skillStates = []) {
   const skillScores = new Map(
     skillStates.map((entry) => [
@@ -1442,6 +1446,36 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       return latestQuickWin ? api.getQuickWinSummary(latestQuickWin.id) : null;
     },
 
+    getComebackState(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const completedSessions = api.getSessionHistory(userId, 20).filter((session) => session.status === 'complete');
+      const lastCompleted = completedSessions[0] ?? null;
+      if (!lastCompleted?.endedAt) {
+        return {
+          isReturning: false,
+          daysAway: 0,
+          headline: null,
+          prompt: null,
+          lastCompletedAt: null,
+        };
+      }
+
+      const daysAway = differenceInDays(lastCompleted.endedAt);
+      const isReturning = daysAway >= 2;
+      const reviewDue = api.getReviewRevisitQueue(userId, { includeFuture: false })[0] ?? null;
+      const plan = api.getPlan(userId);
+      const focusSkill = reviewDue?.skill ?? plan.blocks?.find((block) => block.target_skills?.length)?.target_skills?.[0] ?? null;
+      const focusLabel = focusSkill ? formatSkillLabel(focusSkill) : 'your next score-moving skill';
+
+      return {
+        isReturning,
+        daysAway,
+        headline: isReturning ? `Welcome back — ${daysAway} day${daysAway === 1 ? '' : 's'} away` : null,
+        prompt: isReturning ? `Helix kept ${focusLabel.toLowerCase()} ready as the easiest way back in.` : null,
+        lastCompletedAt: lastCompleted.endedAt,
+      };
+    },
+
     getErrorDnaSummary(userId = DEMO_USER_ID, limit = 3) {
       return Object.entries(api.getErrorDna(userId))
         .sort((left, right) => right[1] - left[1])
@@ -1505,12 +1539,12 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         const focusSkill = reviewLead?.skill ?? firstBlock?.target_skills?.[0] ?? null;
         const section = reviewLead?.section
           ?? (focusSkill?.startsWith('math_') ? 'math' : focusSkill ? 'reading_writing' : null);
-        return buildQuickWinAction({ focusSkill, section });
+        return applyComebackFraming(buildQuickWinAction({ focusSkill, section }), api.getComebackState(userId));
       }
 
       const revisitLead = revisitQueue.find((entry) => entry.status === 'retry_recommended' || isReviewRevisitDue(entry)) ?? null;
       if (!preferSessionStart && revisitLead) {
-        return {
+        return applyComebackFraming({
           kind: 'start_retry_loop',
           title: revisitLead.status === 'retry_recommended'
             ? `Retry ${formatSkillLabel(revisitLead.skill)} before the pattern hardens`
@@ -1524,12 +1558,12 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           section: revisitLead.section ?? null,
           itemId: revisitLead.itemId,
           focusSkill: revisitLead.skill ?? null,
-        };
+        }, api.getComebackState(userId));
       }
 
       if (!preferSessionStart && review.recommendations?.length) {
         const lead = review.recommendations[0];
-        return {
+        return applyComebackFraming({
           kind: 'start_retry_loop',
           title: 'Fix your most expensive recent trap',
           reason: lead.errorTag
@@ -1541,7 +1575,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           section: lead.section ?? null,
           itemId: lead.itemId,
           focusSkill: lead.skill ?? null,
-        };
+        }, api.getComebackState(userId));
       }
 
       const firstBlock = plan.blocks?.[0] ?? null;
@@ -1553,7 +1587,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         ?? (targetSkill?.startsWith('math_') ? 'math' : targetSkill ? 'reading_writing' : null);
 
       if (firstBlock?.block_type === 'timed_set') {
-        return {
+        return applyComebackFraming({
           kind: 'start_timed_set',
           title: targetSkill ? `Pressure-test ${formatSkillLabel(targetSkill)}` : 'Pressure-test today’s work',
           reason: targetSkill
@@ -1564,10 +1598,10 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           sessionType: 'timed_set',
           section: null,
           focusSkill: targetSkill ?? null,
-        };
+        }, api.getComebackState(userId));
       }
 
-      return {
+      return applyComebackFraming({
         kind: 'start_module',
         title: targetSkill
           ? `Start your ${formatSkillLabel(targetSkill)} repair block`
@@ -1580,6 +1614,153 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         sessionType: 'module_simulation',
         section: inferredSection,
         focusSkill: targetSkill ?? null,
+      }, api.getComebackState(userId));
+    },
+
+    getStudyModes(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const goalProfile = api.getGoalProfile(userId);
+      if (!goalProfile.isComplete) return [];
+
+      const nextAction = api.getNextBestAction(userId);
+      if (['complete_goal_setup', 'start_diagnostic', 'resume_active_session'].includes(nextAction.kind)) {
+        return [{
+          key: 'starting_point',
+          label: 'Starting point',
+          minutes: nextAction.estimatedMinutes ?? 10,
+          summary: nextAction.reason,
+          action: nextAction,
+        }];
+      }
+
+      const comebackState = api.getComebackState(userId);
+      const plan = api.getPlan(userId);
+      const review = api.getReviewRecommendations(userId);
+      const revisitLead = api.getReviewRevisitQueue(userId, { includeFuture: false })[0] ?? null;
+      const quickFocusSkill = revisitLead?.skill
+        ?? review.recommendations?.[0]?.skill
+        ?? plan.blocks?.find((block) => block.target_skills?.length)?.target_skills?.[0]
+        ?? null;
+      const quickSection = revisitLead?.section
+        ?? review.recommendations?.[0]?.section
+        ?? (quickFocusSkill?.startsWith('math_') ? 'math' : quickFocusSkill ? 'reading_writing' : null);
+
+      const quickAction = revisitLead
+        ? applyComebackFraming(buildRetryLoopAction({
+          itemId: revisitLead.itemId,
+          focusSkill: revisitLead.skill ?? null,
+          section: revisitLead.section ?? quickSection,
+          title: `Reset ${formatSkillLabel(revisitLead.skill ?? quickFocusSkill ?? 'your main trap')} in one short loop`,
+          reason: `One short revisit on ${formatSkillLabel(revisitLead.skill ?? quickFocusSkill ?? 'this skill').toLowerCase()} will stop the last fix from fading.`,
+          estimatedMinutes: 8,
+          ctaLabel: 'Take the short fix',
+        }), comebackState)
+        : applyComebackFraming(buildQuickWinAction({ focusSkill: quickFocusSkill, section: quickSection }), comebackState);
+
+      const deepBlock = [...(plan.blocks ?? [])]
+        .find((block) => ['timed_set', 'mini_module'].includes(block.block_type))
+        ?? [...(plan.blocks ?? [])].reverse().find((block) => block.block_type === 'drill')
+        ?? null;
+      const deepSkill = deepBlock?.target_skills?.[0] ?? nextAction.focusSkill ?? quickFocusSkill;
+      const deepSection = deepBlock?.block_type === 'timed_set'
+        ? null
+        : (deepSkill?.startsWith('math_') ? 'math' : deepSkill ? 'reading_writing' : nextAction.section ?? null);
+      const deepAction = deepBlock?.block_type === 'timed_set'
+        ? applyComebackFraming(buildTimedSetAction({
+          title: deepSkill ? `Push ${formatSkillLabel(deepSkill)} under time` : 'Push your score under time',
+          reason: deepBlock.objective ?? 'Use a longer paced rep to turn repaired rules into timed evidence.',
+          focusSkill: deepSkill,
+          estimatedMinutes: Math.max(12, deepBlock.minutes ?? 12),
+        }), comebackState)
+        : applyComebackFraming(buildModuleAction({
+          title: deepSkill ? `Go deeper on ${formatSkillLabel(deepSkill)}` : 'Go deeper on today’s focus',
+          reason: deepBlock?.objective ?? 'Take a longer block while the current focus is still warm.',
+          focusSkill: deepSkill,
+          section: deepSection,
+          estimatedMinutes: Math.max(20, goalProfile.dailyMinutes ?? 25),
+          ctaLabel: 'Start the deeper block',
+        }), comebackState);
+
+      return [
+        {
+          key: 'quick',
+          label: 'Quick 8–12',
+          minutes: quickAction.estimatedMinutes ?? 8,
+          summary: 'Keep the habit alive with the smallest high-yield block.',
+          action: quickAction,
+        },
+        {
+          key: 'standard',
+          label: 'Standard 20–25',
+          minutes: clamp(nextAction.estimatedMinutes ?? 20, 8, 25),
+          summary: 'Do the main score-moving step Helix wants next.',
+          action: nextAction,
+        },
+        {
+          key: 'deep',
+          label: 'Deep 30–40',
+          minutes: clamp(deepAction.estimatedMinutes ?? 30, 20, 40),
+          summary: 'Take the longer block when you have room for deeper reps.',
+          action: deepAction,
+        },
+      ];
+    },
+
+    getTomorrowPreview(userId = DEMO_USER_ID) {
+      api.getUser(userId);
+      const goalProfile = api.getGoalProfile(userId);
+      if (!goalProfile.isComplete) return null;
+
+      const comebackState = api.getComebackState(userId);
+      const curriculumPath = api.getCurriculumPath(userId);
+      const revisitLead = api.getReviewRevisitQueue(userId, { includeFuture: true })[0] ?? null;
+      const tomorrowDate = addDays(new Date(), 1).toISOString().slice(0, 10);
+
+      if (revisitLead && (!revisitLead.dueAt || revisitLead.dueAt <= tomorrowDate)) {
+        return {
+          headline: `Tomorrow: lock ${formatSkillLabel(revisitLead.skill ?? 'the last fix')}`,
+          reason: 'Helix already has a revisit queued so the corrected rule does not fade overnight.',
+          plannedMinutes: 8,
+          action: applyComebackFraming(buildRetryLoopAction({
+            itemId: revisitLead.itemId,
+            focusSkill: revisitLead.skill ?? null,
+            section: revisitLead.section ?? null,
+            title: `Revisit ${formatSkillLabel(revisitLead.skill ?? 'your repair skill')}`,
+            reason: `Tomorrow is the best moment to re-check ${formatSkillLabel(revisitLead.skill ?? 'this skill').toLowerCase()} before it slips.`,
+            estimatedMinutes: 8,
+            ctaLabel: 'Run tomorrow’s revisit',
+          }), comebackState),
+        };
+      }
+
+      const tomorrowFocus = curriculumPath.dailyFocuses?.[1] ?? null;
+      if (!tomorrowFocus) return null;
+      const plannedMinutes = tomorrowFocus.focusType === 'anchor'
+        ? 20
+        : tomorrowFocus.focusType === 'support'
+          ? 15
+          : 12;
+      const action = tomorrowFocus.sessionKind === 'timed_transfer'
+        ? buildTimedSetAction({
+          title: `Tomorrow’s pace check: ${tomorrowFocus.label}`,
+          reason: `${tomorrowFocus.label} is scheduled next so Helix can see whether the repaired rule survives time pressure.`,
+          focusSkill: tomorrowFocus.skillId,
+          estimatedMinutes: plannedMinutes,
+        })
+        : buildModuleAction({
+          title: `Tomorrow’s first block: ${tomorrowFocus.label}`,
+          reason: tomorrowFocus.objective,
+          focusSkill: tomorrowFocus.skillId,
+          section: tomorrowFocus.skillId?.startsWith('math_') ? 'math' : 'reading_writing',
+          estimatedMinutes: plannedMinutes,
+          ctaLabel: 'Start tomorrow’s block',
+        });
+
+      return {
+        headline: `Tomorrow: ${tomorrowFocus.label}`,
+        reason: tomorrowFocus.objective,
+        plannedMinutes,
+        action: applyComebackFraming(action, comebackState),
       };
     },
 
@@ -1683,6 +1864,9 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         review: api.getReviewRecommendations(userId),
         activeSession: api.getActiveSession(userId),
         sessionHistory: api.getSessionHistory(userId, 5),
+        comebackState: api.getComebackState(userId),
+        studyModes: api.getStudyModes(userId),
+        tomorrowPreview: api.getTomorrowPreview(userId),
         latestQuickWinSummary: api.getLatestQuickWinSummary(userId),
         latestTimedSetSummary: api.getLatestTimedSetSummary(userId),
         latestModuleSummary: api.getLatestModuleSummary(userId),
@@ -2591,6 +2775,109 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       sessionType: 'quick_win',
       section,
       focusSkill,
+    };
+  }
+
+  function differenceInDays(dateLike, now = new Date()) {
+    const target = new Date(dateLike);
+    if (Number.isNaN(target.getTime())) return 0;
+    const lhs = new Date(now);
+    lhs.setHours(0, 0, 0, 0);
+    target.setHours(0, 0, 0, 0);
+    return Math.max(0, Math.round((lhs.getTime() - target.getTime()) / 86400000));
+  }
+
+  function buildRetryLoopAction({
+    itemId = null,
+    focusSkill = null,
+    section = null,
+    title = 'Fix the last trap',
+    reason = 'One short correction loop will move more than generic volume right now.',
+    estimatedMinutes = 8,
+    ctaLabel = 'Start repair loop',
+  } = {}) {
+    return {
+      kind: 'start_retry_loop',
+      title,
+      reason,
+      ctaLabel,
+      estimatedMinutes,
+      sessionType: 'review',
+      section,
+      itemId,
+      focusSkill,
+    };
+  }
+
+  function buildTimedSetAction({
+    title = 'Pressure-test today’s work',
+    reason = 'Use a short timed block to see whether the repaired rule survives pace pressure.',
+    focusSkill = null,
+    estimatedMinutes = 12,
+  } = {}) {
+    return {
+      kind: 'start_timed_set',
+      title,
+      reason,
+      ctaLabel: 'Start timed practice',
+      estimatedMinutes,
+      sessionType: 'timed_set',
+      section: null,
+      focusSkill,
+    };
+  }
+
+  function buildModuleAction({
+    title = 'Start a focused practice block',
+    reason = 'Helix has a focused block ready for the next score-moving lane.',
+    focusSkill = null,
+    section = null,
+    estimatedMinutes = 20,
+    ctaLabel = 'Start practice block',
+  } = {}) {
+    return {
+      kind: 'start_module',
+      title,
+      reason,
+      ctaLabel,
+      estimatedMinutes,
+      sessionType: 'module_simulation',
+      section,
+      focusSkill,
+    };
+  }
+
+  function applyComebackFraming(action, comebackState) {
+    if (!action || !comebackState?.isReturning) return action;
+    const daysAway = comebackState.daysAway ?? 0;
+    const prefix = daysAway >= 5 ? 'Restart gently' : 'Get back in';
+
+    if (action.kind === 'start_retry_loop') {
+      return {
+        ...action,
+        title: `${prefix} with one repair loop`,
+        reason: `${daysAway} day${daysAway === 1 ? '' : 's'} away is long enough for a miss to come back. Helix saved the shortest high-yield fix first.`,
+        ctaLabel: 'Take the easy return block',
+        estimatedMinutes: Math.min(action.estimatedMinutes ?? 8, 10),
+      };
+    }
+
+    if (action.kind === 'start_quick_win') {
+      return {
+        ...action,
+        title: `${prefix} with a quick win`,
+        reason: `${daysAway} day${daysAway === 1 ? '' : 's'} away is easier to recover from with one small success before heavier work.`,
+        ctaLabel: 'Bank the quick comeback',
+        estimatedMinutes: Math.min(action.estimatedMinutes ?? 2, 5),
+      };
+    }
+
+    return {
+      ...action,
+      title: `${prefix} with one short block`,
+      reason: `${daysAway} day${daysAway === 1 ? '' : 's'} away is enough to justify a lighter re-entry. ${action.reason}`,
+      ctaLabel: 'Start the return block',
+      estimatedMinutes: Math.min(action.estimatedMinutes ?? 15, 15),
     };
   }
 

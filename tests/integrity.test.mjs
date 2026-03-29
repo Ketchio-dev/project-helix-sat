@@ -10,6 +10,9 @@ import { createEvent } from '../packages/telemetry/src/events.mjs';
 import { createDemoData } from '../services/api/src/demo-data.mjs';
 
 const DEMO_USER_ID = 'demo-student';
+const DEMO_ITEM_MAP = new Map(
+  Object.values(createDemoData().items).map((item) => [item.itemId, item]),
+);
 
 function buildAttemptPayload(item, sessionId, mode = 'exam') {
   if (item.item_format === 'grid_in') {
@@ -32,6 +35,32 @@ function buildAttemptPayload(item, sessionId, mode = 'exam') {
     mode,
     confidenceLevel: 3,
     responseTimeMs: 60000,
+  };
+}
+
+function buildLearnAttemptPayload(userId, item, sessionId, { correct = true } = {}) {
+  if (item.item_format === 'grid_in') {
+    const accepted = item.responseValidation?.acceptedResponses?.[0] ?? item.answerKey;
+    return {
+      userId,
+      itemId: item.itemId,
+      sessionId,
+      mode: 'learn',
+      confidenceLevel: 3,
+      responseTimeMs: 35000,
+      freeResponse: correct ? accepted : '0',
+    };
+  }
+
+  const incorrectChoice = item.choices.find((choice) => choice.key !== item.answerKey)?.key ?? 'A';
+  return {
+    userId,
+    itemId: item.itemId,
+    sessionId,
+    mode: 'learn',
+    confidenceLevel: 3,
+    responseTimeMs: 35000,
+    selectedAnswer: correct ? item.answerKey : incorrectChoice,
   };
 }
 
@@ -132,6 +161,58 @@ describe('integrity: daily plan — needs_diagnostic for empty skillStates', () 
     });
     assert.equal(result.status, 'needs_diagnostic');
     assert.equal(result.planner_version, 'v1-curriculum-aware');
+  });
+});
+
+describe('integrity: return-path slice adds comeback framing and study modes', () => {
+  it('reframes the next step after inactivity and keeps short/standard/deep paths ready', () => {
+    const store = createStore();
+    const { user } = store.registerUser({
+      name: 'Return Path Student',
+      email: 'return-path@example.com',
+      password: 'pass1234',
+    });
+    const userId = user.id;
+
+    store.updateGoalProfile(userId, {
+      targetScore: 1450,
+      targetTestDate: '2026-10-10',
+      dailyMinutes: 35,
+      selfReportedWeakArea: 'inference',
+    });
+
+    const diagnostic = store.startDiagnostic(userId);
+    for (const [index, item] of diagnostic.items.entries()) {
+      const canonicalItem = DEMO_ITEM_MAP.get(item.itemId) ?? item;
+      store.submitAttempt(buildLearnAttemptPayload(userId, canonicalItem, diagnostic.session.id, {
+        correct: index !== 0,
+      }));
+    }
+
+    const diagnosticSession = store.getSession(diagnostic.session.id);
+    const threeDaysAgo = new Date(Date.now() - (3 * 24 * 60 * 60 * 1000));
+    diagnosticSession.started_at = new Date(threeDaysAgo.getTime() - (12 * 60 * 1000)).toISOString();
+    diagnosticSession.ended_at = threeDaysAgo.toISOString();
+
+    const comebackState = store.getComebackState(userId);
+    assert.equal(comebackState.isReturning, true);
+    assert.ok(comebackState.daysAway >= 3);
+    assert.match(comebackState.headline, /Welcome back/);
+
+    const nextAction = store.getNextBestAction(userId);
+    assert.equal(nextAction.kind, 'start_quick_win');
+    assert.match(nextAction.title, /Get back in with a quick win|Restart gently with a quick win/);
+    assert.match(nextAction.ctaLabel, /quick comeback/i);
+
+    const dashboard = store.getDashboard(userId);
+    assert.equal(dashboard.comebackState.isReturning, true);
+    assert.equal(Array.isArray(dashboard.studyModes), true);
+    assert.equal(dashboard.studyModes.length, 3);
+    assert.deepEqual(dashboard.studyModes.map((mode) => mode.key), ['quick', 'standard', 'deep']);
+    assert.ok(dashboard.studyModes.every((mode) => mode.action?.kind));
+    assert.ok(dashboard.tomorrowPreview);
+    assert.equal(typeof dashboard.tomorrowPreview.headline, 'string');
+    assert.equal(typeof dashboard.tomorrowPreview.action?.kind, 'string');
   });
 });
 
