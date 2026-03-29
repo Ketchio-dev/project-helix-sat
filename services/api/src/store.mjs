@@ -3036,7 +3036,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       kind: 'start_quick_win',
       title: `Bank a quick win in ${focusLabel}`,
       reason: `${focusLabel} is close enough to your current level that one short success loop should give you a real confidence bump before heavier work.`,
-      ctaLabel: 'Take the 2-minute win',
+      ctaLabel: `Practice ${focusLabel}`,
       estimatedMinutes: 2,
       sessionType: 'quick_win',
       section,
