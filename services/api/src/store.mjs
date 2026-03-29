@@ -640,6 +640,10 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         profile: state.learnerProfiles[learnerId],
         skillStates: api.getSkillStates(learnerId),
         errorDna: api.getErrorDna(learnerId),
+        curriculumPath: api.getCurriculumPath(learnerId),
+        reviewQueue: api.getReviewRevisitQueue(learnerId, { includeFuture: false }),
+        projection: api.getProjection(learnerId),
+        sessionHistory: api.getSessionHistory(learnerId, 10),
       });
     },
 
@@ -648,7 +652,11 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       if (!profile) {
         throw new HttpError(404, 'Unknown learner');
       }
-      return projectScoreBand(api.getSkillStates(learnerId), profile.target_score);
+      return projectScoreBand({
+        skillStates: api.getSkillStates(learnerId),
+        targetScore: profile.target_score,
+        sessionHistory: api.getSessionHistory(learnerId, 12),
+      });
     },
 
     getPlanExplanation(learnerId = DEMO_USER_ID) {

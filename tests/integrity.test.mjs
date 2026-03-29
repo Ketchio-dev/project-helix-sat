@@ -105,7 +105,7 @@ describe('integrity: score predictor — insufficient_evidence for empty input',
 });
 
 describe('integrity: score predictor — low_evidence for small sample', () => {
-  it('returns status low_evidence and confidence <= 0.25 for 1-2 skill states', () => {
+  it('returns status low_evidence and confidence <= 0.45 for 1-2 low-signal skill states', () => {
     const skillState = {
       skill_id: 'math_linear',
       section: 'math',
@@ -113,10 +113,13 @@ describe('integrity: score predictor — low_evidence for small sample', () => {
       timed_mastery: 0.5,
       retention_risk: 0.2,
       careless_risk: 0.1,
+      confidence_calibration: 0.5,
+      attempts_count: 1,
     };
     const result = projectScoreBand([skillState]);
     assert.equal(result.status, 'low_evidence');
-    assert.ok(result.confidence <= 0.25, `confidence ${result.confidence} should be <= 0.25`);
+    assert.equal(result.model_version, 'projection-v1-evidence-weighted');
+    assert.ok(result.confidence <= 0.45, `confidence ${result.confidence} should be <= 0.45`);
   });
 });
 
@@ -128,6 +131,54 @@ describe('integrity: daily plan — needs_diagnostic for empty skillStates', () 
       errorDna: {},
     });
     assert.equal(result.status, 'needs_diagnostic');
+    assert.equal(result.planner_version, 'v1-curriculum-aware');
+  });
+});
+
+describe('integrity: score predictor — richer evidence raises confidence and keeps sections bounded', () => {
+  it('uses attempts, recency, and session history to produce a tighter confident band', () => {
+    const recentIso = new Date().toISOString();
+    const result = projectScoreBand({
+      targetScore: 1450,
+      skillStates: [
+        {
+          skill_id: 'rw_inferences',
+          section: 'reading_writing',
+          mastery: 0.71,
+          timed_mastery: 0.64,
+          retention_risk: 0.24,
+          careless_risk: 0.17,
+          hint_dependency: 0.12,
+          trap_susceptibility: 0.18,
+          confidence_calibration: 0.63,
+          attempts_count: 9,
+          last_seen_at: recentIso,
+        },
+        {
+          skill_id: 'math_linear_equations',
+          section: 'math',
+          mastery: 0.68,
+          timed_mastery: 0.61,
+          retention_risk: 0.29,
+          careless_risk: 0.19,
+          hint_dependency: 0.14,
+          trap_susceptibility: 0.21,
+          confidence_calibration: 0.6,
+          attempts_count: 8,
+          last_seen_at: recentIso,
+        },
+      ],
+      sessionHistory: [
+        { status: 'complete', accuracy: 0.78 },
+        { status: 'complete', accuracy: 0.71 },
+      ],
+    });
+
+    assert.equal(result.status, 'sufficient');
+    assert.ok(result.confidence > 0.45);
+    assert.ok(result.predicted_total_high - result.predicted_total_low <= 220);
+    assert.ok(result.rw_low >= 200 && result.rw_high <= 800);
+    assert.ok(result.math_low >= 200 && result.math_high <= 800);
   });
 });
 

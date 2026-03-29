@@ -1,18 +1,19 @@
 # Project Helix SAT
 
-Adaptive SAT Intelligence Platform — an AI-powered SAT prep app with adaptive item selection, token-based auth, and exam integrity controls.
+Adaptive SAT Intelligence Platform — an AI-powered SAT prep app with adaptive item selection, cookie-backed auth, curriculum-aware planning, and exam integrity controls.
 
 ## Current capabilities
 
-- **Token-based authentication** — HMAC-SHA256 signed tokens with 24-hour expiry, login UI with localStorage persistence
+- **Cookie-backed authentication** — HttpOnly `helix_auth` cookie with signed tokens and 24-hour expiry
 - **Role-based access control** — four roles (student, teacher, parent, admin) enforced at the API layer
 - **Exam integrity** — answer leak prevention (sealed answers), server-authoritative timing
-- **Adaptive item selection** — selector-based engine with exposure tracking and skill targeting
+- **Adaptive item selection** — selector-based engine with exposure tracking, skill targeting, and baseline/quick-win routing
 - **Contract-enforced API** — OpenAPI + JSON schemas aligned with runtime, request validation via middleware
 - **Cold-start handling** — `insufficient_evidence` and `needs_diagnostic` states for new learners
-- **Content library** — demo item bank spanning both SAT sections with canonical rationales and hint ladders
+- **Curriculum-aware planning** — goal profile, next-best-action, daily plan, curriculum path, and multi-week program path
+- **Content library** — 79-item demo bank spanning both SAT sections with canonical rationales, hint ladders, and 14 math grid-ins
 - **Test suite** — automated regression coverage via `npm test` and `npm run check`
-- **Login UI** — web shell with credential entry and localStorage token persistence
+- **Learner shell** — goal setup, 13-item baseline diagnostic, quick win, review remediation, and Playwright smoke coverage
 
 ## Quick Start
 
@@ -50,9 +51,10 @@ Sessions expire after 24 hours. Re-authenticate to obtain a fresh cookie.
 
 Current audit status (`npm run audit:helix`):
 - Cross-section coverage is **credible for MVP**
-- Full blueprint coverage is still **incomplete**
-- Highest-priority content gaps are explicit punctuation coverage, deeper organization support, and thin math skills (`math_linear_equations`, `math_circles`, `math_trigonometry`)
-- The current content generator still emits `single_select` only, so SAT math format realism remains intentionally bounded
+- Blueprint coverage is **19/19 skills covered**
+- Current bank includes **79 items / 79 rationales**, **14 grid-ins**, **13-item baseline diagnostic**, **12-item default modules**, and **16-item extended modules**
+- Biggest remaining realism gap is **full exam-length module parity**, not missing skill lanes
+- The current generator still emits `single_select` only, so hand-authored grid-ins carry the current math format-realism slice
 
 See `docs/sat-coverage-audit.md` for the narrative audit and `content/README.md` for the content-generation guardrails used in this quality-upgrade slice. For the narrower review brief that defines this first upgrade slice, see `docs/quality/bluebook-khan-slice.md`.
 

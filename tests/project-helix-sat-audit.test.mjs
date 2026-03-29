@@ -8,6 +8,8 @@ const packageJson = JSON.parse(fs.readFileSync(new URL('../package.json', import
 const routerSource = fs.readFileSync(new URL('../services/api/src/router.mjs', import.meta.url), 'utf8');
 const indexSource = fs.readFileSync(new URL('../apps/web/public/index.html', import.meta.url), 'utf8');
 const appSource = fs.readFileSync(new URL('../apps/web/public/app.js', import.meta.url), 'utf8');
+const readmeSource = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+const contentReadmeSource = fs.readFileSync(new URL('../content/README.md', import.meta.url), 'utf8');
 const apiTestSource = fs.readFileSync(new URL('../tests/api.test.mjs', import.meta.url), 'utf8');
 const smokeRunnerSource = fs.readFileSync(new URL('../scripts/run-playwright-learner-smoke.mjs', import.meta.url), 'utf8');
 const generatedAuditSnapshot = fs.readFileSync(new URL('../docs/audits/project-helix-sat-coverage.md', import.meta.url), 'utf8');
@@ -93,6 +95,18 @@ test('repo ships a no-dependency playwright learner smoke runner', () => {
   assert.match(smokeRunnerSource, /Your 12-minute starting point/);
   assert.match(smokeRunnerSource, /Take the 2-minute win/);
   assert.match(smokeRunnerSource, /#quickWinSection/);
+});
+
+test('docs stay aligned with cookie auth and current audit claims', () => {
+  assert.doesNotMatch(readmeSource, /localStorage token persistence/i);
+  assert.doesNotMatch(readmeSource, /login UI with localStorage persistence/i);
+  assert.match(readmeSource, /HttpOnly `helix_auth` cookie/i);
+  assert.match(readmeSource, /19\/19 skills covered/i);
+  assert.match(readmeSource, /14 grid-ins/i);
+  assert.doesNotMatch(contentReadmeSource, /Keep strengthening partial blueprint lanes/i);
+  assert.doesNotMatch(contentReadmeSource, /Add the smallest safe grid-in/i);
+  assert.match(contentReadmeSource, /source of truth/i);
+  assert.match(contentReadmeSource, /12-item default \/ 16-item extended/i);
 });
 
 

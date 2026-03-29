@@ -51,7 +51,7 @@ The prompt in `scripts/generate-content.mjs` should be treated as a digital-SAT 
 - Keep setups concise and Bluebook-like: the math should be the challenge, not verbose story framing.
 - Use authentic SAT algebra, advanced math, data-analysis, geometry, and trig reasoning.
 - Make wrong answers arise from realistic student work (sign errors, partial completion, formula misuse, unit mistakes, graph misreads).
-- The current generator intentionally emits `single_select` only. If the app adds a hand-authored grid-in / student-produced-response slice before generator support broadens, documentation and audits must call that scope out explicitly instead of implying full format parity.
+- The current generator intentionally emits `single_select` only. Hand-authored grid-ins now cover the live app slice, so docs and audits must keep the authored/grid-in scope explicit instead of implying generator-level format parity.
 
 ### Cross-cutting requirements
 - Exactly 4 answer choices for every generated item.
@@ -62,12 +62,14 @@ The prompt in `scripts/generate-content.mjs` should be treated as a digital-SAT 
 
 ## Current quality-upgrade priorities
 
+Treat `docs/audits/project-helix-sat-coverage.md` as the source of truth. Narrative docs in this folder should summarize that generated audit, not drift away from it.
+
 The latest coverage audit (`npm run audit:helix`) identifies these priorities:
 
-1. Keep strengthening partial blueprint lanes, especially Reading/Writing organization plus thin math coverage in linear equations, nonlinear functions, area/volume/lines, and right-triangle trigonometry.
-2. Add the smallest safe grid-in / student-produced-response slice before making stronger SAT Math format-realism claims.
-3. Make module simulation less unlike the digital SAT by separating sections instead of using one short mixed block.
-4. Keep `/api/session/review`, docs, and audit output honest about what is and is not fully wired yet.
+1. Push section-specific module realism beyond the current 12-item default / 16-item extended slices toward exam-shaped practice profiles.
+2. Broaden math format realism beyond the current authored 14 grid-ins so student-produced response is a meaningful repeated experience, not a token format.
+3. Deepen authored lesson packs (teach card, worked example, retry pair, near-transfer pair) for the highest-traffic skills.
+4. Keep `/api/session/review`, README, this content guide, and generated audit output saying the same thing.
 
 When generating or reviewing new content, prioritize those gaps before broadening already healthier skills.
 
