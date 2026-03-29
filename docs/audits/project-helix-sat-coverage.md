@@ -26,6 +26,16 @@
 ### Singleton item skills
 - none
 
+## Release bars
+- Passed: true
+- PASS Full blueprint coverage: 19/19 covered, 0 partial, 0 missing (threshold: 19/19 covered with zero partial or missing)
+- PASS Rationale parity: 79/79 rationales (threshold: Every shipped item has a canonical rationale)
+- PASS No singleton skill lanes: 0 singleton skill lanes (threshold: 0 singleton skill lanes)
+- PASS Minimum math grid-in slice: 14 grid-in items (threshold: 14+ grid-in items)
+- PASS Default module floor: 12 item default module (threshold: 12+ item default module)
+- PASS Section retake-resistance floor: reading_writing=33, math=46 (threshold: Each section carries at least 24 items (2x the default module size))
+- PASS Core learner journey wired: router=0, ui=0, apiTests=0 (threshold: 0 missing core learner journey endpoints)
+
 ## Format realism
 - All items single_select: false
 - Math grid-in coverage present: true
@@ -48,3 +58,4 @@
 
 ## Next fixes
 - Increase section-specific module item counts toward exam-realistic module shapes.
+

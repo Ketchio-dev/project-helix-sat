@@ -13,6 +13,7 @@
     "start": "node services/api/server.mjs",
     "dev": "node services/api/server.mjs",
     "verify": "node scripts/verify.mjs",
+    "audit:helix:bars": "node scripts/check-content-release-bars.mjs",
     "build": "npm run verify",
     "check": "node scripts/validate-foundation.mjs && npm run verify && node --test",
     "check:schemas": "node scripts/validate-foundation.mjs",

@@ -20,6 +20,13 @@ for (const file of filesToCheck) {
   }
 }
 
+const releaseBarResult = spawnSync(process.execPath, ['scripts/check-content-release-bars.mjs'], { stdio: 'pipe', encoding: 'utf8' });
+if (releaseBarResult.status !== 0) {
+  process.stderr.write(releaseBarResult.stderr || releaseBarResult.stdout);
+  process.exit(releaseBarResult.status ?? 1);
+}
+process.stdout.write(releaseBarResult.stdout);
+
 const manifestPath = join(process.cwd(), 'dist', 'verify-manifest.json');
 mkdirSync(dirname(manifestPath), { recursive: true });
 writeFileSync(manifestPath, JSON.stringify({ built_at: new Date().toISOString(), files_checked: filesToCheck }, null, 2));

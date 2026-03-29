@@ -78,6 +78,7 @@ Before merging, confirm all of the following:
 - Multiple math grid-in / student-produced-response items work end to end without regressing existing `single_select` behavior.
 - Module simulation no longer presents itself as a mixed-section mini-set.
 - `npm run audit:helix` and `docs/audits/project-helix-sat-coverage.md` agree.
+- `npm run audit:helix:bars` passes before merge; release bars now enforce full blueprint coverage, 14 math grid-ins, a 12-item default module floor, zero singleton skills, and section retake-resistance above 2x module size.
 - Refresh `docs/audits/project-helix-sat-coverage.md` from `node scripts/audit-project-helix-sat.mjs` output instead of hand-editing the snapshot.
 - `docs/sat-coverage-audit.md` matches the same story as the generated audit.
 - `content/README.md` still describes the real generation/runtime contract.

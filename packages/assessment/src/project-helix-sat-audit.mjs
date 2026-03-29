@@ -104,6 +104,78 @@ export function buildFormatRealismAudit(items) {
   };
 }
 
+
+export const CONTENT_RELEASE_BAR_THRESHOLDS = {
+  coveredSkills: 19,
+  minimumMathGridIn: 14,
+  minimumDefaultModuleItems: 12,
+  minimumRetakeResistanceMultiplier: 2,
+};
+
+export function buildContentReleaseBars({ content, ontologyCoverage, formatRealism, sessions, appFlow }) {
+  const moduleFloor = sessions.moduleSimulation.itemCount;
+  const readingCount = content.sectionCounts.reading_writing ?? 0;
+  const mathCount = content.sectionCounts.math ?? 0;
+  const minimumRetakeBank = moduleFloor * CONTENT_RELEASE_BAR_THRESHOLDS.minimumRetakeResistanceMultiplier;
+  const bars = [
+    {
+      key: 'full_blueprint_coverage',
+      label: 'Full blueprint coverage',
+      passed: ontologyCoverage.coveredSkills === CONTENT_RELEASE_BAR_THRESHOLDS.coveredSkills && ontologyCoverage.partialSkills === 0 && ontologyCoverage.missingSkills.length === 0,
+      actual: `${ontologyCoverage.coveredSkills}/${ontologyCoverage.totalSkills} covered, ${ontologyCoverage.partialSkills} partial, ${ontologyCoverage.missingSkills.length} missing`,
+      threshold: `${CONTENT_RELEASE_BAR_THRESHOLDS.coveredSkills}/${CONTENT_RELEASE_BAR_THRESHOLDS.coveredSkills} covered with zero partial or missing`,
+    },
+    {
+      key: 'rationale_parity',
+      label: 'Rationale parity',
+      passed: content.itemCount === content.rationaleCount,
+      actual: `${content.rationaleCount}/${content.itemCount} rationales`,
+      threshold: 'Every shipped item has a canonical rationale',
+    },
+    {
+      key: 'singleton_skill_floor',
+      label: 'No singleton skill lanes',
+      passed: content.singletonSkills.length === 0,
+      actual: `${content.singletonSkills.length} singleton skill lanes`,
+      threshold: '0 singleton skill lanes',
+    },
+    {
+      key: 'minimum_math_grid_in',
+      label: 'Minimum math grid-in slice',
+      passed: formatRealism.mathGridInCount >= CONTENT_RELEASE_BAR_THRESHOLDS.minimumMathGridIn,
+      actual: `${formatRealism.mathGridInCount} grid-in items`,
+      threshold: `${CONTENT_RELEASE_BAR_THRESHOLDS.minimumMathGridIn}+ grid-in items`,
+    },
+    {
+      key: 'default_module_floor',
+      label: 'Default module floor',
+      passed: sessions.moduleSimulation.itemCount >= CONTENT_RELEASE_BAR_THRESHOLDS.minimumDefaultModuleItems,
+      actual: `${sessions.moduleSimulation.itemCount} item default module`,
+      threshold: `${CONTENT_RELEASE_BAR_THRESHOLDS.minimumDefaultModuleItems}+ item default module`,
+    },
+    {
+      key: 'section_retake_resistance',
+      label: 'Section retake-resistance floor',
+      passed: readingCount >= minimumRetakeBank && mathCount >= minimumRetakeBank,
+      actual: `reading_writing=${readingCount}, math=${mathCount}`,
+      threshold: `Each section carries at least ${minimumRetakeBank} items (${CONTENT_RELEASE_BAR_THRESHOLDS.minimumRetakeResistanceMultiplier}x the default module size)`,
+    },
+    {
+      key: 'core_journey_wired',
+      label: 'Core learner journey wired',
+      passed: appFlow.routerMissing.length === 0 && appFlow.uiMissing.length === 0 && appFlow.apiTestMissing.length === 0,
+      actual: `router=${appFlow.routerMissing.length}, ui=${appFlow.uiMissing.length}, apiTests=${appFlow.apiTestMissing.length}`,
+      threshold: '0 missing core learner journey endpoints',
+    },
+  ];
+
+  return {
+    thresholds: CONTENT_RELEASE_BAR_THRESHOLDS,
+    passed: bars.every((bar) => bar.passed),
+    bars,
+  };
+}
+
 export function buildOntologyCoverage(items, ontology) {
   const skillCounts = new Map();
   for (const item of items) {
@@ -308,12 +380,21 @@ export function buildProjectHelixSatAudit({ ontology, routerSource, appSource, a
       : []),
   ];
 
+  const releaseBars = buildContentReleaseBars({
+    content,
+    ontologyCoverage,
+    formatRealism,
+    sessions,
+    appFlow,
+  });
+
   return {
     content,
     ontologyCoverage,
     formatRealism,
     sessions,
     appFlow,
+    releaseBars,
     verdict: {
       crossSectionCoverage: crossSectionCoverageCredible ? 'credible_for_mvp' : 'not_credible',
       blueprintCoverage: blueprintCoverageComplete ? 'complete' : 'incomplete',
@@ -329,6 +410,61 @@ export function formatProjectHelixSatAudit(audit) {
   const singletonSkills = audit.content.singletonSkills.map((entry) => `- ${entry.skill} (${entry.count} item)`).join('\n') || '- none';
   const majorRisks = audit.majorRisks.map((entry) => `- ${entry}`).join('\n') || '- none';
   const nextFixes = audit.nextFixes.map((entry) => `- ${entry}`).join('\n') || '- none';
+  const releaseBars = audit.releaseBars.bars.map((bar) => `- ${bar.passed ? 'PASS' : 'FAIL'} ${bar.label}: ${bar.actual} (threshold: ${bar.threshold})`).join('\n') || '- none';
 
-  return `# Project Helix SAT coverage audit\n\n## Verdict\n- Cross-section coverage: ${audit.verdict.crossSectionCoverage}\n- Blueprint coverage: ${audit.verdict.blueprintCoverage}\n\n## Content coverage\n- Items: ${audit.content.itemCount}\n- Rationales: ${audit.content.rationaleCount}\n- Sections: ${Object.entries(audit.content.sectionCounts).map(([section, count]) => `${section}=${count}`).join(', ')}\n- Domains: ${Object.entries(audit.content.domainCounts).map(([domain, count]) => `${domain}=${count}`).join(', ')}\n- Formats: ${Object.entries(audit.content.itemFormatCounts).map(([format, count]) => `${format}=${count}`).join(', ')}\n\n## Blueprint alignment\n- Ontology skills: ${audit.ontologyCoverage.totalSkills}\n- Covered: ${audit.ontologyCoverage.coveredSkills}\n- Partial: ${audit.ontologyCoverage.partialSkills}\n- Missing: ${audit.ontologyCoverage.missingSkills.length}\n\n### Missing skills\n${missingSkills}\n\n### Partial skills\n${partialSkills}\n\n### Singleton item skills\n${singletonSkills}\n\n## Format realism\n- All items single_select: ${audit.formatRealism.allSingleSelect}\n- Math grid-in coverage present: ${audit.formatRealism.hasMathGridIn}\n- Math grid-in count: ${audit.formatRealism.mathGridInCount}\n\n## App flow evidence\n- Router missing core endpoints: ${audit.appFlow.routerMissing.length ? audit.appFlow.routerMissing.join(', ') : 'none'}\n- UI missing core endpoints: ${audit.appFlow.uiMissing.length ? audit.appFlow.uiMissing.join(', ') : 'none'}\n- API tests missing core endpoints: ${audit.appFlow.apiTestMissing.length ? audit.appFlow.apiTestMissing.join(', ') : 'none'}\n- Exposed but unused endpoints: ${audit.appFlow.exposedButUnused.length ? audit.appFlow.exposedButUnused.join(', ') : 'none'}\n\n## Session shapes\n- Diagnostic: ${audit.sessions.diagnostic.itemCount} items (${Object.entries(audit.sessions.diagnostic.sectionCounts).map(([section, count]) => `${section}=${count}`).join(', ')})\n- Timed set: ${audit.sessions.timedSet.itemCount} items, examMode=${audit.sessions.timedSet.examMode}, timeLimitSec=${audit.sessions.timedSet.timeLimitSec}\n- Module simulation: ${audit.sessions.moduleSimulation.itemCount} items, examMode=${audit.sessions.moduleSimulation.examMode}, timeLimitSec=${audit.sessions.moduleSimulation.timeLimitSec}, sections=${Object.entries(audit.sessions.moduleSimulation.sectionCounts).map(([section, count]) => `${section}=${count}`).join(', ')}\n- Session review gated until completion: ${audit.sessions.sessionReview.blockedUntilCompletion}\n\n## Major risks\n${majorRisks}\n\n## Next fixes\n${nextFixes}\n`;
+  return `# Project Helix SAT coverage audit
+
+## Verdict
+- Cross-section coverage: ${audit.verdict.crossSectionCoverage}
+- Blueprint coverage: ${audit.verdict.blueprintCoverage}
+
+## Content coverage
+- Items: ${audit.content.itemCount}
+- Rationales: ${audit.content.rationaleCount}
+- Sections: ${Object.entries(audit.content.sectionCounts).map(([section, count]) => `${section}=${count}`).join(', ')}
+- Domains: ${Object.entries(audit.content.domainCounts).map(([domain, count]) => `${domain}=${count}`).join(', ')}
+- Formats: ${Object.entries(audit.content.itemFormatCounts).map(([format, count]) => `${format}=${count}`).join(', ')}
+
+## Blueprint alignment
+- Ontology skills: ${audit.ontologyCoverage.totalSkills}
+- Covered: ${audit.ontologyCoverage.coveredSkills}
+- Partial: ${audit.ontologyCoverage.partialSkills}
+- Missing: ${audit.ontologyCoverage.missingSkills.length}
+
+### Missing skills
+${missingSkills}
+
+### Partial skills
+${partialSkills}
+
+### Singleton item skills
+${singletonSkills}
+
+## Release bars
+- Passed: ${audit.releaseBars.passed}
+${releaseBars}
+
+## Format realism
+- All items single_select: ${audit.formatRealism.allSingleSelect}
+- Math grid-in coverage present: ${audit.formatRealism.hasMathGridIn}
+- Math grid-in count: ${audit.formatRealism.mathGridInCount}
+
+## App flow evidence
+- Router missing core endpoints: ${audit.appFlow.routerMissing.length ? audit.appFlow.routerMissing.join(', ') : 'none'}
+- UI missing core endpoints: ${audit.appFlow.uiMissing.length ? audit.appFlow.uiMissing.join(', ') : 'none'}
+- API tests missing core endpoints: ${audit.appFlow.apiTestMissing.length ? audit.appFlow.apiTestMissing.join(', ') : 'none'}
+- Exposed but unused endpoints: ${audit.appFlow.exposedButUnused.length ? audit.appFlow.exposedButUnused.join(', ') : 'none'}
+
+## Session shapes
+- Diagnostic: ${audit.sessions.diagnostic.itemCount} items (${Object.entries(audit.sessions.diagnostic.sectionCounts).map(([section, count]) => `${section}=${count}`).join(', ')})
+- Timed set: ${audit.sessions.timedSet.itemCount} items, examMode=${audit.sessions.timedSet.examMode}, timeLimitSec=${audit.sessions.timedSet.timeLimitSec}
+- Module simulation: ${audit.sessions.moduleSimulation.itemCount} items, examMode=${audit.sessions.moduleSimulation.examMode}, timeLimitSec=${audit.sessions.moduleSimulation.timeLimitSec}, sections=${Object.entries(audit.sessions.moduleSimulation.sectionCounts).map(([section, count]) => `${section}=${count}`).join(', ')}
+- Session review gated until completion: ${audit.sessions.sessionReview.blockedUntilCompletion}
+
+## Major risks
+${majorRisks}
+
+## Next fixes
+${nextFixes}
+`;
 }

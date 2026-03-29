@@ -34,6 +34,7 @@ Project Helix SAT now **covers the full ontology slice in its shipped audit** an
 
 ### Documentation + tooling
 - `npm run audit:helix` reproduces the current coverage snapshot
+- `npm run audit:helix:bars` enforces the current release bars (full blueprint coverage, 14 math grid-ins, zero singleton lanes, 12-item default module floor, and 2x section retake-resistance)
 - `docs/audits/project-helix-sat-coverage.md` remains the generated truth layer and should move with content/session-shape changes
 - This narrative audit should stay conservative until module length and authored lesson depth improve further
 

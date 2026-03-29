@@ -30,6 +30,9 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
 
   assert.equal(audit.verdict.crossSectionCoverage, 'credible_for_mvp');
   assert.equal(audit.verdict.blueprintCoverage, 'complete');
+  assert.equal(audit.releaseBars.passed, true);
+  assert.equal(audit.releaseBars.bars.length >= 6, true);
+  assert.ok(audit.releaseBars.bars.every((bar) => bar.passed));
 
   assert.equal(audit.ontologyCoverage.totalSkills, 19);
   assert.equal(audit.ontologyCoverage.coveredSkills, 19);
@@ -95,8 +98,10 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(appSource, /syncDashboardDetails/);
 });
 
-test('repo ships a no-dependency playwright learner smoke runner', () => {
+test('repo ships release-bar gating and a no-dependency playwright learner smoke runner', () => {
   assert.equal(packageJson.scripts['smoke:learner'], 'node scripts/run-playwright-learner-smoke.mjs');
+  assert.equal(packageJson.scripts['audit:helix:bars'], 'node scripts/check-content-release-bars.mjs');
+  assert.match(generatedAuditSnapshot, /## Release bars/);
   assert.match(smokeRunnerSource, /createAppServer/);
   assert.match(smokeRunnerSource, /npm', \['install', '--no-save', 'playwright'\]/);
   assert.match(smokeRunnerSource, /Show full study dashboard/);
