@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helixsat.dev/schemas/learner/next-best-action.schema.json",
+  "title": "Next Best Action",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "title",
+    "reason",
+    "ctaLabel",
+    "estimatedMinutes",
+    "sessionType",
+    "section"
+  ],
+  "properties": {
+    "kind": {
+      "enum": [
+        "complete_goal_setup",
+        "start_diagnostic",
+        "start_quick_win",
+        "resume_active_session",
+        "review_mistakes",
+        "start_retry_loop",
+        "start_timed_set",
+        "start_module"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ctaLabel": {
+      "type": "string",
+      "minLength": 1
+    },
+    "estimatedMinutes": {
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "sessionType": {
+      "type": ["string", "null"],
+      "enum": ["diagnostic", "quick_win", "review", "timed_set", "module_simulation", null]
+    },
+    "section": {
+      "type": ["string", "null"],
+      "enum": ["reading_writing", "math", null]
+    },
+    "itemId": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "focusSkill": {
+      "type": ["string", "null"],
+      "minLength": 1
+    }
+  }
+}

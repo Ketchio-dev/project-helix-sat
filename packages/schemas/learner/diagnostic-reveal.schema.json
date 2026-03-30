@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helixsat.dev/schemas/learner/diagnostic-reveal.schema.json",
+  "title": "Diagnostic Reveal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sessionId",
+    "scoreBand",
+    "confidence",
+    "confidenceLabel",
+    "confidenceExplanation",
+    "momentum",
+    "topScoreLeaks",
+    "whyThisPlan",
+    "evidenceBullets",
+    "firstRecommendedAction"
+  ],
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scoreBand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["low", "high"],
+      "properties": {
+        "low": {
+          "type": "integer",
+          "minimum": 400,
+          "maximum": 1600
+        },
+        "high": {
+          "type": "integer",
+          "minimum": 400,
+          "maximum": 1600
+        }
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "confidenceLabel": {
+      "type": "string",
+      "minLength": 1
+    },
+    "confidenceExplanation": {
+      "type": "string",
+      "minLength": 1
+    },
+    "momentum": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "topScoreLeaks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tag", "label", "score", "summary"],
+        "properties": {
+          "tag": {
+            "type": "string",
+            "minLength": 1
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "whyThisPlan": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidenceBullets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "firstRecommendedAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "title",
+        "reason",
+        "ctaLabel",
+        "estimatedMinutes",
+        "sessionType",
+        "section"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "complete_goal_setup",
+            "start_diagnostic",
+            "start_quick_win",
+            "resume_active_session",
+            "review_mistakes",
+            "start_retry_loop",
+            "start_timed_set",
+            "start_module"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ctaLabel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "estimatedMinutes": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "sessionType": {
+          "type": ["string", "null"],
+          "enum": ["diagnostic", "quick_win", "review", "timed_set", "module_simulation", null]
+        },
+        "section": {
+          "type": ["string", "null"],
+          "enum": ["reading_writing", "math", null]
+        },
+        "itemId": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "focusSkill": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

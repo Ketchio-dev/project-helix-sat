@@ -40,6 +40,41 @@ paths:
       responses:
         '201':
           description: Diagnostic session created
+  /api/goal-profile:
+    get:
+      summary: Fetch the learner's current goal profile
+      responses:
+        '200':
+          description: Learner goal profile payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoalProfileResponse'
+    post:
+      summary: Update the learner's goal profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoalProfileUpdateRequest'
+      responses:
+        '200':
+          description: Updated learner goal profile payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoalProfileResponse'
+  /api/next-best-action:
+    get:
+      summary: Fetch the highest-priority learner next action
+      responses:
+        '200':
+          description: Next-best-action payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NextBestActionResponse'
   /api/quick-win/start:
     post:
       summary: Start a short post-diagnostic quick-win session
@@ -96,6 +131,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlanExplanation'
+  /api/diagnostic/reveal:
+    get:
+      summary: Fetch the learner-facing reveal for a completed diagnostic session
+      parameters:
+        - name: sessionId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Diagnostic reveal payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticRevealResponse'
   /api/dashboard/learner:
     get:
       summary: Fetch the learner dashboard aggregate
@@ -323,6 +374,12 @@ components:
       $ref: ../../packages/schemas/scoring/score-prediction.schema.json
     DailyPlan:
       $ref: ../../packages/schemas/planning/daily-plan.schema.json
+    GoalProfileResponse:
+      $ref: ../../packages/schemas/learner/goal-profile.schema.json
+    NextBestActionResponse:
+      $ref: ../../packages/schemas/learner/next-best-action.schema.json
+    DiagnosticRevealResponse:
+      $ref: ../../packages/schemas/learner/diagnostic-reveal.schema.json
     CurriculumPath:
       $ref: ../../packages/schemas/planning/curriculum-path.schema.json
     ProgramPath:
@@ -431,6 +488,34 @@ components:
     EmptyRequest:
       type: object
       additionalProperties: false
+    GoalProfileUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        targetScore:
+          type:
+            - number
+            - 'null'
+          minimum: 400
+          maximum: 1600
+        targetTestDate:
+          type:
+            - string
+            - 'null'
+        dailyMinutes:
+          type:
+            - number
+            - 'null'
+          minimum: 5
+          maximum: 600
+        preferredExplanationLanguage:
+          type:
+            - string
+            - 'null'
+        selfReportedWeakArea:
+          type:
+            - string
+            - 'null'
     ModuleStartRequest:
       type: object
       additionalProperties: false

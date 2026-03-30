@@ -17,6 +17,9 @@ const foundationFiles = [
   'packages/schemas/planning/plan-explanation.schema.json',
   'packages/schemas/planning/curriculum-path.schema.json',
   'packages/schemas/planning/program-path.schema.json',
+  'packages/schemas/learner/goal-profile.schema.json',
+  'packages/schemas/learner/next-best-action.schema.json',
+  'packages/schemas/learner/diagnostic-reveal.schema.json',
   'packages/schemas/reporting/weekly-report.schema.json',
   'packages/schemas/reporting/learner-narrative.schema.json',
   'packages/schemas/reporting/what-changed.schema.json',
@@ -65,6 +68,9 @@ test('openapi starter contract exposes learning core routes', () => {
   for (const route of [
     '/api/session/active',
     '/api/diagnostic/start',
+    '/api/goal-profile',
+    '/api/next-best-action',
+    '/api/diagnostic/reveal',
     '/api/timed-set/start',
     '/api/timed-set/finish',
     '/api/module/start',
@@ -88,6 +94,18 @@ test('openapi starter contract exposes learning core routes', () => {
     assert.ok(openapi.includes(route), `${route} should exist in OpenAPI starter contract`);
   }
   assert.ok(openapi.includes('DashboardLearnerResponse'));
+});
+
+test('openapi learner contract refs stay aligned with frozen slice-1 schemas', () => {
+  const openapi = readFileSync('services/api/openapi.yaml', 'utf8');
+  for (const componentName of [
+    'GoalProfileResponse',
+    'NextBestActionResponse',
+    'DiagnosticRevealResponse',
+    'GoalProfileUpdateRequest',
+  ]) {
+    assert.ok(openapi.includes(componentName), `${componentName} should exist in OpenAPI components`);
+  }
 });
 
 test('starter DB schema includes session_items for session-owned assessment flow', () => {

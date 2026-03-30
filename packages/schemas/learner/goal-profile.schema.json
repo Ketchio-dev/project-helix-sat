@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helixsat.dev/schemas/learner/goal-profile.schema.json",
+  "title": "Goal Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "targetScore",
+    "targetTestDate",
+    "dailyMinutes",
+    "preferredExplanationLanguage",
+    "selfReportedWeakArea",
+    "isComplete",
+    "completedAt"
+  ],
+  "properties": {
+    "targetScore": {
+      "type": ["number", "null"],
+      "minimum": 400,
+      "maximum": 1600
+    },
+    "targetTestDate": {
+      "type": ["string", "null"]
+    },
+    "dailyMinutes": {
+      "type": ["number", "null"],
+      "minimum": 5,
+      "maximum": 600
+    },
+    "preferredExplanationLanguage": {
+      "type": ["string", "null"]
+    },
+    "selfReportedWeakArea": {
+      "type": ["string", "null"]
+    },
+    "isComplete": {
+      "type": "boolean"
+    },
+    "completedAt": {
+      "type": ["string", "null"]
+    }
+  }
+}

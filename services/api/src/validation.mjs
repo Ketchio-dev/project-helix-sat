@@ -7,6 +7,7 @@ const moduleDir = dirname(fileURLToPath(import.meta.url));
 const schemasRoot = resolve(moduleDir, '../../../packages/schemas');
 
 const loadedSchemas = loadJsonSchemas(schemasRoot);
+const nextBestActionResponseSchema = loadedSchemas.get('learner/next-best-action.schema.json');
 
 const sessionProgressSchema = {
   type: 'object',
@@ -64,34 +65,6 @@ const linkedLearnerSchema = {
     targetScore: { type: ['number', 'null'] },
     targetTestDate: { type: ['string', 'null'] },
     dailyMinutes: { type: ['number', 'null'] },
-  },
-};
-
-const nextBestActionResponseSchema = {
-  type: 'object',
-  required: ['kind', 'title', 'reason', 'ctaLabel', 'estimatedMinutes', 'sessionType', 'section'],
-  additionalProperties: false,
-  properties: {
-    kind: {
-      enum: [
-        'complete_goal_setup',
-        'start_diagnostic',
-        'start_quick_win',
-        'resume_active_session',
-        'review_mistakes',
-        'start_retry_loop',
-        'start_timed_set',
-        'start_module',
-      ],
-    },
-    title: { type: 'string', minLength: 1 },
-    reason: { type: 'string', minLength: 1 },
-    ctaLabel: { type: 'string', minLength: 1 },
-    estimatedMinutes: { type: ['integer', 'null'], minimum: 1 },
-    sessionType: { type: ['string', 'null'], enum: ['diagnostic', 'quick_win', 'review', 'timed_set', 'module_simulation', null] },
-    section: { type: ['string', 'null'], enum: ['reading_writing', 'math', null] },
-    itemId: { type: ['string', 'null'], minLength: 1 },
-    focusSkill: { type: ['string', 'null'], minLength: 1 },
   },
 };
 
@@ -360,6 +333,9 @@ const responseSchemas = new Map([
   ['WeeklyReport', loadedSchemas.get('reporting/weekly-report.schema.json')],
   ['WhatChanged', loadedSchemas.get('reporting/what-changed.schema.json')],
   ['LearnerNarrative', loadedSchemas.get('reporting/learner-narrative.schema.json')],
+  ['GoalProfileResponse', loadedSchemas.get('learner/goal-profile.schema.json')],
+  ['NextBestActionResponse', loadedSchemas.get('learner/next-best-action.schema.json')],
+  ['DiagnosticRevealResponse', loadedSchemas.get('learner/diagnostic-reveal.schema.json')],
   ['DashboardLearnerResponse', dashboardLearnerResponseSchema],
   ['AuthSessionResponse', authSessionResponseSchema],
   ['MeResponse', {
@@ -388,63 +364,6 @@ const responseSchemas = new Map([
     additionalProperties: false,
     properties: {
       loggedOut: { type: 'boolean' },
-    },
-  }],
-  ['GoalProfileResponse', {
-    type: 'object',
-    required: ['targetScore', 'targetTestDate', 'dailyMinutes', 'preferredExplanationLanguage', 'selfReportedWeakArea', 'isComplete', 'completedAt'],
-    additionalProperties: false,
-    properties: {
-      targetScore: { type: ['number', 'null'], minimum: 400, maximum: 1600 },
-      targetTestDate: { type: ['string', 'null'] },
-      dailyMinutes: { type: ['number', 'null'], minimum: 5, maximum: 600 },
-      preferredExplanationLanguage: { type: ['string', 'null'] },
-      selfReportedWeakArea: { type: ['string', 'null'] },
-      isComplete: { type: 'boolean' },
-      completedAt: { type: ['string', 'null'] },
-    },
-  }],
-  ['NextBestActionResponse', nextBestActionResponseSchema],
-  ['DiagnosticRevealResponse', {
-    type: 'object',
-    required: ['sessionId', 'scoreBand', 'confidence', 'confidenceLabel', 'confidenceExplanation', 'momentum', 'topScoreLeaks', 'whyThisPlan', 'evidenceBullets', 'firstRecommendedAction'],
-    additionalProperties: false,
-    properties: {
-      sessionId: { type: 'string', minLength: 1 },
-      scoreBand: {
-        type: 'object',
-        required: ['low', 'high'],
-        additionalProperties: false,
-        properties: {
-          low: { type: 'integer', minimum: 400, maximum: 1600 },
-          high: { type: 'integer', minimum: 400, maximum: 1600 },
-        },
-      },
-      confidence: { type: 'number', minimum: 0, maximum: 1 },
-      confidenceLabel: { type: 'string', minLength: 1 },
-      confidenceExplanation: { type: 'string', minLength: 1 },
-      momentum: { type: 'number', minimum: 0, maximum: 1 },
-      topScoreLeaks: {
-        type: 'array',
-        items: {
-          type: 'object',
-          required: ['tag', 'label', 'score', 'summary'],
-          additionalProperties: false,
-          properties: {
-            tag: { type: 'string', minLength: 1 },
-            label: { type: 'string', minLength: 1 },
-            score: { type: 'number', minimum: 0 },
-            summary: { type: 'string', minLength: 1 },
-          },
-        },
-      },
-      whyThisPlan: { type: 'string', minLength: 1 },
-      evidenceBullets: {
-        type: 'array',
-        minItems: 1,
-        items: { type: 'string', minLength: 1 },
-      },
-      firstRecommendedAction: nextBestActionResponseSchema,
     },
   }],
   ['AttemptExamAckResponse', {
