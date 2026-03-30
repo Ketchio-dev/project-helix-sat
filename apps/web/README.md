@@ -33,3 +33,26 @@ as static files — no framework, no build step, no design dependency chain.
 3. Keep manual-start controls secondary to `next_best_action`.
 4. Avoid remote font/CDN dependencies in the learner shell. The app should feel
    polished while remaining fully local and exam-safe.
+
+## Private-beta browser QA path
+
+- The **currently verified** private-beta browser path is the legacy learner shell
+  in `apps/web/public/*`.
+- The React shell is still a secondary development surface until it has parity
+  browser coverage.
+- `npm run smoke:learner` should report these explicit checkpoints:
+  1. `signup_landing`
+  2. `goal_setup_completion_resume`
+  3. `diagnostic_preflight_start`
+  4. `diagnostic_reveal_cta`
+  5. `quick_win_completion_summary`
+  6. `dashboard_review_visibility`
+  7. `exam_profile_module_start`
+- CI/browser smoke is expected to fail with the checkpoint name so regressions map
+  to a concrete learner surface instead of a generic end-to-end failure.
+
+## Manual browser signoff still required
+
+- final visual/copy sanity pass in the legacy learner shell
+- exploratory React-shell parity check before promoting React to the beta path
+- any cross-browser spot checks beyond the Chromium smoke lane

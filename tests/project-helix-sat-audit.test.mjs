@@ -10,6 +10,7 @@ const indexSource = fs.readFileSync(new URL('../apps/web/public/index.html', imp
 const appSource = fs.readFileSync(new URL('../apps/web/public/app.js', import.meta.url), 'utf8');
 const learnerNarrativeSource = fs.readFileSync(new URL('../apps/web/public/learner-narrative.js', import.meta.url), 'utf8');
 const reviewLessonPackSource = fs.readFileSync(new URL('../apps/web/public/review-lesson-pack.js', import.meta.url), 'utf8');
+const webReadmeSource = fs.readFileSync(new URL('../apps/web/README.md', import.meta.url), 'utf8');
 const readmeSource = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
 const contentReadmeSource = fs.readFileSync(new URL('../content/README.md', import.meta.url), 'utf8');
 const milestonesSource = fs.readFileSync(new URL('../docs/product-completion-milestones.md', import.meta.url), 'utf8');
@@ -136,6 +137,9 @@ test('repo ships release-bar gating and a no-dependency playwright learner smoke
   assert.match(generatedAuditSnapshot, /## Release bars/);
   assert.match(smokeRunnerSource, /createAppServer/);
   assert.match(smokeRunnerSource, /npm', \['install', '--no-save', 'playwright'\]/);
+  assert.match(smokeRunnerSource, /checkpoint:start '\s*\+/);
+  assert.match(smokeRunnerSource, /checkpoint:pass '\s*\+/);
+  assert.match(smokeRunnerSource, /checkpoint:fail/);
   assert.match(smokeRunnerSource, /Show full study dashboard/);
   assert.match(smokeRunnerSource, /Your 12-minute starting point/);
   assert.match(smokeRunnerSource, /Next block/);
@@ -153,6 +157,13 @@ test('repo ships release-bar gating and a no-dependency playwright learner smoke
   assert.match(smokeRunnerSource, /Duplicate ids found/);
   assert.match(smokeRunnerSource, /selectOption\('exam'\)/);
   assert.match(smokeRunnerSource, /0\/22 answered/);
+  assert.match(smokeRunnerSource, /signup_landing/);
+  assert.match(smokeRunnerSource, /goal_setup_completion_resume/);
+  assert.match(smokeRunnerSource, /diagnostic_preflight_start/);
+  assert.match(smokeRunnerSource, /diagnostic_reveal_cta/);
+  assert.match(smokeRunnerSource, /quick_win_completion_summary/);
+  assert.match(smokeRunnerSource, /dashboard_review_visibility/);
+  assert.match(smokeRunnerSource, /exam_profile_module_start/);
 });
 
 test('docs stay aligned with cookie auth and current audit claims', () => {
@@ -169,6 +180,14 @@ test('docs stay aligned with cookie auth and current audit claims', () => {
   assert.match(milestonesSource, /Strengthen exam\/practice realism and learner-surface cohesion/i);
   assert.match(milestonesSource, /Deepen authored lesson-pack and narrative cohesion/i);
   assert.match(milestonesSource, /Expand Playwright\/browser QA and guardrails/i);
+  assert.match(milestonesSource, /checkpoint:diagnostic_reveal_cta/i);
+  assert.match(milestonesSource, /legacy learner shell as the current verified beta path/i);
+  assert.match(milestonesSource, /manual signoff/i);
+  assert.match(readmeSource, /legacy learner shell/i);
+  assert.match(readmeSource, /React app remains a secondary development surface/i);
+  assert.match(webReadmeSource, /currently verified.*private-beta browser path/i);
+  assert.match(webReadmeSource, /goal_setup_completion_resume/i);
+  assert.match(webReadmeSource, /manual browser signoff/i);
   assert.match(milestonesSource, /no new dependencies/i);
   assert.match(milestonesSource, /exam pure-ACK/i);
   assert.match(milestonesSource, /reviewable diffs/i);

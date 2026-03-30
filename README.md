@@ -13,7 +13,7 @@ Adaptive SAT Intelligence Platform — an AI-powered SAT prep app with adaptive 
 - **Curriculum-aware planning** — goal profile, next-best-action, daily plan, curriculum path, and multi-week program path
 - **Content library** — 79-item demo bank spanning both SAT sections with canonical rationales, hint ladders, and 14 math grid-ins
 - **Test suite** — automated regression coverage via `npm test` and `npm run check`
-- **Learner shell** — goal setup, 13-item baseline diagnostic, quick win, review remediation, and Playwright smoke coverage
+- **Learner shell** — goal setup, 13-item baseline diagnostic, quick win, review remediation, and Playwright smoke coverage on the legacy learner shell (`apps/web/public/*`)
 
 ## Quick Start
 
@@ -34,6 +34,10 @@ open http://localhost:5173
 #   Email:    mina@example.com
 #   Password: demo1234
 ```
+
+For private-beta browser verification, the currently automated path is still the
+legacy learner shell. The React app remains a secondary development surface
+until parity browser QA lands.
 
 ## API Authentication
 
