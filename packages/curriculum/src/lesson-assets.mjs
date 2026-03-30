@@ -85,6 +85,54 @@ const LESSON_BLUEPRINTS = {
     takeaway: 'The central idea is the umbrella that the major details fit under, not one isolated fact from the passage.',
     transferPreview: 'On the next item, identify the repeated pattern across the details before you choose the main idea.',
   },
+  rw_text_structure_and_purpose: {
+    teachSummary: 'Structure-and-purpose questions ask what a sentence or paragraph is doing: introduce, explain, qualify, contrast, or conclude—not just what it says.',
+    checkFor: 'Name the job of the target sentence or paragraph in the larger passage before you look at the choices.',
+    lookForFirst: 'The move the author makes in context—describe, explain, pivot, qualify, or argue.',
+    ruleOfThumb: 'Function is about role in the passage, not topic in isolation.',
+    mistakePattern: 'Students paraphrase the sentence content and miss the job it performs in the surrounding structure.',
+    transferGoal: 'Match the sentence to its job in the passage before evaluating polished paraphrases.',
+    commonTrap: 'Choosing an answer that restates the sentence topic but mislabels its role in the passage.',
+    workedExampleLead: 'Model the move: locate the sentence, name what came before and after it, then describe the job the sentence performs.',
+    takeaway: 'When you track the author’s move in context, structure questions stop being vague summary questions.',
+    transferPreview: 'On the next item, ask what the line is doing in the passage before you ask what it is about.',
+  },
+  rw_cross_text_connections: {
+    teachSummary: 'Cross-text questions are comparison questions: track each author’s exact claim first, then decide whether the second text agrees, qualifies, extends, or challenges it.',
+    checkFor: 'Write one short claim for each text before judging the relationship between them.',
+    lookForFirst: 'What each author would say in one sentence before comparing tone or detail.',
+    ruleOfThumb: 'Compare claims, not just shared topics.',
+    mistakePattern: 'Students see the same subject in both texts and assume agreement without checking how each author frames the issue.',
+    transferGoal: 'Anchor the comparison in one concrete claim from each text before choosing the relationship.',
+    commonTrap: 'Picking an answer that matches the shared topic but overstates agreement, disagreement, or certainty across the two texts.',
+    workedExampleLead: 'Model the move: summarize Text 1, summarize Text 2, then name the relationship between those two claims.',
+    takeaway: 'Paired-text questions get easier when each text has its own claim before you connect them.',
+    transferPreview: 'On the next item, state each author’s claim first and then choose the answer that captures the exact relationship.',
+  },
+  rw_form_structure_sense: {
+    teachSummary: 'Form, structure, and sense questions ask whether the sentence stays grammatically aligned and logically clear from start to finish.',
+    checkFor: 'Find the true subject or antecedent before you decide which form keeps the sentence both grammatical and clear.',
+    lookForFirst: 'Agreement, pronoun reference, tense, or modifier logic before you trust what sounds natural.',
+    ruleOfThumb: 'Choose the form that matches the sentence structure, not the phrase closest to the blank.',
+    mistakePattern: 'Students chase the nearest noun or the most conversational wording instead of the word the grammar actually points to.',
+    transferGoal: 'Strip the sentence to its core structure, then choose the form that matches that structure exactly.',
+    commonTrap: 'Choosing the word that sounds natural in conversation even though it breaks agreement, reference, or logical sense.',
+    workedExampleLead: 'Model the move: strip away modifiers, locate the true grammatical anchor, and then test which form matches it.',
+    takeaway: 'Standard English gets steadier when you solve the structure first and let the wording follow.',
+    transferPreview: 'On the next item, identify the true subject or antecedent before you pick the form that sounds best.',
+  },
+  rw_punctuation: {
+    teachSummary: 'Punctuation questions are relationship questions: choose the mark that matches how the sentence parts connect, not the pause you hear in your head.',
+    checkFor: 'Decide whether the blank joins a modifier, links two clauses, or introduces an explanation before choosing a mark.',
+    lookForFirst: 'Clause structure and the relationship—attachment, separation, or explanation—before punctuation style.',
+    ruleOfThumb: 'Pick punctuation for structure and purpose, not for dramatic pause.',
+    mistakePattern: 'Students choose the mark that sounds strongest by ear instead of the one the sentence structure actually licenses.',
+    transferGoal: 'Name the structural relationship first, then choose the punctuation mark that signals it exactly.',
+    commonTrap: 'Using a comma, dash, semicolon, or colon because it sounds polished even though the surrounding sentence does not support that relationship.',
+    workedExampleLead: 'Model the move: identify the sentence parts, decide how they relate, and then choose the punctuation that fits that structure.',
+    takeaway: 'Punctuation gets predictable once you stop hearing pauses and start checking structure.',
+    transferPreview: 'On the next item, decide whether the sentence needs attachment, separation, or explanation before you choose the mark.',
+  },
   math_linear_equations: {
     teachSummary: 'Write the full linear equation or inequality first, then isolate the variable without losing the boundary or context constraint.',
     checkFor: 'Track the boundary condition after solving and test the final value if the prompt asks for a greatest or least valid answer.',
@@ -229,8 +277,9 @@ function formatSkillCue(skill) {
   return skill.objectives[0];
 }
 
-function getLessonBlueprint(skill) {
-  return LESSON_BLUEPRINTS[skill?.skill_id] ?? null;
+export function getLessonBlueprint(skillOrId) {
+  const skillId = typeof skillOrId === 'string' ? skillOrId : skillOrId?.skill_id;
+  return LESSON_BLUEPRINTS[skillId] ?? null;
 }
 
 function buildWalkthrough({ blueprint, rationale }) {

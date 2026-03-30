@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { createStore } from '../services/api/src/store.mjs';
 import { projectScoreBand } from '../packages/scoring/src/score-predictor.mjs';
 import { generateDailyPlan } from '../packages/assessment/src/daily-plan-generator.mjs';
-import { buildCurriculumLessonBundle } from '../packages/curriculum/src/lesson-assets.mjs';
+import { buildCurriculumLessonBundle, getLessonBlueprint } from '../packages/curriculum/src/lesson-assets.mjs';
 import { generateCurriculumPath, generateProgramPath } from '../packages/curriculum/src/path-generator.mjs';
 import { inferSkillStage, getCurriculumSkill } from '../packages/curriculum/src/mastery-gates.mjs';
 import { createEvent } from '../packages/telemetry/src/events.mjs';
@@ -452,6 +452,54 @@ describe('integrity: curriculum lesson bundle', () => {
         transferGoalPattern: /umbrella claim they all support/i,
       },
       {
+        skillId: 'rw_text_structure_and_purpose',
+        workedExampleItem: seed.items.rw_structure_01,
+        transferItem: seed.items.rw_structure_02,
+        summaryPattern: /what a sentence or paragraph is doing/i,
+        trapPattern: /restates the sentence topic but mislabels its role/i,
+        transferPattern: /what the line is doing in the passage/i,
+        lookForPattern: /describe, explain, pivot, qualify, or argue/i,
+        rulePattern: /role in the passage/i,
+        mistakePattern: /job it performs in the surrounding structure/i,
+        transferGoalPattern: /job in the passage/i,
+      },
+      {
+        skillId: 'rw_cross_text_connections',
+        workedExampleItem: seed.items.rw_cross_text_01,
+        transferItem: seed.items.rw_cross_text_02,
+        summaryPattern: /comparison questions/i,
+        trapPattern: /overstates agreement, disagreement, or certainty/i,
+        transferPattern: /state each author’s claim first/i,
+        lookForPattern: /each author would say in one sentence/i,
+        rulePattern: /Compare claims, not just shared topics/i,
+        mistakePattern: /same subject in both texts and assume agreement/i,
+        transferGoalPattern: /one concrete claim from each text/i,
+      },
+      {
+        skillId: 'rw_form_structure_sense',
+        workedExampleItem: seed.items.rw_form_structure_01,
+        transferItem: seed.items.rw_form_structure_02,
+        summaryPattern: /grammatically aligned and logically clear/i,
+        trapPattern: /sounds natural in conversation/i,
+        transferPattern: /true subject or antecedent before you pick the form/i,
+        lookForPattern: /Agreement, pronoun reference, tense, or modifier logic/i,
+        rulePattern: /matches the sentence structure/i,
+        mistakePattern: /nearest noun/i,
+        transferGoalPattern: /core structure/i,
+      },
+      {
+        skillId: 'rw_punctuation',
+        workedExampleItem: seed.items.rw_punctuation_01,
+        transferItem: seed.items.rw_punctuation_02,
+        summaryPattern: /relationship questions/i,
+        trapPattern: /does not support that relationship/i,
+        transferPattern: /attachment, separation, or explanation/i,
+        lookForPattern: /Clause structure and the relationship/i,
+        rulePattern: /structure and purpose/i,
+        mistakePattern: /sounds strongest by ear/i,
+        transferGoalPattern: /structural relationship first/i,
+      },
+      {
         skillId: 'math_area_and_perimeter',
         workedExampleItem: seed.items.math_geometry_02,
         transferItem: seed.items.math_geometry_03,
@@ -534,6 +582,16 @@ describe('integrity: curriculum lesson bundle', () => {
       if (testCase.transferGoalPattern) assert.match(bundle.transferCard.transferGoal, testCase.transferGoalPattern);
       assert.match(bundle.transferCard.rationalePreview, testCase.transferPattern);
       assert.ok(bundle.workedExample.walkthrough.length >= 2);
+    }
+  });
+
+  it('covers the full current curriculum map with authored teach-card summaries', async () => {
+    const curriculum = JSON.parse(
+      await readFile(new URL('../docs/curriculum/curriculum.v1.json', import.meta.url), 'utf8'),
+    );
+
+    for (const skill of curriculum.skills) {
+      assert.ok(getLessonBlueprint(skill.skill_id), `expected authored blueprint for ${skill.skill_id}`);
     }
   });
 });
