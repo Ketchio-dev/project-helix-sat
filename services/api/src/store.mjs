@@ -981,6 +981,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           skillId: recommendation.skill,
           workedExampleItem,
           workedExampleRationale: workedExampleItem ? api.getRationale(workedExampleItem.itemId) : null,
+          retryItem: anchorItem,
           transferItem,
           transferRationale: transferItem ? api.getRationale(transferItem.itemId) : null,
         });
@@ -997,6 +998,8 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
             : 'Match the answer to the exact textual job before judging which choice sounds best.',
           teachCard: lessonBundle.teachCard,
           workedExample: lessonBundle.workedExample,
+          packDepth: lessonBundle.packDepth,
+          retryCue: lessonBundle.retryCard?.cue ?? null,
           retryItem: {
             itemId: recommendation.itemId,
             prompt: recommendation.prompt,
@@ -1014,6 +1017,9 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
                 ctaLabel: 'Try near-transfer',
               }
             : null,
+          revisitPlan: lessonBundle.revisitPlan,
+          lessonArc: lessonBundle.lessonArc,
+          coachLanguage: lessonBundle.coachLanguage,
           lessonAssetIds: lessonBundle.lessonAssetIds,
           confidenceBefore: matchingAttempt?.confidence_level ?? null,
           confidenceAfter: matchingAttempt?.confidence_level !== undefined

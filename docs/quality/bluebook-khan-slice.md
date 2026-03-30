@@ -14,7 +14,7 @@ This note tracks the **current fidelity slice** for Project Helix SAT for the cu
 - No singleton-skill lanes remain
 - 14 hand-authored Math items now use `grid_in`
 - Module simulation is section-separated, ships with a 12-item default block, and now exposes optional 18-item extended profiles for denser Reading/Writing and Math practice
-- Lesson blueprints now cover the full current curriculum map, even though the lesson system still ships as lightweight teach-card / worked-example / transfer scaffolds
+- Lesson blueprints now cover the full current curriculum map, and the curriculum now distinguishes an all-skill middle-pack baseline from a smaller full-pack cohort, even though the runtime still ships lightweight remediation bundles rather than full courseware
 - `/api/session/review`, remediation cards, retry loops, curriculum paths, and weekly evidence surfaces are wired into the learner flow
 
 ## What this slice improves
@@ -33,7 +33,7 @@ This note tracks the **current fidelity slice** for Project Helix SAT for the cu
 ### Still needed (not in this commit)
 - Expanded math grid-in support beyond 14 items and into more skill families.
 - Module realism improvements beyond the current 12-item section-specific blocks.
-- Richer authored lesson depth so curriculum remediation depends less on lightweight blueprint copy plus rationale-derived scaffolding.
+- Richer authored lesson depth so curriculum remediation depends less on the current middle/full lesson-pack scaffolding plus rationale-derived copy.
 
 ## What this slice should improve next
 
@@ -91,7 +91,7 @@ Before merging, confirm all of the following:
 - Full-length SAT module sizing (real modules are still much longer than the current 12-item default and 18-item extended demo modules in both sections)
 - Broad generator-native support for every SAT interaction type
 - Production-depth coverage across every skill bucket
-- Full courseware-style lesson sequences beyond the current authored blueprint layer
+- Full courseware-style lesson sequences beyond the current middle/full lesson-pack layer
 - Adaptive module routing (real digital SAT picks module 2 difficulty based on module 1 performance)
 
 ## Canonical references inside this repo

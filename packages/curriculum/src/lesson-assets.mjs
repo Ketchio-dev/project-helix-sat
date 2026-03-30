@@ -263,6 +263,81 @@ const LESSON_BLUEPRINTS = {
   },
 };
 
+const FULL_PACK_OVERRIDES = {
+  rw_inferences: {
+    retryCue: 'Find the exact line first, then force yourself to say the smallest claim that line proves.',
+    revisitPrompt: 'On the revisit, cite the exact phrase that earns the inference before you look at the choices.',
+    successSignal: 'You can point to one or two concrete clues and defend a restrained inference without adding extra story.',
+    contrastRule: 'Wrong move: choose the most plausible idea. Right move: choose the smallest claim the text fully earns.',
+    nearTransferCheck: 'Before locking the answer, ask whether every word in your choice is explicitly earned by the passage.',
+    exitTicketPrompt: 'In one sentence: what exact words in the passage force your answer?',
+    coachLine: 'Inference questions get safer when you prove the answer from the line before you compare polished choices.',
+  },
+  rw_command_of_evidence: {
+    retryCue: 'State the claim out loud first, then scan only for the line that would let you defend it.',
+    revisitPrompt: 'On the revisit, treat the evidence line like a receipt: it must prove the claim, not just mention the topic.',
+    successSignal: 'You can separate a related detail from a proving detail and justify why your chosen line actually confirms the claim.',
+    contrastRule: 'Wrong move: pick the most on-topic line. Right move: pick the line that would win the argument if you had to defend the claim aloud.',
+    nearTransferCheck: 'After choosing the line, ask whether it would still prove the claim if all other context vanished.',
+    exitTicketPrompt: 'What exact claim is your evidence proving, and why would the other lines fail that job?',
+    coachLine: 'Evidence questions improve when you turn them into a proof task instead of a topic-matching task.',
+  },
+  rw_central_ideas_and_details: {
+    retryCue: 'Collect two repeated details first, then compress them into one umbrella claim.',
+    revisitPrompt: 'On the revisit, identify the repeated pattern before deciding which answer is broad enough to absorb it.',
+    successSignal: 'You can explain how multiple major details fit under one main claim instead of picking a vivid side point.',
+    contrastRule: 'Wrong move: grab the flashiest detail. Right move: build the umbrella claim that multiple details support.',
+    nearTransferCheck: 'Ask whether your answer could still stand after you add two more major details from the passage.',
+    exitTicketPrompt: 'Which repeated detail pattern makes your main-idea choice unavoidable?',
+    coachLine: 'Main-idea questions stabilize when you gather repeated support before naming the umbrella claim.',
+  },
+  rw_sentence_boundaries: {
+    retryCue: 'Bracket the clauses before you choose any punctuation mark.',
+    revisitPrompt: 'On the revisit, decide whether each side can stand alone before trusting what sounds smooth.',
+    successSignal: 'You can identify the clause structure first and then pick punctuation that keeps the sentence complete.',
+    contrastRule: 'Wrong move: fix punctuation by ear. Right move: solve the clause boundary first and let the punctuation follow.',
+    nearTransferCheck: 'Before you commit, ask whether both sides of the punctuation are complete thoughts, fragments, or modifier attachments.',
+    exitTicketPrompt: 'What clause boundary did you identify, and which punctuation rule did it force?',
+    coachLine: 'Sentence-boundary questions become predictable once you stop listening for rhythm and start marking clause structure.',
+  },
+  math_linear_equations: {
+    retryCue: 'Write the equation or inequality in full before you isolate the variable.',
+    revisitPrompt: 'On the revisit, solve the algebra and then re-check the boundary or context condition one more time.',
+    successSignal: 'You can solve the setup cleanly and still verify which final value actually satisfies the prompt condition.',
+    contrastRule: 'Wrong move: stop when the algebra ends. Right move: finish the algebra and then test the answer against the original constraint.',
+    nearTransferCheck: 'Ask whether your chosen value is just the algebra boundary or the actual greatest/least valid answer.',
+    exitTicketPrompt: 'What final context check did you run after solving the algebra?',
+    coachLine: 'Linear-equation misses often come after the algebra, when the prompt still needs one last validity check.',
+  },
+  math_linear_functions: {
+    retryCue: 'Name the rate and the starting value before you compare equations, tables, or graphs.',
+    revisitPrompt: 'On the revisit, translate every representation back into the same slope-and-start story.',
+    successSignal: 'You can explain the constant rate and starting amount in words before writing or interpreting the equation.',
+    contrastRule: 'Wrong move: read numbers mechanically. Right move: translate each number into rate or start value before choosing.',
+    nearTransferCheck: 'Before committing, ask which quantity is the change per unit and which quantity is the starting amount.',
+    exitTicketPrompt: 'What is the rate, what is the start value, and where did each appear in the representation?',
+    coachLine: 'Linear-function fluency comes from telling one consistent rate-and-start story across every representation.',
+  },
+  math_systems_of_linear_equations: {
+    retryCue: 'Choose substitution or elimination on purpose, then verify the ordered pair against both equations.',
+    revisitPrompt: 'On the revisit, solve the pair and restate what the solution means in the original situation.',
+    successSignal: 'You can explain why the solution satisfies both equations at once and what that pair means in context.',
+    contrastRule: 'Wrong move: stop after finding one variable. Right move: complete the pair and verify that both relationships stay true.',
+    nearTransferCheck: 'Before locking the answer, plug the pair back in and ask what each coordinate represents in the story or graph.',
+    exitTicketPrompt: 'How did you verify that your solution kept both equations true simultaneously?',
+    coachLine: 'Systems get steadier when you treat them as one situation told twice and force both equations to agree.',
+  },
+  math_quadratic_functions: {
+    retryCue: 'Name the target feature first—roots, vertex, intercepts, or form—before doing algebra.',
+    revisitPrompt: 'On the revisit, pick the representation that exposes the requested quadratic feature fastest.',
+    successSignal: 'You can explain which feature the prompt wanted and why your chosen form made that feature easiest to see.',
+    contrastRule: 'Wrong move: do valid algebra toward the wrong target. Right move: identify the requested feature first and choose the form that reveals it.',
+    nearTransferCheck: 'Before committing, ask whether the prompt wants zeros, maximum/minimum, symmetry, or a rewritten form.',
+    exitTicketPrompt: 'Which quadratic feature was the real target, and which representation made it visible?',
+    coachLine: 'Quadratic questions simplify when you decide what feature matters before you start manipulating expressions.',
+  },
+};
+
 function firstSentence(text = '') {
   const normalized = `${text ?? ''}`.trim();
   if (!normalized) return '';
@@ -277,9 +352,85 @@ function formatSkillCue(skill) {
   return skill.objectives[0];
 }
 
+function formatSkillLabel(skill) {
+  return skill?.label ?? 'This skill';
+}
+
+function defaultRetryCue(skill, blueprint) {
+  return blueprint?.checkFor ?? `Re-run ${formatSkillLabel(skill).toLowerCase()} by following the exact clue before you commit.`;
+}
+
+function defaultRevisitPrompt(skill, blueprint) {
+  return blueprint?.transferPreview
+    ?? `On the revisit, reuse the same correction rule for ${formatSkillLabel(skill).toLowerCase()} before speed takes over.`;
+}
+
+function defaultSuccessSignal(skill, blueprint) {
+  return blueprint?.takeaway
+    ?? `You can explain the correction rule for ${formatSkillLabel(skill).toLowerCase()} and apply it once without guessing.`;
+}
+
+function buildCoachLanguage(skill, blueprint) {
+  return {
+    coachLine: blueprint?.coachLine ?? `${formatSkillLabel(skill)}: ${blueprint?.checkFor ?? formatSkillCue(skill)}`,
+    contrastRule: blueprint?.contrastRule ?? null,
+    nearTransferCheck: blueprint?.nearTransferCheck ?? null,
+    exitTicketPrompt: blueprint?.exitTicketPrompt ?? null,
+  };
+}
+
+function buildLessonArc({ teachCard = null, workedExample = null, retryCard = null, transferCard = null, revisitPlan = null } = {}) {
+  const stepTitles = [];
+  const arcParts = [];
+
+  if (teachCard) {
+    stepTitles.push('Teach card');
+    arcParts.push('Learn the rule');
+  }
+  if (workedExample) {
+    stepTitles.push('Worked example');
+    arcParts.push('See it modeled');
+  }
+  if (retryCard) {
+    stepTitles.push('Retry pair');
+    arcParts.push('Practice the fix');
+  }
+  if (transferCard) {
+    stepTitles.push('Near-transfer pair');
+    arcParts.push('Stretch to a close variant');
+  }
+  if (revisitPlan) {
+    stepTitles.push('Revisit plan');
+    arcParts.push('Lock it back in later');
+  }
+
+  return {
+    summaryText: stepTitles.length ? `Open lesson pack · ${stepTitles.join(' · ')}` : 'See the fix',
+    arcText: arcParts.length ? arcParts.join(' · ') : null,
+  };
+}
+
 export function getLessonBlueprint(skillOrId) {
-  const skillId = typeof skillOrId === 'string' ? skillOrId : skillOrId?.skill_id;
-  return LESSON_BLUEPRINTS[skillId] ?? null;
+  const skill = typeof skillOrId === 'string' ? getCurriculumSkill(skillOrId) : skillOrId;
+  const skillId = skill?.skill_id ?? skillOrId;
+  const rawBlueprint = LESSON_BLUEPRINTS[skillId];
+  if (!rawBlueprint) return null;
+
+  const fullPack = FULL_PACK_OVERRIDES[skillId] ?? {};
+  const packDepth = skill?.lesson_pack_tier ?? (FULL_PACK_OVERRIDES[skillId] ? 'full' : 'middle');
+  const merged = {
+    ...rawBlueprint,
+    ...fullPack,
+    packDepth,
+  };
+
+  return {
+    ...merged,
+    retryCue: merged.retryCue ?? defaultRetryCue(skill, merged),
+    revisitPrompt: merged.revisitPrompt ?? defaultRevisitPrompt(skill, merged),
+    successSignal: merged.successSignal ?? defaultSuccessSignal(skill, merged),
+    coachLine: merged.coachLine ?? `${formatSkillLabel(skill)}: ${merged.checkFor ?? formatSkillCue(skill)}`,
+  };
 }
 
 function buildWalkthrough({ blueprint, rationale }) {
@@ -300,15 +451,21 @@ export function buildCurriculumLessonBundle({
   skillId,
   workedExampleItem = null,
   workedExampleRationale = null,
+  retryItem = null,
   transferItem = null,
   transferRationale = null,
 } = {}) {
   const skill = getCurriculumSkill(skillId);
   if (!skill) {
     return {
+      packDepth: null,
       teachCard: null,
       workedExample: null,
+      retryCard: null,
       transferCard: null,
+      revisitPlan: null,
+      lessonArc: null,
+      coachLanguage: null,
       lessonAssetIds: null,
     };
   }
@@ -328,6 +485,7 @@ export function buildCurriculumLessonBundle({
     lookForFirst: blueprint?.lookForFirst ?? null,
     ruleOfThumb: blueprint?.ruleOfThumb ?? null,
     commonTrap: blueprint?.commonTrap ?? null,
+    successSignal: blueprint?.successSignal ?? null,
   };
 
   const workedExample = workedExampleItem
@@ -340,6 +498,17 @@ export function buildCurriculumLessonBundle({
         walkthrough: buildWalkthrough({ blueprint, rationale: workedExampleRationale }).slice(0, 5),
         mistakePattern: blueprint?.mistakePattern ?? null,
         takeaway: blueprint?.takeaway ?? (firstSentence(workedExampleRationale?.canonical_correct_rationale) || formatSkillCue(skill)),
+        contrastRule: blueprint?.contrastRule ?? null,
+      }
+    : null;
+
+  const retryCard = retryItem
+    ? {
+        id: skill.lesson_assets?.retry_set_id ?? `retry_${skill.skill_id}`,
+        title: `${skill.label} retry pair`,
+        itemId: retryItem.itemId,
+        prompt: retryItem.prompt,
+        cue: blueprint?.retryCue ?? null,
       }
     : null;
 
@@ -353,13 +522,27 @@ export function buildCurriculumLessonBundle({
         section: transferItem.section ?? skill.section,
         transferGoal: blueprint?.transferGoal ?? null,
         rationalePreview: blueprint?.transferPreview ?? (firstSentence(transferRationale?.canonical_correct_rationale) || formatSkillCue(skill)),
+        nearTransferCheck: blueprint?.nearTransferCheck ?? null,
       }
     : null;
 
+  const revisitPlan = {
+    dueInDays: [...(skill.revisit_days ?? [])],
+    prompt: blueprint?.revisitPrompt ?? null,
+    successSignal: blueprint?.successSignal ?? null,
+  };
+
+  const lessonArc = buildLessonArc({ teachCard, workedExample, retryCard, transferCard, revisitPlan });
+
   return {
+    packDepth: blueprint?.packDepth ?? skill.lesson_pack_tier ?? 'middle',
     teachCard,
     workedExample,
+    retryCard,
     transferCard,
+    revisitPlan,
+    lessonArc,
+    coachLanguage: buildCoachLanguage(skill, blueprint),
     lessonAssetIds: structuredClone(skill.lesson_assets ?? {}),
   };
 }

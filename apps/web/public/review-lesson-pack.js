@@ -18,6 +18,9 @@ function buildLessonArcText(steps = []) {
   if (titles.has('Near-transfer pair')) {
     arcParts.push('Stretch to a close variant');
   }
+  if (titles.has('Revisit plan')) {
+    arcParts.push('Lock it back in later');
+  }
 
   return arcParts.length ? arcParts.join(' · ') : null;
 }
@@ -30,9 +33,10 @@ export function describeReviewLessonPack(cardData = {}) {
       key: 'teach',
       title: 'Teach card',
       body: [cardData.teachCard.title, cardData.teachCard.summary].filter(hasText).join(': '),
-      bullets: Array.isArray(cardData.teachCard.objectives)
-        ? cardData.teachCard.objectives.filter(hasText).slice(0, 2)
-        : [],
+      bullets: [
+        ...(Array.isArray(cardData.teachCard.objectives) ? cardData.teachCard.objectives : []),
+        cardData.teachCard.successSignal,
+      ].filter(hasText).slice(0, 3),
     });
   }
 
@@ -41,9 +45,10 @@ export function describeReviewLessonPack(cardData = {}) {
       key: 'worked_example',
       title: 'Worked example',
       body: cardData.workedExample.prompt,
-      bullets: Array.isArray(cardData.workedExample.walkthrough)
-        ? cardData.workedExample.walkthrough.filter(hasText).slice(0, 3)
-        : [],
+      bullets: [
+        ...(Array.isArray(cardData.workedExample.walkthrough) ? cardData.workedExample.walkthrough : []),
+        cardData.workedExample.contrastRule,
+      ].filter(hasText).slice(0, 4),
     });
   }
 
@@ -52,7 +57,7 @@ export function describeReviewLessonPack(cardData = {}) {
       key: 'retry',
       title: 'Retry pair',
       body: cardData.retryItem.prompt,
-      bullets: [],
+      bullets: [cardData.retryCue].filter(hasText),
     });
   }
 
@@ -61,15 +66,27 @@ export function describeReviewLessonPack(cardData = {}) {
       key: 'transfer',
       title: 'Near-transfer pair',
       body: cardData.transferItem.prompt,
-      bullets: [],
+      bullets: [cardData.transferItem.nearTransferCheck].filter(hasText),
+    });
+  }
+
+  if (cardData.revisitPlan?.prompt || Array.isArray(cardData.revisitPlan?.dueInDays)) {
+    const dueLine = Array.isArray(cardData.revisitPlan?.dueInDays) && cardData.revisitPlan.dueInDays.length
+      ? `Spacing: ${cardData.revisitPlan.dueInDays.join(', ')} days`
+      : null;
+    steps.push({
+      key: 'revisit',
+      title: 'Revisit plan',
+      body: cardData.revisitPlan?.prompt ?? 'Come back to this skill on a spaced schedule.',
+      bullets: [dueLine, cardData.revisitPlan?.successSignal, cardData.coachLanguage?.exitTicketPrompt].filter(hasText),
     });
   }
 
   return {
     steps,
-    arcText: buildLessonArcText(steps),
-    summaryText: steps.length
+    arcText: cardData.lessonArc?.arcText ?? buildLessonArcText(steps),
+    summaryText: cardData.lessonArc?.summaryText ?? (steps.length
       ? `Open lesson pack · ${steps.map((step) => step.title).join(' · ')}`
-      : 'See the fix',
+      : 'See the fix'),
   };
 }

@@ -1927,6 +1927,13 @@ function renderReview(review) {
     focusCard.append(node('strong', { text: 'Do this first' }));
     focusCard.append(node('p', { text: `${firstCard.skill}: ${firstCard.misconception}` }));
     focusCard.append(node('p', { className: 'muted', text: firstCard.correctionRule }));
+    if (firstCard.coachLanguage?.coachLine) {
+      focusCard.append(node('p', { className: 'notice', text: firstCard.coachLanguage.coachLine }));
+    }
+    focusCard.append(node('p', {
+      className: 'muted',
+      text: `Lesson pack: ${firstCard.packDepth === 'full' ? 'Full pack' : 'Middle pack'}${firstCard.retryCue ? ` · Retry cue: ${firstCard.retryCue}` : ''}` ,
+    }));
     const primaryRetryButton = node('button', { text: 'Try this again' });
     primaryRetryButton.addEventListener('click', async () => startRetryLoop(firstCard.retryAction?.itemId ?? firstCard.itemId));
     focusCard.append(primaryRetryButton);
@@ -1944,9 +1951,16 @@ function renderReview(review) {
     card.append(node('strong', { text: `${formatSectionName(cardData.section)} · ${cardData.skill}` }));
     card.append(node('p', { text: `What went wrong: ${cardData.misconception}` }));
     card.append(node('p', { className: 'muted', text: `Fix rule: ${cardData.correctionRule}` }));
+    if (cardData.coachLanguage?.coachLine) {
+      card.append(node('p', { className: 'notice', text: cardData.coachLanguage.coachLine }));
+    }
     card.append(node('p', {
       className: 'muted',
       text: `Confidence: ${cardData.confidenceBefore ?? '—'} -> ${cardData.confidenceAfter ?? '—'} · revisit ${cardData.nextScheduledRevisit ?? 'soon'}`,
+    }));
+    card.append(node('p', {
+      className: 'muted',
+      text: `Lesson pack: ${cardData.packDepth === 'full' ? 'Full pack' : 'Middle pack'}${cardData.retryCue ? ` · Retry cue: ${cardData.retryCue}` : ''}`,
     }));
     if (cardData.revisitStatus?.status) {
       card.append(node('p', {
@@ -1960,6 +1974,12 @@ function renderReview(review) {
     retryButton.addEventListener('click', async () => startRetryLoop(cardData.retryAction?.itemId ?? cardData.itemId));
     card.append(retryButton);
     const detailChildren = [node('p', { className: 'muted', text: `What to notice: ${cardData.decisiveClue}` })];
+    if (cardData.revisitPlan?.prompt) {
+      detailChildren.push(node('p', { className: 'muted', text: `Revisit prompt: ${cardData.revisitPlan.prompt}` }));
+    }
+    if (cardData.coachLanguage?.exitTicketPrompt) {
+      detailChildren.push(node('p', { className: 'notice', text: `Exit ticket: ${cardData.coachLanguage.exitTicketPrompt}` }));
+    }
     if (lessonPack.steps.length) {
       const stepGrid = node('div', { className: 'lesson-pack-grid' });
       for (const step of lessonPack.steps) {

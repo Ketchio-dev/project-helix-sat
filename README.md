@@ -11,6 +11,7 @@ Adaptive SAT Intelligence Platform — an AI-powered SAT prep app with adaptive 
 - **Contract-enforced API** — OpenAPI + JSON schemas aligned with runtime, request validation via middleware
 - **Cold-start handling** — `insufficient_evidence` and `needs_diagnostic` states for new learners
 - **Curriculum-aware planning** — goal profile, next-best-action, daily plan, curriculum path, and multi-week program path
+- **Lesson-pack depth model** — every tracked skill now carries a middle/full lesson-pack tier so review, revisit, and planning surfaces share the same authored teaching arc
 - **Content library** — 79-item demo bank spanning both SAT sections with canonical rationales, hint ladders, and 14 math grid-ins
 - **Test suite** — automated regression coverage via `npm test` and `npm run check`
 - **Learner shell** — goal setup, 13-item baseline diagnostic, quick win, review remediation, and Playwright smoke coverage on the legacy learner shell (`apps/web/public/*`)
@@ -61,7 +62,7 @@ Sessions expire after 24 hours. Re-authenticate to obtain a fresh cookie.
 
 Current audit status (`npm run audit:helix`):
 - Cross-section coverage is **credible for MVP**
-- Blueprint coverage is **19/19 skills covered**
+- Blueprint coverage is **19/19 skills covered**, with **19 middle-pack lesson scaffolds** and **8 full-pack lesson cohorts**
 - Current bank includes **79 items / 79 rationales**, **14 grid-ins**, **13-item baseline diagnostic**, **12-item default modules**, and **18-item extended modules**
 - Biggest remaining realism gap is **full exam-length module parity**, not missing skill lanes
 - The current generator still emits `single_select` only, so hand-authored grid-ins carry the current math format-realism slice

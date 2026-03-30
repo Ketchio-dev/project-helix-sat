@@ -331,22 +331,35 @@ describe('integrity: curriculum lesson bundle', () => {
       skillId: 'rw_inferences',
       workedExampleItem,
       workedExampleRationale: seed.rationales[workedExampleItem.itemId],
+      retryItem: workedExampleItem,
       transferItem,
       transferRationale: seed.rationales[transferItem.itemId],
     });
 
+    assert.equal(bundle.packDepth, 'full');
     assert.equal(bundle.teachCard.id, 'teach_rw_inferences_v1');
     assert.equal(bundle.workedExample.id, 'we_rw_inferences_1');
     assert.ok(bundle.workedExample.walkthrough.length >= 1);
+    assert.equal(bundle.retryCard.id, 'retry_rw_inferences_v1');
+    assert.equal(bundle.retryCard.itemId, workedExampleItem.itemId);
     assert.equal(bundle.transferCard.id, 'transfer_rw_inferences_v1');
     assert.equal(bundle.transferCard.itemId, transferItem.itemId);
     assert.match(bundle.teachCard.summary, /strongest claim the lines force/i);
     assert.match(bundle.teachCard.lookForFirst, /line that forces the claim/i);
     assert.match(bundle.teachCard.ruleOfThumb, /too big for SAT inference/i);
+    assert.match(bundle.teachCard.successSignal, /concrete clues/i);
     assert.match(bundle.workedExample.walkthrough[0], /collect the concrete clues first/i);
     assert.match(bundle.workedExample.mistakePattern, /story-sized conclusion/i);
+    assert.match(bundle.workedExample.contrastRule, /Wrong move/i);
+    assert.match(bundle.retryCard.cue, /exact line first/i);
     assert.match(bundle.transferCard.transferGoal, /concrete clues/i);
     assert.match(bundle.transferCard.rationalePreview, /prove the answer from one or two exact clues/i);
+    assert.match(bundle.transferCard.nearTransferCheck, /every word/i);
+    assert.deepEqual(bundle.revisitPlan.dueInDays, [1, 3, 7, 14]);
+    assert.match(bundle.revisitPlan.prompt, /cite the exact phrase/i);
+    assert.match(bundle.lessonArc.summaryText, /Teach card · Worked example · Retry pair · Near-transfer pair · Revisit plan/i);
+    assert.match(bundle.coachLanguage.coachLine, /prove the answer from the line/i);
+    assert.match(bundle.coachLanguage.exitTicketPrompt, /exact words in the passage/i);
   });
 
   it('uses authored lesson phrasing for math repair skills instead of generic fallback copy', () => {
@@ -594,6 +607,40 @@ describe('integrity: curriculum lesson bundle', () => {
       assert.ok(getLessonBlueprint(skill.skill_id), `expected authored blueprint for ${skill.skill_id}`);
     }
   });
+
+  it('marks every curriculum skill with a middle/full lesson-pack tier and full-pack depth for the fixed cohort', async () => {
+    const curriculum = JSON.parse(
+      await readFile(new URL('../docs/curriculum/curriculum.v1.json', import.meta.url), 'utf8'),
+    );
+    const expectedFullPackSkills = new Set([
+      'rw_inferences',
+      'rw_command_of_evidence',
+      'rw_central_ideas_and_details',
+      'rw_sentence_boundaries',
+      'math_linear_equations',
+      'math_linear_functions',
+      'math_systems_of_linear_equations',
+      'math_quadratic_functions',
+    ]);
+
+    for (const skill of curriculum.skills) {
+      assert.ok(['middle', 'full'].includes(skill.lesson_pack_tier), `expected lesson_pack_tier for ${skill.skill_id}`);
+      assert.equal(skill.lesson_pack_version, 'v2');
+      const blueprint = getLessonBlueprint(skill.skill_id);
+      assert.equal(blueprint.packDepth, skill.lesson_pack_tier);
+      assert.ok(blueprint.retryCue, `expected retry cue for ${skill.skill_id}`);
+      assert.ok(blueprint.revisitPrompt, `expected revisit prompt for ${skill.skill_id}`);
+      assert.ok(blueprint.successSignal, `expected success signal for ${skill.skill_id}`);
+
+      if (expectedFullPackSkills.has(skill.skill_id)) {
+        assert.equal(skill.lesson_pack_tier, 'full');
+        assert.ok(blueprint.contrastRule, `expected contrast rule for ${skill.skill_id}`);
+        assert.ok(blueprint.nearTransferCheck, `expected near-transfer check for ${skill.skill_id}`);
+        assert.ok(blueprint.exitTicketPrompt, `expected exit ticket for ${skill.skill_id}`);
+        assert.ok(blueprint.coachLine, `expected coach line for ${skill.skill_id}`);
+      }
+    }
+  });
 });
 
 describe('integrity: curriculum path generator', () => {
@@ -633,9 +680,14 @@ describe('integrity: curriculum path generator', () => {
 
     assert.equal(path.horizonDays, 14);
     assert.equal(path.anchorSkill.skillId, 'math_linear_equations');
+    assert.equal(path.anchorSkill.lessonPackTier, 'full');
     assert.ok(path.supportSkill);
+    assert.ok(['middle', 'full'].includes(path.supportSkill.lessonPackTier));
     assert.ok(path.revisitCadence.length >= 1);
+    assert.ok(path.revisitCadence.every((row) => Object.hasOwn(row, 'lessonPackTier')));
+    assert.match(path.revisitCadence[0].reason, /revisit|cite|solve|reuse|prove/i);
     assert.equal(path.dailyFocuses.length, 14);
+    assert.ok(path.dailyFocuses.every((row) => ['middle', 'full'].includes(row.lessonPackTier)));
     assert.ok(path.recoveryPath.adjustment.includes('retry loop'));
   });
 });

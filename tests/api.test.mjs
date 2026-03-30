@@ -239,10 +239,15 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
     assert.ok(Array.isArray(review.remediationCards));
     assert.ok(review.remediationCards.length >= 1);
     assert.equal(typeof review.remediationCards[0].misconception, 'string');
+    assert.ok(['middle', 'full'].includes(review.remediationCards[0].packDepth));
     assert.ok(review.remediationCards[0].retryItem?.itemId);
+    assert.equal(typeof review.remediationCards[0].retryCue, 'string');
     assert.equal(typeof review.remediationCards[0].teachCard?.title, 'string');
     assert.ok(Array.isArray(review.remediationCards[0].workedExample?.walkthrough));
     assert.ok(review.remediationCards[0].transferItem?.itemId);
+    assert.equal(typeof review.remediationCards[0].lessonArc?.summaryText, 'string');
+    assert.equal(typeof review.remediationCards[0].revisitPlan?.prompt, 'string');
+    assert.equal(typeof review.remediationCards[0].coachLanguage?.coachLine, 'string');
     assert.equal(review.remediationCards[0].transferAction?.kind, 'start_retry_loop');
 
     const reflection = await fetch(`${baseUrl}/api/reflection/submit`, {
@@ -1471,6 +1476,10 @@ test('api starts a retry loop from review recommendations and schedules a revisi
     assert.equal(typeof reviewBefore.remediationCards[0].teachCard?.summary, 'string');
     assert.ok(reviewBefore.remediationCards[0].workedExample?.prompt);
     assert.ok(reviewBefore.remediationCards[0].transferItem?.itemId);
+    assert.equal(typeof reviewBefore.remediationCards[0].retryCue, 'string');
+    assert.equal(typeof reviewBefore.remediationCards[0].lessonArc?.arcText, 'string');
+    assert.ok(Array.isArray(reviewBefore.remediationCards[0].revisitPlan?.dueInDays));
+    assert.equal(typeof reviewBefore.remediationCards[0].coachLanguage?.coachLine, 'string');
     assert.equal(reviewBefore.remediationCards[0].transferAction?.kind, 'start_retry_loop');
 
     const nextBestAction = await fetch(`${baseUrl}/api/next-best-action`, {

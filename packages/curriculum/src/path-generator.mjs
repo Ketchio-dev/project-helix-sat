@@ -6,6 +6,7 @@ import {
   inferSkillStage,
   listCurriculumSkills,
 } from './mastery-gates.mjs';
+import { getLessonBlueprint } from './lesson-assets.mjs';
 
 const STAGE_PRIORITY = {
   unseen: 0,
@@ -83,6 +84,7 @@ function buildNode(skill, skillState) {
   if (!skill) return null;
   const stage = inferSkillStage(skillState, skill);
   const gate = evaluateMasteryGate(skill, skillState);
+  const lessonBlueprint = getLessonBlueprint(skill);
   return {
     skillId: skill.skill_id,
     label: skill.label ?? humanizeSkillId(skill.skill_id),
@@ -103,6 +105,7 @@ function buildNode(skill, skillState) {
     revisitDays: [...(skill.revisit_days ?? [])],
     prereqIds: [...(skill.prereq_ids ?? [])],
     unlocks: [...(skill.unlocks ?? [])],
+    lessonPackTier: lessonBlueprint?.packDepth ?? skill.lesson_pack_tier ?? 'middle',
     lessonAssets: structuredClone(skill.lesson_assets ?? {}),
   };
 }
@@ -158,22 +161,29 @@ function buildRevisits(anchorNode, supportNode, reviewQueue = [], today = new Da
   const rows = [];
   for (const entry of reviewQueue.slice(0, 4)) {
     const dueDate = entry.dueAt ? new Date(entry.dueAt) : today;
+    const reviewSkill = entry.skill ? getCurriculumSkill(entry.skill) : null;
+    const reviewBlueprint = reviewSkill ? getLessonBlueprint(reviewSkill) : null;
     rows.push({
       skillId: entry.skill ?? null,
-      label: entry.skill ? humanizeSkillId(entry.skill) : 'Scheduled review',
+      label: reviewSkill?.label ?? (entry.skill ? humanizeSkillId(entry.skill) : 'Scheduled review'),
       dueInDays: clamp(Math.ceil((startOfDay(dueDate) - startOfDay(today)) / 86400000), 0, CURRICULUM_HORIZON_DAYS),
-      reason: entry.status === 'revisit_due' ? 'Spaced revisit is due now.' : 'Recent trap still needs one more correction loop.',
+      reason: entry.status === 'revisit_due'
+        ? (reviewBlueprint?.revisitPrompt ?? 'Spaced revisit is due now.')
+        : (reviewBlueprint?.retryCue ?? 'Recent trap still needs one more correction loop.'),
       source: 'review_queue',
+      lessonPackTier: reviewBlueprint?.packDepth ?? reviewSkill?.lesson_pack_tier ?? null,
     });
   }
   for (const node of [anchorNode, supportNode].filter(Boolean)) {
     for (const day of node.revisitDays.slice(0, 2)) {
+      const nodeBlueprint = getLessonBlueprint(node.skillId);
       rows.push({
         skillId: node.skillId,
         label: node.label,
         dueInDays: day,
-        reason: `${node.label} should come back on a ${day}-day spacing interval.`,
+        reason: nodeBlueprint?.revisitPrompt ?? `${node.label} should come back on a ${day}-day spacing interval.`,
         source: 'curriculum_cadence',
+        lessonPackTier: node.lessonPackTier ?? nodeBlueprint?.packDepth ?? null,
       });
     }
   }
@@ -236,6 +246,7 @@ function buildDailyFocuses({ today, anchorNode, supportNode, maintenanceNode, ho
       stage: node.stage,
       objective: node.objectives[0] ?? `Advance ${node.label}.`,
       sessionKind: focusSessionKind(node.stage),
+      lessonPackTier: node.lessonPackTier ?? 'middle',
     });
   }
   return rows;

@@ -230,17 +230,17 @@ Suggested implementation home:
 **Goal:** Make the product feel more like real SAT work and less like a narrow prototype slice.
 
 **Definition of done**
-- Partial blueprint lanes are meaningfully deepened
+- The all-skill middle-pack lesson baseline stays coherent while the highest-leverage skills gain deeper full-pack remediation
 - Grid-in / student-produced-response is no longer a tiny edge path
 - Module length and shape move toward more believable SAT blocks
 - Review richness improves alongside content depth
 
-### Issue 4.1 — Deepen the five partial blueprint lanes
-- **Outcome:** raise item density where audit still calls coverage partial
+### Issue 4.1 — Deepen the full-pack lesson cohort
+- **Outcome:** raise authored lesson depth where the learner loop sees the most remediation traffic
 - **Primary files:** `content/`, `docs/sat-coverage-audit.md`, `scripts/`, relevant packages
 - **Acceptance criteria:**
-  - each partial lane reaches a declared minimum coverage bar
-  - audit output reflects the new counts
+  - the fixed full-pack cohort gains deeper teach / worked / retry / near-transfer / revisit language
+  - audit output reflects the current middle-pack vs full-pack state honestly
 
 ### Issue 4.2 — Expand math grid-in coverage
 - **Outcome:** student-produced response becomes a meaningful slice of math practice

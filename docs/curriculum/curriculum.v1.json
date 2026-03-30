@@ -40,7 +40,9 @@
         ],
         "retry_set_id": "retry_rw_central_ideas_and_details_v1",
         "transfer_set_id": "transfer_rw_central_ideas_and_details_v1"
-      }
+      },
+      "lesson_pack_tier": "full",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "rw_inferences",
@@ -76,7 +78,9 @@
         ],
         "retry_set_id": "retry_rw_inferences_v1",
         "transfer_set_id": "transfer_rw_inferences_v1"
-      }
+      },
+      "lesson_pack_tier": "full",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "rw_command_of_evidence",
@@ -113,7 +117,9 @@
         ],
         "retry_set_id": "retry_rw_command_of_evidence_v1",
         "transfer_set_id": "transfer_rw_command_of_evidence_v1"
-      }
+      },
+      "lesson_pack_tier": "full",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "rw_words_in_context",
@@ -149,7 +155,9 @@
         ],
         "retry_set_id": "retry_rw_words_in_context_v1",
         "transfer_set_id": "transfer_rw_words_in_context_v1"
-      }
+      },
+      "lesson_pack_tier": "middle",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "rw_text_structure_and_purpose",
@@ -186,7 +194,9 @@
         ],
         "retry_set_id": "retry_rw_text_structure_and_purpose_v1",
         "transfer_set_id": "transfer_rw_text_structure_and_purpose_v1"
-      }
+      },
+      "lesson_pack_tier": "middle",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "rw_cross_text_connections",
@@ -223,7 +233,9 @@
         ],
         "retry_set_id": "retry_rw_cross_text_connections_v1",
         "transfer_set_id": "transfer_rw_cross_text_connections_v1"
-      }
+      },
+      "lesson_pack_tier": "middle",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "rw_rhetorical_synthesis",
@@ -259,7 +271,9 @@
         ],
         "retry_set_id": "retry_rw_rhetorical_synthesis_v1",
         "transfer_set_id": "transfer_rw_rhetorical_synthesis_v1"
-      }
+      },
+      "lesson_pack_tier": "middle",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "rw_transitions",
@@ -296,7 +310,9 @@
         ],
         "retry_set_id": "retry_rw_transitions_v1",
         "transfer_set_id": "transfer_rw_transitions_v1"
-      }
+      },
+      "lesson_pack_tier": "middle",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "rw_sentence_boundaries",
@@ -333,7 +349,9 @@
         ],
         "retry_set_id": "retry_rw_sentence_boundaries_v1",
         "transfer_set_id": "transfer_rw_sentence_boundaries_v1"
-      }
+      },
+      "lesson_pack_tier": "full",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "rw_form_structure_sense",
@@ -369,7 +387,9 @@
         ],
         "retry_set_id": "retry_rw_form_structure_sense_v1",
         "transfer_set_id": "transfer_rw_form_structure_sense_v1"
-      }
+      },
+      "lesson_pack_tier": "middle",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "rw_punctuation",
@@ -404,7 +424,9 @@
         ],
         "retry_set_id": "retry_rw_punctuation_v1",
         "transfer_set_id": "transfer_rw_punctuation_v1"
-      }
+      },
+      "lesson_pack_tier": "middle",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "math_linear_equations",
@@ -439,7 +461,9 @@
         ],
         "retry_set_id": "retry_math_linear_equations_v1",
         "transfer_set_id": "transfer_math_linear_equations_v1"
-      }
+      },
+      "lesson_pack_tier": "full",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "math_systems_of_linear_equations",
@@ -475,7 +499,9 @@
         ],
         "retry_set_id": "retry_math_systems_of_linear_equations_v1",
         "transfer_set_id": "transfer_math_systems_of_linear_equations_v1"
-      }
+      },
+      "lesson_pack_tier": "full",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "math_linear_functions",
@@ -511,7 +537,9 @@
         ],
         "retry_set_id": "retry_math_linear_functions_v1",
         "transfer_set_id": "transfer_math_linear_functions_v1"
-      }
+      },
+      "lesson_pack_tier": "full",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "math_nonlinear_equations",
@@ -548,7 +576,9 @@
         ],
         "retry_set_id": "retry_math_nonlinear_equations_v1",
         "transfer_set_id": "transfer_math_nonlinear_equations_v1"
-      }
+      },
+      "lesson_pack_tier": "middle",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "math_quadratic_functions",
@@ -584,7 +614,9 @@
         ],
         "retry_set_id": "retry_math_quadratic_functions_v1",
         "transfer_set_id": "transfer_math_quadratic_functions_v1"
-      }
+      },
+      "lesson_pack_tier": "full",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "math_polynomial_rational",
@@ -619,7 +651,9 @@
         ],
         "retry_set_id": "retry_math_polynomial_rational_v1",
         "transfer_set_id": "transfer_math_polynomial_rational_v1"
-      }
+      },
+      "lesson_pack_tier": "middle",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "math_ratios_rates",
@@ -655,7 +689,9 @@
         ],
         "retry_set_id": "retry_math_ratios_rates_v1",
         "transfer_set_id": "transfer_math_ratios_rates_v1"
-      }
+      },
+      "lesson_pack_tier": "middle",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "math_statistics_probability",
@@ -690,7 +726,9 @@
         ],
         "retry_set_id": "retry_math_statistics_probability_v1",
         "transfer_set_id": "transfer_math_statistics_probability_v1"
-      }
+      },
+      "lesson_pack_tier": "middle",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "math_area_and_perimeter",
@@ -727,7 +765,9 @@
         ],
         "retry_set_id": "retry_math_area_and_perimeter_v1",
         "transfer_set_id": "transfer_math_area_and_perimeter_v1"
-      }
+      },
+      "lesson_pack_tier": "middle",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "math_circles",
@@ -763,7 +803,9 @@
         ],
         "retry_set_id": "retry_math_circles_v1",
         "transfer_set_id": "transfer_math_circles_v1"
-      }
+      },
+      "lesson_pack_tier": "middle",
+      "lesson_pack_version": "v2"
     },
     {
       "skill_id": "math_trigonometry",
@@ -797,7 +839,9 @@
         ],
         "retry_set_id": "retry_math_trigonometry_v1",
         "transfer_set_id": "transfer_math_trigonometry_v1"
-      }
+      },
+      "lesson_pack_tier": "middle",
+      "lesson_pack_version": "v2"
     }
   ]
 }
