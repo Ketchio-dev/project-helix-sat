@@ -39,6 +39,7 @@ This note tracks the **current fidelity slice** for Project Helix SAT for the cu
 
 ### Format realism
 - Expand the math grid-in / student-produced-response slice beyond the current 14 items so the format is no longer a narrow hand-authored slice.
+- Keep the shipped selector honest about repeated Math numeric-entry exposure: standard modules should not collapse back below 3 grid-ins, extended modules should keep a denser 5-grid-in slice, and exam-profile Math blocks should keep the strongest 6-grid-in rep.
 - New grid-in items should cover additional math skills (not just the same lane) and work end to end in all session types.
 - Do not overclaim generator support while the richer format is still demo-bank-only.
 

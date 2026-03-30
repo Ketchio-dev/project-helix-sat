@@ -185,10 +185,14 @@ test('docs stay aligned with cookie auth and current audit claims', () => {
   assert.match(readmeSource, /HttpOnly `helix_auth` cookie/i);
   assert.match(readmeSource, /19\/19 skills covered/i);
   assert.match(readmeSource, /14 grid-ins/i);
+  assert.match(readmeSource, /3.*standard 12-question blocks/i);
+  assert.match(readmeSource, /5.*18-question extended blocks/i);
+  assert.match(readmeSource, /6.*22-question exam profile/i);
   assert.doesNotMatch(contentReadmeSource, /Keep strengthening partial blueprint lanes/i);
   assert.doesNotMatch(contentReadmeSource, /Add the smallest safe grid-in/i);
   assert.match(contentReadmeSource, /source of truth/i);
   assert.match(contentReadmeSource, /12-item default \/ 18-item extended/i);
+  assert.match(contentReadmeSource, /repeated grid-in reps in Math modules/i);
   assert.match(readmeSource, /18-item extended modules/i);
   assert.match(milestonesSource, /Private beta slice/i);
   assert.match(milestonesSource, /Strengthen exam\/practice realism and learner-surface cohesion/i);

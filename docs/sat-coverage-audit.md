@@ -45,7 +45,7 @@ Project Helix SAT now **covers the full ontology slice in its shipped audit** an
 1. **Module simulation is still shorter than the real digital SAT.**
    - The default shipped module is still 12 items long, and the optional extended section profiles are only 18 items, so all paths remain materially shorter than a real SAT module.
 2. **Format realism is broader but still bounded.**
-   - 14 Math items use `grid_in`, but the shipped bank is still mostly `single_select`.
+   - 14 Math items use `grid_in`, and the shipped Math modules now force a repeated numeric-entry slice (3 grid-ins in the 12-question standard block, 5 in the 18-question extended block, 6 in the 22-question exam profile), but the overall bank is still mostly `single_select`.
 3. **Authored lesson assets are stronger, but still not a full courseware system.**
    - The lesson system now gives every tracked skill a middle-pack scaffold and upgrades a smaller fixed cohort to full-pack depth, but the runtime still ships lightweight remediation bundles rather than long multi-day courseware sequences.
 
@@ -67,4 +67,4 @@ Project Helix SAT now **covers the full ontology slice in its shipped audit** an
 
 ## Bottom line
 
-Today the product is a believable **two-section SAT prototype** with a 79-item bank, full ontology-slice coverage in the audit, a 14-item math numeric-entry slice, authored remediation blueprints across the current curriculum map, an all-skill middle-pack lesson baseline plus an 11-skill full-pack cohort, a 13-item onboarding baseline diagnostic, a 12-item default module path, optional 18-item extended modules for both sections, and a larger exam profile at 27 Reading/Writing items / 22 Math items. It is much closer to a real curriculum-backed SAT product than it was a few slices ago, but module realism and deeper lesson depth are still the clearest next bottlenecks.
+Today the product is a believable **two-section SAT prototype** with a 79-item bank, full ontology-slice coverage in the audit, a 14-item math numeric-entry slice that now appears repeatedly inside shipped Math modules, authored remediation blueprints across the current curriculum map, an all-skill middle-pack lesson baseline plus an 11-skill full-pack cohort, a 13-item onboarding baseline diagnostic, a 12-item default module path, optional 18-item extended modules for both sections, and a larger exam profile at 27 Reading/Writing items / 22 Math items. It is much closer to a real curriculum-backed SAT product than it was a few slices ago, but module realism and deeper lesson depth are still the clearest next bottlenecks.

@@ -3,7 +3,7 @@ import { createDemoData, DEMO_USER_ID } from './demo-data.mjs';
 import { hashPassword, verifyPassword, createToken, needsPasswordRehash } from './auth.mjs';
 import { HttpError } from './http-utils.mjs';
 import { generateDailyPlan } from '../../../packages/assessment/src/daily-plan-generator.mjs';
-import { selectSessionItems } from '../../../packages/assessment/src/item-selector.mjs';
+import { getMathStudentResponseTargetCount, selectSessionItems } from '../../../packages/assessment/src/item-selector.mjs';
 import { buildCurriculumLessonBundle } from '../../../packages/curriculum/src/lesson-assets.mjs';
 import { generateCurriculumPath, generateProgramPath } from '../../../packages/curriculum/src/path-generator.mjs';
 import { projectScoreBand } from '../../../packages/scoring/src/score-predictor.mjs';
@@ -192,10 +192,13 @@ function describeStudyModeLabel(key, action = null) {
 function describeStudyModeSummary(key, action = null, fallbackSummary = '') {
   if (action?.kind === 'start_module') {
     const blockText = describeModuleBlock(action);
+    const studentResponseText = action.section === 'math' && action.studentResponseTarget
+      ? ` It includes ${action.studentResponseTarget} grid-in rep${action.studentResponseTarget === 1 ? '' : 's'}.`
+      : '';
     if (key === 'deep') {
-      return `Use the ${blockText} when you have room for a more SAT-shaped rep.`;
+      return `Use the ${blockText} when you have room for a more SAT-shaped rep.${studentResponseText}`;
     }
-    return `Helix is recommending the ${blockText} as the main score-moving step.`;
+    return `Helix is recommending the ${blockText} as the main score-moving step.${studentResponseText}`;
   }
   if (fallbackSummary) return fallbackSummary;
   if (key === 'standard') return 'Do the main score-moving step Helix wants next.';
@@ -406,6 +409,17 @@ function getModuleSessionShape(section = 'math', options = {}) {
     itemCount: profileShape.itemCount,
     recommendedPaceSec: profileShape.recommendedPaceSec,
     timeLimitSec: profileShape.timeLimitSec ?? (profileShape.itemCount * profileShape.recommendedPaceSec),
+  };
+}
+
+function getModuleActionMetadata(section = 'math', realismProfile = 'standard') {
+  const shape = getModuleSessionShape(section, { realismProfile });
+  return {
+    ...shape,
+    studentResponseTarget: getMathStudentResponseTargetCount(shape.itemCount, {
+      section,
+      realismProfile,
+    }) || null,
   };
 }
 
@@ -1915,7 +1929,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       }
 
       const moduleSection = inferredSection ?? 'math';
-      const moduleShape = getModuleSessionShape(moduleSection, { realismProfile: moduleRealismProfile });
+      const moduleShape = getModuleActionMetadata(moduleSection, moduleRealismProfile);
       const moduleProfileLabel = moduleRealismLabel(moduleRealismProfile);
 
       return applyComebackFraming({
@@ -1937,6 +1951,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         itemCount: moduleShape.itemCount,
         timeLimitSec: moduleShape.timeLimitSec,
         recommendedPaceSec: moduleShape.recommendedPaceSec,
+        studentResponseTarget: moduleShape.studentResponseTarget,
       }, api.getComebackState(userId));
     },
 
@@ -2517,7 +2532,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         moduleItemCount,
         recentItemIds,
         state.itemExposure,
-        { section },
+        { section, realismProfile },
       );
       if (moduleItems.length !== moduleItemCount || moduleItems.some((item) => !item)) {
         throw new HttpError(500, 'Module configuration is missing one or more items');
@@ -3312,7 +3327,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
     realismProfile = 'standard',
   } = {}) {
     const resolvedSection = section ?? 'math';
-    const shape = getModuleSessionShape(resolvedSection, { realismProfile });
+    const shape = getModuleActionMetadata(resolvedSection, realismProfile);
     return {
       kind: 'start_module',
       title,
@@ -3326,6 +3341,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       itemCount: shape.itemCount,
       timeLimitSec: shape.timeLimitSec,
       recommendedPaceSec: shape.recommendedPaceSec,
+      studentResponseTarget: shape.studentResponseTarget,
     };
   }
 

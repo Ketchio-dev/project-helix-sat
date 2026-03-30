@@ -509,5 +509,11 @@ describe('CTA hierarchy: dashboard integration coherence', () => {
     assert.equal(typeof deepMode.action.timeLimitSec, 'number');
     assert.equal(deepMode.action.itemCount, 18);
     assert.ok(deepMode.action.estimatedMinutes >= 20);
+    if (deepMode.action.section === 'math') {
+      assert.equal(deepMode.action.studentResponseTarget, 5);
+      assert.match(deepMode.summary, /grid-in/i);
+    } else {
+      assert.equal(deepMode.action.studentResponseTarget ?? null, null);
+    }
   });
 });

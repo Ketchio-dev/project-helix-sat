@@ -67,7 +67,7 @@ Treat `docs/audits/project-helix-sat-coverage.md` as the source of truth. Narrat
 The latest coverage audit (`npm run audit:helix`) identifies these priorities:
 
 1. Push section-specific module realism beyond the current 12-item default / 18-item extended slices toward exam-shaped practice profiles.
-2. Broaden math format realism beyond the current authored 14 grid-ins so student-produced response is a meaningful repeated experience, not a token format.
+2. Broaden math format realism beyond the current authored 14 grid-ins so student-produced response is a meaningful repeated experience, not a token format; the shipped selector now guarantees repeated grid-in reps in Math modules, so future content work should deepen that slice rather than treating it as a one-off novelty.
 3. Deepen authored lesson packs from the current all-skill middle-pack baseline toward fuller retry / near-transfer / revisit depth for the highest-traffic skills.
 4. Keep `/api/session/review`, README, this content guide, and generated audit output saying the same thing.
 

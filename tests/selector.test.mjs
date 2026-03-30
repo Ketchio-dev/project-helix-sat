@@ -84,6 +84,14 @@ describe('selectSessionItems', () => {
     assert.ok(result.some((item) => item.item_format === 'grid_in'));
   });
 
+  it('standard math module_simulation blocks preserve repeated student-produced-response practice', () => {
+    const result = selectSessionItems(demoItems, [], 'module_simulation', 12, [], {}, { section: 'math' });
+    assert.equal(result.length, 12);
+    assert.ok(result.filter((item) => item.item_format === 'grid_in').length >= 3);
+    assert.ok(new Set(result.map((item) => item.skill)).size >= 6);
+    assert.ok(new Set(result.map((item) => item.domain)).size >= 4);
+  });
+
   it('math bank now spreads student-produced-response items across many distinct skills', () => {
     const gridInSkills = new Set(
       demoItems
@@ -96,10 +104,11 @@ describe('selectSessionItems', () => {
     assert.ok(gridInSkills.has('math_nonlinear_equations'));
   });
 
-  it('larger math module_simulation blocks surface multiple student-produced-response items when the bank supports them', () => {
-    const result = selectSessionItems(demoItems, [], 'module_simulation', 16, [], {}, { section: 'math' });
-    assert.equal(result.length, 16);
-    assert.ok(result.filter((item) => item.item_format === 'grid_in').length >= 4);
+  it('extended math module_simulation blocks surface a denser student-produced-response slice', () => {
+    const result = selectSessionItems(demoItems, [], 'module_simulation', 18, [], {}, { section: 'math' });
+    assert.equal(result.length, 18);
+    assert.ok(result.filter((item) => item.item_format === 'grid_in').length >= 5);
+    assert.ok(new Set(result.map((item) => item.skill)).size >= 8);
   });
 
   it('larger reading-writing module_simulation blocks keep section breadth without leaking math items', () => {
@@ -113,7 +122,7 @@ describe('selectSessionItems', () => {
   it('exam math module_simulation blocks surface a larger numeric-entry slice', () => {
     const result = selectSessionItems(demoItems, [], 'module_simulation', 22, [], {}, { section: 'math', realismProfile: 'exam' });
     assert.equal(result.length, 22);
-    assert.ok(result.filter((item) => item.item_format === 'grid_in').length >= 5);
+    assert.ok(result.filter((item) => item.item_format === 'grid_in').length >= 6);
     assert.ok(new Set(result.map((item) => item.skill)).size >= 10);
   });
 

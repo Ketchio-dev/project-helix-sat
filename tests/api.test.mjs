@@ -42,6 +42,16 @@ const STUDENT_RESPONSE_FIXTURES = {
   },
 };
 
+function expectedMathStudentResponseTarget({ itemCount, realismProfile, section } = {}) {
+  if (section !== 'math') return null;
+  if (realismProfile === 'exam') return 6;
+  if (itemCount >= 18) return 5;
+  if (itemCount >= 16) return 4;
+  if (itemCount >= 12) return 3;
+  if (itemCount >= 8) return 2;
+  return 1;
+}
+
 function buildAttemptBody(item, {
   sessionId,
   mode,
@@ -627,7 +637,7 @@ test('store can start an extended math module shape without leaking exam review 
   assert.equal(moduleSimulation.timing.timeLimitSec, 1800);
   assert.equal(moduleSimulation.timing.recommendedPaceSec, 100);
   assert.equal(moduleSimulation.items.length, 18);
-  assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 4);
+  assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 5);
 
   const attempt = store.submitAttempt({
     userId: 'demo-student',
@@ -662,7 +672,7 @@ test('api can start an extended math module shape through the module-start contr
     assert.equal(moduleSimulation.timing.timeLimitSec, 1800);
     assert.equal(moduleSimulation.timing.recommendedPaceSec, 100);
     assert.equal(moduleSimulation.items.length, 18);
-    assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 4);
+    assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 5);
   });
 });
 
@@ -698,7 +708,7 @@ test('store can start an exam math module profile without leaking exam review fi
   assert.equal(moduleSimulation.timing.timeLimitSec, 2100);
   assert.equal(moduleSimulation.timing.recommendedPaceSec, 95);
   assert.equal(moduleSimulation.items.length, 22);
-  assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 5);
+  assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 6);
 
   const attempt = store.submitAttempt({
     userId: 'demo-student',
@@ -734,7 +744,7 @@ test('api can start an exam math module shape through the module-start contract'
     assert.equal(moduleSimulation.timing.timeLimitSec, 2100);
     assert.equal(moduleSimulation.timing.recommendedPaceSec, 95);
     assert.equal(moduleSimulation.items.length, 22);
-    assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 5);
+    assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 6);
   });
 });
 
@@ -1163,6 +1173,11 @@ test('store dashboard module actions expose realism metadata that matches module
   assert.equal(typeof moduleAction.itemCount, 'number');
   assert.equal(typeof moduleAction.timeLimitSec, 'number');
   assert.equal(typeof moduleAction.recommendedPaceSec, 'number');
+  if (moduleAction.section === 'math') {
+    assert.equal(moduleAction.studentResponseTarget, expectedMathStudentResponseTarget(moduleAction));
+  } else {
+    assert.equal(moduleAction.studentResponseTarget ?? null, null);
+  }
 
   const started = store.startModuleSimulation(user.id, {
     section: moduleAction.section,
@@ -1174,6 +1189,12 @@ test('store dashboard module actions expose realism metadata that matches module
   assert.equal(started.items.length, moduleAction.itemCount);
   assert.equal(started.timing.timeLimitSec, moduleAction.timeLimitSec);
   assert.equal(started.timing.recommendedPaceSec, moduleAction.recommendedPaceSec);
+  if (moduleAction.section === 'math') {
+    assert.ok(
+      started.items.filter((item) => item.item_format === 'grid_in').length >= moduleAction.studentResponseTarget,
+      'started math module should deliver at least the promised grid-in target',
+    );
+  }
 });
 
 test('api returns a weekly digest with strengths, risks, and focus after learner activity', async () => {

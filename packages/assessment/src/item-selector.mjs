@@ -10,6 +10,22 @@ const SECTION_ORDER = {
 };
 const STUDENT_RESPONSE_FORMATS = new Set(['grid_in', 'student_produced_response', 'student-produced-response']);
 
+export function getMathStudentResponseTargetCount(count, options = {}) {
+  if (!Number.isFinite(count) || count <= 0) return 0;
+  if (options.section && options.section !== 'math') return 0;
+
+  const desiredCount = options.realismProfile === 'exam'
+    ? 6
+    : [
+      { minimumItems: 18, targetCount: 5 },
+      { minimumItems: 16, targetCount: 4 },
+      { minimumItems: 12, targetCount: 3 },
+      { minimumItems: 8, targetCount: 2 },
+    ].find(({ minimumItems }) => count >= minimumItems)?.targetCount ?? 1;
+
+  return Math.min(desiredCount, count);
+}
+
 function hashString(value) {
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
@@ -467,7 +483,7 @@ function ensureMathStudentResponseExposure(selected, rankedItems, options = {}) 
   }
 
   const desiredStudentResponseCount = Math.min(
-    options.realismProfile === 'exam' ? 5 : selected.length >= 16 ? 4 : selected.length >= 12 ? 3 : selected.length >= 8 ? 2 : 1,
+    getMathStudentResponseTargetCount(selected.length, options),
     studentResponseCandidates.length,
   );
   const upgradedSelection = [...selected];

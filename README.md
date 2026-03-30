@@ -65,7 +65,7 @@ Current audit status (`npm run audit:helix`):
 - Blueprint coverage is **19/19 skills covered**, with **all 19 skills carrying middle-pack scaffolds** and **11 skills elevated to full-pack**
 - Current bank includes **79 items / 79 rationales**, **14 grid-ins**, **13-item baseline diagnostic**, **12-item default modules**, and **18-item extended modules**
 - Biggest remaining realism gap is **full exam-length module parity**, not missing skill lanes
-- The current generator still emits `single_select` only, so hand-authored grid-ins carry the current math format-realism slice
+- The current generator still emits `single_select` only, so hand-authored grid-ins carry the current math format-realism slice; shipped Math modules now deliberately surface repeated grid-in reps (**3** in standard 12-question blocks, **5** in 18-question extended blocks, **6** in the 22-question exam profile)
 
 See `docs/sat-coverage-audit.md` for the narrative audit and `content/README.md` for the content-generation guardrails used in this quality-upgrade slice. For the narrower review brief that defines this first upgrade slice, see `docs/quality/bluebook-khan-slice.md`.
 For the next highest-leverage slice toward private beta, see `docs/product-completion-milestones.md`.

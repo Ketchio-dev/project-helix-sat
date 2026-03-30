@@ -217,6 +217,13 @@
             "null"
           ],
           "minimum": 1
+        },
+        "studentResponseTarget": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
         }
       }
     }

@@ -197,6 +197,9 @@ function buildActionMeta(action = null, { fallbackMinutes = null } = {}) {
   }
   if (action.realismProfile) meta.push(formatRealismProfile(action.realismProfile));
   if (action.itemCount) meta.push(`${action.itemCount} questions`);
+  if (action.section === 'math' && action.studentResponseTarget) {
+    meta.push(`${action.studentResponseTarget} grid-ins`);
+  }
   return meta;
 }
 
