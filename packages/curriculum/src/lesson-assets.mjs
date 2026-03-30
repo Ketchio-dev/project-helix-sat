@@ -264,6 +264,15 @@ const LESSON_BLUEPRINTS = {
 };
 
 const FULL_PACK_OVERRIDES = {
+  rw_transitions: {
+    retryCue: 'Name the sentence relationship first—contrast, continuation, example, cause, or concession—before reading the transition choices again.',
+    revisitPrompt: 'On the revisit, cover the options and label the relationship between the two ideas before choosing any transition word.',
+    successSignal: 'You can explain the relationship between the sentences and choose a transition because it names that logic, not because it sounds polished.',
+    contrastRule: 'Wrong move: pick the smoothest transition by ear. Right move: identify the sentence relationship first and then choose the word that labels it.',
+    nearTransferCheck: 'Before locking the answer, ask whether the transition signals the exact relationship you named, not just a vaguely related one.',
+    exitTicketPrompt: 'What relationship did you identify between the two ideas, and which word best labels it?',
+    coachLine: 'Transitions improve fast when you stop chasing polished wording and start naming the sentence-to-sentence logic first.',
+  },
   rw_inferences: {
     retryCue: 'Find the exact line first, then force yourself to say the smallest claim that line proves.',
     revisitPrompt: 'On the revisit, cite the exact phrase that earns the inference before you look at the choices.',
@@ -309,6 +318,15 @@ const FULL_PACK_OVERRIDES = {
     exitTicketPrompt: 'What final context check did you run after solving the algebra?',
     coachLine: 'Linear-equation misses often come after the algebra, when the prompt still needs one last validity check.',
   },
+  math_area_and_perimeter: {
+    retryCue: 'Name the target measure first—area, perimeter, surface area, or volume—before touching the numbers.',
+    revisitPrompt: 'On the revisit, say the requested measure and units out loud before choosing a formula.',
+    successSignal: 'You can tell what quantity is being measured before calculating and avoid solving the wrong geometric problem cleanly.',
+    contrastRule: 'Wrong move: grab a familiar formula immediately. Right move: identify the requested measure first and then choose the formula that fits it.',
+    nearTransferCheck: 'Before committing, ask whether your setup is solving for the exact measure named in the prompt or for a different geometric quantity.',
+    exitTicketPrompt: 'What measure was the prompt actually asking for, and how did that force your setup?',
+    coachLine: 'Geometry misses here usually come from measure selection, so lock the target quantity before the arithmetic starts.',
+  },
   math_linear_functions: {
     retryCue: 'Name the rate and the starting value before you compare equations, tables, or graphs.',
     revisitPrompt: 'On the revisit, translate every representation back into the same slope-and-start story.',
@@ -335,6 +353,15 @@ const FULL_PACK_OVERRIDES = {
     nearTransferCheck: 'Before committing, ask whether the prompt wants zeros, maximum/minimum, symmetry, or a rewritten form.',
     exitTicketPrompt: 'Which quadratic feature was the real target, and which representation made it visible?',
     coachLine: 'Quadratic questions simplify when you decide what feature matters before you start manipulating expressions.',
+  },
+  math_trigonometry: {
+    retryCue: 'Mark the reference angle and label opposite, adjacent, and hypotenuse before choosing sine, cosine, or tangent.',
+    revisitPrompt: 'On the revisit, relabel the triangle from the chosen angle first and only then decide which trig ratio connects the known sides.',
+    successSignal: 'You can justify the trig ratio from the side labels relative to the reference angle instead of relying on memory alone.',
+    contrastRule: 'Wrong move: remember a ratio and hope it fits. Right move: label the sides from the reference angle first and then choose the matching ratio.',
+    nearTransferCheck: 'Before locking the answer, ask whether your ratio uses the correct sides relative to the marked angle and whether the result is reasonable for the triangle.',
+    exitTicketPrompt: 'Which side labels relative to the reference angle forced your trig ratio choice?',
+    coachLine: 'Trig gets steadier when you anchor everything to the reference angle and let the side labels choose the ratio for you.',
   },
 };
 

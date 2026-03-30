@@ -17,7 +17,7 @@ Project Helix SAT now **covers the full ontology slice in its shipped audit** an
 - The latest slice added:
   - three new math grid-in items across linear functions, ratios/rates, and statistics/probability
   - authored lesson blueprints across the remaining Reading and Writing curriculum skills, bringing blueprint coverage across the current curriculum map to full coverage
-  - a lesson-pack tier model that now marks every tracked skill as `middle` or `full`, with a fixed full-pack cohort for the highest-leverage remediation lanes
+  - a lesson-pack tier model that now marks every tracked skill as `middle` or `full`, with an 11-skill full-pack cohort for the highest-leverage remediation lanes
   - a longer module simulation shape for exam-mode practice
 
 ### Format realism
@@ -67,4 +67,4 @@ Project Helix SAT now **covers the full ontology slice in its shipped audit** an
 
 ## Bottom line
 
-Today the product is a believable **two-section SAT prototype** with a 79-item bank, full ontology-slice coverage in the audit, a 14-item math numeric-entry slice, authored remediation blueprints across the current curriculum map, an all-skill middle-pack lesson baseline plus a fixed 8-skill full-pack cohort, a 13-item onboarding baseline diagnostic, a 12-item default module path, optional 18-item extended modules for both sections, and a larger exam profile at 27 Reading/Writing items / 22 Math items. It is much closer to a real curriculum-backed SAT product than it was a few slices ago, but module realism and deeper lesson depth are still the clearest next bottlenecks.
+Today the product is a believable **two-section SAT prototype** with a 79-item bank, full ontology-slice coverage in the audit, a 14-item math numeric-entry slice, authored remediation blueprints across the current curriculum map, an all-skill middle-pack lesson baseline plus an 11-skill full-pack cohort, a 13-item onboarding baseline diagnostic, a 12-item default module path, optional 18-item extended modules for both sections, and a larger exam profile at 27 Reading/Writing items / 22 Math items. It is much closer to a real curriculum-backed SAT product than it was a few slices ago, but module realism and deeper lesson depth are still the clearest next bottlenecks.

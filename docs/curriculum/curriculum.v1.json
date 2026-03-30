@@ -311,7 +311,7 @@
         "retry_set_id": "retry_rw_transitions_v1",
         "transfer_set_id": "transfer_rw_transitions_v1"
       },
-      "lesson_pack_tier": "middle",
+      "lesson_pack_tier": "full",
       "lesson_pack_version": "v2"
     },
     {
@@ -766,7 +766,7 @@
         "retry_set_id": "retry_math_area_and_perimeter_v1",
         "transfer_set_id": "transfer_math_area_and_perimeter_v1"
       },
-      "lesson_pack_tier": "middle",
+      "lesson_pack_tier": "full",
       "lesson_pack_version": "v2"
     },
     {
@@ -840,7 +840,7 @@
         "retry_set_id": "retry_math_trigonometry_v1",
         "transfer_set_id": "transfer_math_trigonometry_v1"
       },
-      "lesson_pack_tier": "middle",
+      "lesson_pack_tier": "full",
       "lesson_pack_version": "v2"
     }
   ]

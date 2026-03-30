@@ -389,6 +389,21 @@ describe('integrity: curriculum lesson bundle', () => {
     const seed = createDemoData();
     const cases = [
       {
+        skillId: 'rw_transitions',
+        workedExampleItem: seed.items.rw_transition_01,
+        transferItem: seed.items.rw_transition_02,
+        summaryPattern: /Transitions follow logic, not vibes/i,
+        trapPattern: /wrong relationship/i,
+        transferPattern: /relationship first/i,
+        lookForPattern: /Contrast, continuation, example, cause, or concession/i,
+        rulePattern: /Decide the logic first/i,
+        mistakePattern: /sentence relationship/i,
+        transferGoalPattern: /transition that names it exactly/i,
+        fullPackCuePattern: /relationship first/i,
+        fullPackContrastPattern: /smoothest transition by ear/i,
+        fullPackCheckPattern: /exact relationship you named/i,
+      },
+      {
         skillId: 'rw_command_of_evidence',
         workedExampleItem: seed.items.rw_evidence_01,
         transferItem: seed.items.rw_evidence_02,
@@ -523,6 +538,9 @@ describe('integrity: curriculum lesson bundle', () => {
         rulePattern: /decide what quantity is being measured/i,
         mistakePattern: /wrong geometric quantity/i,
         transferGoalPattern: /Name the measure and units first/i,
+        fullPackCuePattern: /target measure first/i,
+        fullPackContrastPattern: /familiar formula immediately/i,
+        fullPackCheckPattern: /exact measure named in the prompt/i,
       },
       {
         skillId: 'math_linear_functions',
@@ -571,6 +589,9 @@ describe('integrity: curriculum lesson bundle', () => {
         rulePattern: /No trig ratio until the sides are labeled/i,
         mistakePattern: /labeling step that tells which ratio fits/i,
         transferGoalPattern: /Label the sides from the reference angle/i,
+        fullPackCuePattern: /reference angle/i,
+        fullPackContrastPattern: /remember a ratio and hope it fits/i,
+        fullPackCheckPattern: /correct sides relative to the marked angle/i,
       },
     ];
 
@@ -579,6 +600,7 @@ describe('integrity: curriculum lesson bundle', () => {
         skillId: testCase.skillId,
         workedExampleItem: testCase.workedExampleItem,
         workedExampleRationale: seed.rationales[testCase.workedExampleItem.itemId],
+        retryItem: testCase.workedExampleItem,
         transferItem: testCase.transferItem,
         transferRationale: seed.rationales[testCase.transferItem.itemId],
       });
@@ -595,6 +617,13 @@ describe('integrity: curriculum lesson bundle', () => {
       if (testCase.transferGoalPattern) assert.match(bundle.transferCard.transferGoal, testCase.transferGoalPattern);
       assert.match(bundle.transferCard.rationalePreview, testCase.transferPattern);
       assert.ok(bundle.workedExample.walkthrough.length >= 2);
+      if (testCase.fullPackCuePattern) {
+        assert.equal(bundle.packDepth, 'full');
+        assert.match(bundle.retryCard.cue, testCase.fullPackCuePattern);
+        assert.match(bundle.workedExample.contrastRule, testCase.fullPackContrastPattern);
+        assert.match(bundle.transferCard.nearTransferCheck, testCase.fullPackCheckPattern);
+        assert.ok(bundle.coachLanguage.exitTicketPrompt);
+      }
     }
   });
 
@@ -613,13 +642,16 @@ describe('integrity: curriculum lesson bundle', () => {
       await readFile(new URL('../docs/curriculum/curriculum.v1.json', import.meta.url), 'utf8'),
     );
     const expectedFullPackSkills = new Set([
+      'rw_transitions',
       'rw_inferences',
       'rw_command_of_evidence',
       'rw_central_ideas_and_details',
       'rw_sentence_boundaries',
+      'math_area_and_perimeter',
       'math_linear_equations',
       'math_linear_functions',
       'math_systems_of_linear_equations',
+      'math_trigonometry',
       'math_quadratic_functions',
     ]);
 

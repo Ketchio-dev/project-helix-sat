@@ -14,7 +14,7 @@ This note tracks the **current fidelity slice** for Project Helix SAT for the cu
 - No singleton-skill lanes remain
 - 14 hand-authored Math items now use `grid_in`
 - Module simulation is section-separated, ships with a 12-item default block, and now exposes optional 18-item extended profiles for denser Reading/Writing and Math practice
-- Lesson blueprints now cover the full current curriculum map, and the curriculum now distinguishes an all-skill middle-pack baseline from a smaller full-pack cohort, even though the runtime still ships lightweight remediation bundles rather than full courseware
+- Lesson blueprints now cover the full current curriculum map, and the curriculum now distinguishes an all-skill middle-pack baseline from an 11-skill full-pack cohort, even though the runtime still ships lightweight remediation bundles rather than full courseware
 - `/api/session/review`, remediation cards, retry loops, curriculum paths, and weekly evidence surfaces are wired into the learner flow
 
 ## What this slice improves
