@@ -100,6 +100,9 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(indexSource, /Full dashboard/);
   assert.match(indexSource, /data-student-dashboard-detail/);
   assert.match(indexSource, /Exam Profile/);
+  assert.match(indexSource, /Standard Module \(12Q\)/);
+  assert.match(indexSource, /Extended Module \(18Q\)/);
+  assert.match(indexSource, /Exam Profile \(22 Math \/ 27 RW\)/);
   assert.match(indexSource, /workspace-grid/);
   assert.match(indexSource, /workspace-rail/);
   assert.match(appSource, /studentActionCopy/);
@@ -117,6 +120,8 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(learnerNarrativeSource, /proofPoints/);
   assert.match(learnerNarrativeSource, /Practice \$\{formatSkillLabel\(action\.focusSkill\)\}/);
   assert.match(appSource, /renderStudyModes/);
+  assert.match(appSource, /syncModuleProfileControlLabels/);
+  assert.match(appSource, /18Q/);
   assert.match(appSource, /renderReturnPath/);
   assert.match(appSource, /Standard practice/);
   assert.match(appSource, /Exam profile/);
@@ -183,7 +188,8 @@ test('docs stay aligned with cookie auth and current audit claims', () => {
   assert.doesNotMatch(contentReadmeSource, /Keep strengthening partial blueprint lanes/i);
   assert.doesNotMatch(contentReadmeSource, /Add the smallest safe grid-in/i);
   assert.match(contentReadmeSource, /source of truth/i);
-  assert.match(contentReadmeSource, /12-item default \/ 16-item extended/i);
+  assert.match(contentReadmeSource, /12-item default \/ 18-item extended/i);
+  assert.match(readmeSource, /18-item extended modules/i);
   assert.match(milestonesSource, /Private beta slice/i);
   assert.match(milestonesSource, /Strengthen exam\/practice realism and learner-surface cohesion/i);
   assert.match(milestonesSource, /Deepen authored lesson-pack and narrative cohesion/i);

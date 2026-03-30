@@ -22,7 +22,7 @@ const expectedCoverageLine = `${audit.ontologyCoverage.coveredSkills}/${audit.on
 const expectedBankLine = `${audit.content.itemCount} items / ${audit.content.rationaleCount} rationales`;
 const expectedGridInLine = `${audit.formatRealism.mathGridInCount} grid-ins`;
 const expectedDefaultModuleLine = `${audit.sessions.moduleSimulation.itemCount}-item default modules`;
-const expectedExtendedModuleLine = '16-item extended modules';
+const expectedExtendedModuleLine = '18-item extended modules';
 const expectedCookieLine = 'HttpOnly `helix_auth` cookie';
 const expectedSourceOfTruthLine = 'source of truth';
 const expectedReleaseBarLine = 'npm run audit:helix:bars';
@@ -36,7 +36,7 @@ invariant(readmeSource.includes(expectedCookieLine), `README drift: missing cook
 invariant(!/localStorage token persistence/i.test(readmeSource), 'README drift: stale localStorage auth statement still present');
 
 invariant(contentReadmeSource.includes(expectedSourceOfTruthLine), 'content/README drift: missing source-of-truth guidance');
-invariant(contentReadmeSource.includes(`${audit.sessions.moduleSimulation.itemCount}-item default / 16-item extended`), 'content/README drift: missing current module realism guidance');
+invariant(contentReadmeSource.includes(`${audit.sessions.moduleSimulation.itemCount}-item default / 18-item extended`), 'content/README drift: missing current module realism guidance');
 invariant(contentReadmeSource.includes(`${audit.formatRealism.mathGridInCount} grid-ins`), 'content/README drift: missing current grid-in count');
 invariant(contentReadmeSource.includes(expectedReleaseBarLine), 'content/README drift: missing release-bar verification command');
 
@@ -54,5 +54,5 @@ invariant(qualityBriefSource.includes(expectedReleaseBarLine), 'quality brief dr
 
 console.log('Documentation truth checks passed');
 console.log(`- README: ${expectedCoverageLine}, ${expectedBankLine}, ${expectedGridInLine}`);
-console.log(`- Content guide: ${audit.sessions.moduleSimulation.itemCount}-item default / 16-item extended, ${audit.formatRealism.mathGridInCount} grid-ins`);
+console.log(`- Content guide: ${audit.sessions.moduleSimulation.itemCount}-item default / 18-item extended, ${audit.formatRealism.mathGridInCount} grid-ins`);
 console.log(`- Narrative docs: release-bar command and current coverage snapshot present`);

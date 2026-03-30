@@ -13,7 +13,7 @@ This note tracks the **current fidelity slice** for Project Helix SAT for the cu
 - 19 ontology skills tracked: 19 covered, 0 partial, 0 missing
 - No singleton-skill lanes remain
 - 14 hand-authored Math items now use `grid_in`
-- Module simulation is section-separated, ships with a 12-item default block, and now exposes optional 16-item extended profiles for denser Reading/Writing and Math practice
+- Module simulation is section-separated, ships with a 12-item default block, and now exposes optional 18-item extended profiles for denser Reading/Writing and Math practice
 - Lesson blueprints now cover the full current curriculum map, even though the lesson system still ships as lightweight teach-card / worked-example / transfer scaffolds
 - `/api/session/review`, remediation cards, retry loops, curriculum paths, and weekly evidence surfaces are wired into the learner flow
 
@@ -45,7 +45,7 @@ This note tracks the **current fidelity slice** for Project Helix SAT for the cu
 ### Module realism
 - Keep module simulation section-separated.
 - Keep the default 12-item module shape stable until audit/docs intentionally move together.
-- Treat the 16-item extended module profiles as honest intermediate realism steps, not as full Bluebook parity.
+- Treat the 18-item extended module profiles as honest intermediate realism steps, not as full Bluebook parity.
 - The learner should be able to tell whether a module is Reading/Writing or Math without inferring it from a mixed item list.
 - Summary, history, restore flows, and the web controls should keep telling the same section-specific story.
 
@@ -88,7 +88,7 @@ Before merging, confirm all of the following:
 ## Still not promised after this slice
 
 - Full official-exam replication
-- Full-length SAT module sizing (real modules are still much longer than the current 12-item default and 16-item extended demo modules in both sections)
+- Full-length SAT module sizing (real modules are still much longer than the current 12-item default and 18-item extended demo modules in both sections)
 - Broad generator-native support for every SAT interaction type
 - Production-depth coverage across every skill bucket
 - Full courseware-style lesson sequences beyond the current authored blueprint layer

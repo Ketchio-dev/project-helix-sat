@@ -178,6 +178,45 @@ function formatSectionName(section) {
   return section.charAt(0).toUpperCase() + section.slice(1).replace(/_/g, ' ');
 }
 
+function formatRealismProfile(profile = 'standard') {
+  if (profile === 'exam') return 'Exam profile';
+  if (profile === 'extended') return 'Extended practice';
+  return 'Standard practice';
+}
+
+function buildActionMeta(action = null, { fallbackMinutes = null } = {}) {
+  if (!action) return [];
+  const meta = [];
+  const minutes = action.estimatedMinutes ?? fallbackMinutes;
+  if (minutes) meta.push(`~${minutes} min`);
+  if (action.section) meta.push(formatSectionName(action.section));
+  if (action.kind === 'start_module') {
+    meta.push('Module');
+  } else if (action.sessionType) {
+    meta.push(toDisplaySessionType(action.sessionType));
+  }
+  if (action.realismProfile) meta.push(formatRealismProfile(action.realismProfile));
+  if (action.itemCount) meta.push(`${action.itemCount} questions`);
+  return meta;
+}
+
+function syncModuleProfileControlLabels(sectionOverride = null) {
+  const profileSelect = $('#moduleRealismProfile');
+  if (!profileSelect) return;
+
+  const section = sectionOverride ?? $('#moduleSection')?.value ?? 'reading_writing';
+  const examCount = section === 'math' ? 22 : 27;
+  const labelMap = {
+    standard: 'Standard Module (12Q)',
+    extended: 'Extended Module (18Q)',
+    exam: `Exam Profile (${examCount}Q)`,
+  };
+
+  for (const option of profileSelect.options) {
+    option.textContent = labelMap[option.value] ?? option.textContent;
+  }
+}
+
 function normalizeLatestSessionOutcome(source) {
   const raw = source?.latestSessionOutcome
     ?? source?.sessionOutcome
@@ -764,6 +803,7 @@ function syncManualStartControls(action = state.nextBestAction) {
 
   const shouldHideForFocus = Boolean(action) && !state.dashboardExpanded;
   controls.style.display = shouldHideForFocus ? 'none' : 'flex';
+  syncModuleProfileControlLabels();
 }
 
 function syncDashboardDetails() {
@@ -1011,14 +1051,7 @@ function renderNextBestAction(action) {
   copyBlock.append(node('span', { className: 'section-tag', text: 'Recommended' }));
   copyBlock.append(node('h3', { text: copy.title }));
   copyBlock.append(node('p', { className: 'lead-line', text: copy.reason }));
-  const meta = [];
-  if (action.estimatedMinutes) meta.push(`~${action.estimatedMinutes} min`);
-  if (action.section) meta.push(formatSectionName(action.section));
-  if (action.sessionType) meta.push(toDisplaySessionType(action.sessionType));
-  if (action.realismProfile === 'exam') meta.push('Exam profile');
-  if (action.realismProfile === 'extended') meta.push('Extended practice');
-  if (action.realismProfile === 'standard') meta.push('Standard practice');
-  if (action.itemCount) meta.push(`${action.itemCount} questions`);
+  const meta = buildActionMeta(action);
   if (meta.length) {
     copyBlock.append(node('p', { className: 'muted', text: meta.join(' · ') }));
   }
@@ -1443,10 +1476,15 @@ function renderStudyModes(modes = []) {
   for (const mode of modes) {
     const card = node('article', { className: 'review-item' });
     card.append(node('strong', { text: mode.label ?? 'Study mode' }));
-    card.append(node('p', { className: 'muted', text: `${mode.minutes ?? '—'} min` }));
+    const meta = buildActionMeta(mode.action ?? null, { fallbackMinutes: mode.minutes ?? null });
+    if (meta.length) {
+      card.append(node('p', { className: 'muted', text: meta.join(' · ') }));
+    } else {
+      card.append(node('p', { className: 'muted', text: `${mode.minutes ?? '—'} min` }));
+    }
     card.append(node('p', { text: mode.summary ?? 'A prepared block is ready.' }));
     const copy = studentActionCopy(mode.action ?? null);
-    if (copy?.reason) {
+    if (copy?.reason && copy.reason !== mode.summary) {
       card.append(node('p', { className: 'muted', text: copy.reason }));
     }
     if (mode.action) {
@@ -2515,8 +2553,10 @@ async function startModuleSession(sectionOverride = null, realismProfileOverride
 $('#startDiagnostic').addEventListener('click', openDiagnosticPreflight);
 $('#startTimedSet').addEventListener('click', startTimedSetSession);
 $('#startModule').addEventListener('click', () => startModuleSession());
+$('#moduleSection')?.addEventListener('change', () => syncModuleProfileControlLabels());
 $('#startDiagnosticFromPreflight')?.addEventListener('click', startDiagnosticSession);
 $('#dismissDiagnosticPreflight')?.addEventListener('click', dismissDiagnosticPreflight);
+syncModuleProfileControlLabels();
 
 $('#attemptForm').addEventListener('submit', async (event) => {
   event.preventDefault();

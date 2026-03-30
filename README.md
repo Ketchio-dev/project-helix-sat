@@ -62,7 +62,7 @@ Sessions expire after 24 hours. Re-authenticate to obtain a fresh cookie.
 Current audit status (`npm run audit:helix`):
 - Cross-section coverage is **credible for MVP**
 - Blueprint coverage is **19/19 skills covered**
-- Current bank includes **79 items / 79 rationales**, **14 grid-ins**, **13-item baseline diagnostic**, **12-item default modules**, and **16-item extended modules**
+- Current bank includes **79 items / 79 rationales**, **14 grid-ins**, **13-item baseline diagnostic**, **12-item default modules**, and **18-item extended modules**
 - Biggest remaining realism gap is **full exam-length module parity**, not missing skill lanes
 - The current generator still emits `single_select` only, so hand-authored grid-ins carry the current math format-realism slice
 

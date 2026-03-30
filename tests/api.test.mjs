@@ -619,9 +619,9 @@ test('store can start an extended math module shape without leaking exam review 
 
   assert.equal(moduleSimulation.session.type, 'module_simulation');
   assert.equal(moduleSimulation.session.section, 'math');
-  assert.equal(moduleSimulation.timing.timeLimitSec, 1600);
+  assert.equal(moduleSimulation.timing.timeLimitSec, 1800);
   assert.equal(moduleSimulation.timing.recommendedPaceSec, 100);
-  assert.equal(moduleSimulation.items.length, 16);
+  assert.equal(moduleSimulation.items.length, 18);
   assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 4);
 
   const attempt = store.submitAttempt({
@@ -654,9 +654,9 @@ test('api can start an extended math module shape through the module-start contr
 
     assert.equal(moduleSimulation.session.type, 'module_simulation');
     assert.equal(moduleSimulation.session.section, 'math');
-    assert.equal(moduleSimulation.timing.timeLimitSec, 1600);
+    assert.equal(moduleSimulation.timing.timeLimitSec, 1800);
     assert.equal(moduleSimulation.timing.recommendedPaceSec, 100);
-    assert.equal(moduleSimulation.items.length, 16);
+    assert.equal(moduleSimulation.items.length, 18);
     assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 4);
   });
 });
@@ -671,9 +671,9 @@ test('api can start an extended reading-writing module shape through the module-
 
     assert.equal(moduleSimulation.session.type, 'module_simulation');
     assert.equal(moduleSimulation.session.section, 'reading_writing');
-    assert.equal(moduleSimulation.timing.timeLimitSec, 1440);
+    assert.equal(moduleSimulation.timing.timeLimitSec, 1620);
     assert.equal(moduleSimulation.timing.recommendedPaceSec, 90);
-    assert.equal(moduleSimulation.items.length, 16);
+    assert.equal(moduleSimulation.items.length, 18);
     assert.ok(moduleSimulation.items.every((item) => item.section === 'reading_writing'));
     assert.ok(new Set(moduleSimulation.items.map((item) => item.skill)).size >= 8);
     assert.ok(new Set(moduleSimulation.items.map((item) => item.domain)).size >= 4);

@@ -23,13 +23,13 @@ const MODULE_SESSION_SHAPE = {
   reading_writing: {
     itemCount: 12,
     recommendedPaceSec: 95,
-    extended: { itemCount: 16, recommendedPaceSec: 90 },
+    extended: { itemCount: 18, recommendedPaceSec: 90 },
     exam: { itemCount: 27, recommendedPaceSec: 71, timeLimitSec: 1920 },
   },
   math: {
     itemCount: 12,
     recommendedPaceSec: 105,
-    extended: { itemCount: 16, recommendedPaceSec: 100 },
+    extended: { itemCount: 18, recommendedPaceSec: 100 },
     exam: { itemCount: 22, recommendedPaceSec: 95, timeLimitSec: 2100 },
   },
 };
@@ -165,6 +165,42 @@ function moduleRealismLabel(profile = 'standard') {
   if (profile === 'exam') return 'exam profile';
   if (profile === 'extended') return 'extended practice';
   return 'standard practice';
+}
+
+function describeModuleBlock(action = null) {
+  if (!action) return 'practice block';
+  const itemCountText = action.itemCount ? `${action.itemCount}-question ` : '';
+  const sectionText = action.section ? `${sectionLabel(action.section)} ` : '';
+  return `${itemCountText}${sectionText}${moduleRealismLabel(action.realismProfile)} block`
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function describeStudyModeLabel(key, action = null) {
+  if (action?.kind === 'start_module') {
+    if (action.realismProfile === 'exam') return 'Exam-profile section';
+    if (action.realismProfile === 'extended') return 'Extended section';
+    return 'Standard section';
+  }
+  if (action?.kind === 'start_retry_loop') return 'Quick repair';
+  if (action?.kind === 'start_quick_win') return 'Quick win';
+  if (key === 'standard') return 'Main score move';
+  if (key === 'deep') return 'Longer score push';
+  return 'Quick reset';
+}
+
+function describeStudyModeSummary(key, action = null, fallbackSummary = '') {
+  if (action?.kind === 'start_module') {
+    const blockText = describeModuleBlock(action);
+    if (key === 'deep') {
+      return `Use the ${blockText} when you have room for a more SAT-shaped rep.`;
+    }
+    return `Helix is recommending the ${blockText} as the main score-moving step.`;
+  }
+  if (fallbackSummary) return fallbackSummary;
+  if (key === 'standard') return 'Do the main score-moving step Helix wants next.';
+  if (key === 'deep') return 'Take the longer block when you have room for deeper reps.';
+  return 'Keep the habit alive with the smallest high-yield block.';
 }
 
 function capitalize(value = '') {
@@ -1969,23 +2005,23 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       return [
         {
           key: 'quick',
-          label: 'Quick 8–12',
+          label: describeStudyModeLabel('quick', quickAction),
           minutes: quickAction.estimatedMinutes ?? 8,
-          summary: 'Keep the habit alive with the smallest high-yield block.',
+          summary: describeStudyModeSummary('quick', quickAction, 'Keep the habit alive with the smallest high-yield block.'),
           action: quickAction,
         },
         {
           key: 'standard',
-          label: 'Standard 20–25',
+          label: describeStudyModeLabel('standard', nextAction),
           minutes: clamp(nextAction.estimatedMinutes ?? 20, 8, 25),
-          summary: 'Do the main score-moving step Helix wants next.',
+          summary: describeStudyModeSummary('standard', nextAction, 'Do the main score-moving step Helix wants next.'),
           action: nextAction,
         },
         {
           key: 'deep',
-          label: 'Deep 30–40',
+          label: describeStudyModeLabel('deep', deepAction),
           minutes: clamp(deepAction.estimatedMinutes ?? 30, 20, 40),
-          summary: 'Take the longer block when you have room for deeper reps.',
+          summary: describeStudyModeSummary('deep', deepAction, 'Take the longer block when you have room for deeper reps.'),
           action: deepAction,
         },
       ];

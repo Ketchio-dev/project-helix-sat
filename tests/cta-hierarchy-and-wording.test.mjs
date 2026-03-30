@@ -503,8 +503,11 @@ describe('CTA hierarchy: dashboard integration coherence', () => {
     assert.ok(deepMode, 'deep study mode should exist');
     assert.equal(deepMode.action.kind, 'start_module');
     assert.equal(deepMode.action.realismProfile, 'extended');
+    assert.match(deepMode.label, /Extended/i);
+    assert.match(deepMode.summary, /18-question|extended practice/i);
     assert.equal(typeof deepMode.action.itemCount, 'number');
     assert.equal(typeof deepMode.action.timeLimitSec, 'number');
+    assert.equal(deepMode.action.itemCount, 18);
     assert.ok(deepMode.action.estimatedMinutes >= 20);
   });
 });
