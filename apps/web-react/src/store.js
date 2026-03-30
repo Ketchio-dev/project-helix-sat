@@ -234,7 +234,7 @@ export const useStore = create((set, get) => ({
   async saveGoalProfile(profile) {
     try {
       await api.post('/goal-profile', profile);
-      set({ goalProfile: profile });
+      await get().loadDashboard();
       return true;
     } catch {
       return false;

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import SessionNotice from '../components/SessionNotice'
@@ -15,15 +15,33 @@ export default function Dashboard() {
   const learnerNarrative = useStore((s) => s.learnerNarrative)
   const goalProfile = useStore((s) => s.goalProfile)
   const activeSession = useStore((s) => s.activeSession)
+  const resumeSession = useStore((s) => s.resumeSession)
   const user = useStore((s) => s.user)
   const navigate = useNavigate()
+  const goalSetupRef = useRef(null)
 
   useEffect(() => {
     loadDashboard()
   }, [loadDashboard])
 
-  const handleStartAction = async (type, params) => {
-    const success = await startSession(type, params)
+  const handleStartAction = async (action) => {
+    if (!action) return
+
+    const kind = action.kind || action.actionType || action.type || null
+    if (kind === 'complete_goal_setup') {
+      goalSetupRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      goalSetupRef.current?.querySelector('input, select, button')?.focus()
+      return
+    }
+
+    if (kind === 'resume_active_session' && activeSession) {
+      resumeSession(activeSession)
+      navigate('/practice')
+      return
+    }
+
+    const sessionType = action.sessionType || action.session_type || kind
+    const success = await startSession(sessionType, { section: action.section, itemId: action.itemId })
     if (success) navigate('/practice')
   }
 
@@ -64,14 +82,14 @@ export default function Dashboard() {
         <SessionNotice session={activeSession} />
         <ActionCard action={nextBestAction} onStart={handleStartAction} />
         <NarrativeCard narrative={learnerNarrative} />
-        <GoalSetup profile={goalProfile} />
+        <GoalSetup profile={goalProfile} containerRef={goalSetupRef} />
       </div>
 
       {!nextBestAction && !activeSession && (
         <div className="mt-8 text-center">
           <p className="text-sm text-neutral-500 mb-4">No recommendations yet. Start a diagnostic to get personalized practice.</p>
           <button
-            onClick={() => handleStartAction('diagnostic')}
+            onClick={() => handleStartAction({ sessionType: 'diagnostic' })}
             className="text-sm font-medium text-white bg-[#2563eb] rounded-md px-4 py-2 hover:bg-[#1d4ed8] transition-colors"
           >
             Start diagnostic

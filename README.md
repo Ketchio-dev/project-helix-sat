@@ -18,11 +18,17 @@ Adaptive SAT Intelligence Platform — an AI-powered SAT prep app with adaptive 
 ## Quick Start
 
 ```bash
-# Start the API server + web shell
+# Start the legacy API + web shell
 node services/api/server.mjs
 
 # Open in browser
-open http://localhost:3000
+open http://localhost:4321
+
+# Or run the React app with an in-process API
+npm run dev:react
+
+# Open in browser
+open http://localhost:5173
 
 # Login with demo credentials
 #   Email:    mina@example.com
@@ -34,7 +40,7 @@ open http://localhost:3000
 Log in via the auth endpoint:
 
 ```bash
-curl -i -X POST http://localhost:3000/api/auth/login \
+curl -i -X POST http://localhost:4321/api/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"mina@example.com","password":"demo1234"}'
 ```
@@ -42,7 +48,7 @@ curl -i -X POST http://localhost:3000/api/auth/login \
 The server now sets an HttpOnly `helix_auth` cookie and returns auth metadata in the JSON body. Reuse that cookie on subsequent requests:
 
 ```bash
-curl -b 'helix_auth=<cookie-value>' http://localhost:3000/api/dashboard/learner
+curl -b 'helix_auth=<cookie-value>' http://localhost:4321/api/dashboard/learner
 ```
 
 Sessions expire after 24 hours. Re-authenticate to obtain a fresh cookie.

@@ -18,13 +18,18 @@ async function request(path, options = {}) {
   const res = await fetch(url, config);
 
   if (res.status === 401) {
-    window.location.href = '/login';
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
     throw new Error('Unauthorized');
   }
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new Error(text || `Request failed: ${res.status}`);
+    const fallbackMessage = res.status === 502
+      ? 'API server is unavailable. Start the Helix API or use the Vite dev server with the built-in API middleware.'
+      : `Request failed: ${res.status}`;
+    throw new Error(text || fallbackMessage);
   }
 
   const contentType = res.headers.get('content-type');

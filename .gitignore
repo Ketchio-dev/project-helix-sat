@@ -10,3 +10,7 @@ dist/
 build/
 .tmp/
 *.log
+.agents/
+.claude/
+.qwen/
+skills-lock.json

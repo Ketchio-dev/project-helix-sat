@@ -12,6 +12,7 @@
   "scripts": {
     "start": "node services/api/server.mjs",
     "dev": "node services/api/server.mjs",
+    "dev:react": "npm run dev --workspace apps/web-react",
     "verify": "node scripts/verify.mjs",
     "audit:helix:bars": "node scripts/check-content-release-bars.mjs",
     "build": "npm run verify",

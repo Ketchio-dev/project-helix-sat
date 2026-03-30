@@ -1,16 +1,19 @@
 import { useState } from 'react'
 import { useStore } from '../store'
 
-export default function GoalSetup({ profile }) {
+export default function GoalSetup({ profile, containerRef = null }) {
   const saveGoalProfile = useStore((s) => s.saveGoalProfile)
   const [targetScore, setTargetScore] = useState(profile?.targetScore || profile?.target_score || '')
   const [targetTestDate, setTargetTestDate] = useState(profile?.targetTestDate || profile?.target_test_date || '')
   const [dailyMinutes, setDailyMinutes] = useState(profile?.dailyMinutes || profile?.daily_minutes || '')
-  const [weakArea, setWeakArea] = useState(profile?.weakArea || profile?.weak_area || '')
+  const [weakArea, setWeakArea] = useState(profile?.selfReportedWeakArea || profile?.self_reported_weak_area || '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  const isIncomplete = !profile || !profile.targetScore && !profile.target_score
+  const isComplete = profile?.isComplete
+    ?? profile?.is_complete
+    ?? Boolean(profile?.completedAt || profile?.completed_at)
+  const isIncomplete = !profile || !isComplete
 
   if (!isIncomplete) return null
 
@@ -21,7 +24,7 @@ export default function GoalSetup({ profile }) {
       targetScore: Number(targetScore),
       targetTestDate,
       dailyMinutes: Number(dailyMinutes),
-      weakArea,
+      selfReportedWeakArea: weakArea || undefined,
     })
     setSaving(false)
     if (success) setSaved(true)
@@ -36,14 +39,19 @@ export default function GoalSetup({ profile }) {
   }
 
   return (
-    <div className="border border-neutral-200 rounded-lg p-6">
+    <div
+      ref={containerRef}
+      id="goal-setup-card"
+      className="border border-neutral-200 rounded-lg p-6"
+    >
       <h3 className="text-sm font-semibold text-[#111] mb-1">Set your goals</h3>
       <p className="text-xs text-neutral-500 mb-5">Help us personalize your practice plan.</p>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+      <form id="goal-setup-form" onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-medium text-neutral-500 mb-1">Target score</label>
           <input
+            id="goal-target-score"
             type="number"
             min="400"
             max="1600"
@@ -57,6 +65,7 @@ export default function GoalSetup({ profile }) {
         <div>
           <label className="block text-xs font-medium text-neutral-500 mb-1">Test date</label>
           <input
+            id="goal-target-date"
             type="date"
             value={targetTestDate}
             onChange={(e) => setTargetTestDate(e.target.value)}
@@ -66,6 +75,7 @@ export default function GoalSetup({ profile }) {
         <div>
           <label className="block text-xs font-medium text-neutral-500 mb-1">Daily minutes</label>
           <input
+            id="goal-daily-minutes"
             type="number"
             min="5"
             max="240"
@@ -78,6 +88,7 @@ export default function GoalSetup({ profile }) {
         <div>
           <label className="block text-xs font-medium text-neutral-500 mb-1">Focus area</label>
           <select
+            id="goal-weak-area"
             value={weakArea}
             onChange={(e) => setWeakArea(e.target.value)}
             className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent bg-white"

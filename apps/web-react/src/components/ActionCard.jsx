@@ -3,18 +3,11 @@ export default function ActionCard({ action, onStart }) {
 
   const title = action.title || action.label || 'Start practicing'
   const description = action.reason || action.description || action.subtitle || ''
-  const kind = action.kind || action.actionType || action.type || 'quick-win'
-  const sessionType = action.sessionType || action.session_type || kind
   const ctaLabel = action.ctaLabel || action.cta_label || 'Begin'
   const minutes = action.estimatedMinutes || action.estimated_minutes || null
 
   const handleClick = () => {
-    if (kind === 'resume_active_session') {
-      // Resume is handled by SessionNotice, but if user clicks here too
-      onStart('resume', { sessionType })
-    } else {
-      onStart(sessionType, { section: action.section, itemId: action.itemId })
-    }
+    onStart(action)
   }
 
   return (
