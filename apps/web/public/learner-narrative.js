@@ -12,6 +12,12 @@ export function formatSkillLabel(skillId = '') {
     .join(' ');
 }
 
+function formatSectionLabel(section) {
+  if (section === 'reading_writing') return 'RW';
+  if (section === 'math') return 'Math';
+  return null;
+}
+
 export function studentActionCopy(action) {
   if (!action) return null;
 
@@ -56,12 +62,28 @@ export function studentActionCopy(action) {
         reason,
         ctaLabel: action.ctaLabel ?? 'Start timed practice',
       };
-    case 'start_module':
+    case 'start_module': {
+      const sectionLabel = formatSectionLabel(action.section);
+      if (action.realismProfile === 'exam') {
+        return {
+          title,
+          reason,
+          ctaLabel: action.ctaLabel ?? `Start ${sectionLabel ?? 'your'} exam profile`,
+        };
+      }
+      if (action.realismProfile === 'extended') {
+        return {
+          title,
+          reason,
+          ctaLabel: action.ctaLabel ?? `Start ${sectionLabel ?? 'your'} extended block`,
+        };
+      }
       return {
         title,
         reason,
         ctaLabel: action.ctaLabel ?? 'Start practice block',
       };
+    }
     case 'review_mistakes':
       return {
         title,

@@ -4,24 +4,74 @@
   "title": "Learner Narrative",
   "type": "object",
   "additionalProperties": false,
-  "required": ["headline", "summary", "signalLine", "planLine", "thisWeekLine", "comebackLine", "proofPoints", "primaryAction"],
+  "required": [
+    "headline",
+    "summary",
+    "signalLine",
+    "planLine",
+    "thisWeekLine",
+    "comebackLine",
+    "proofPoints",
+    "primaryAction"
+  ],
   "properties": {
-    "headline": { "type": "string", "minLength": 1 },
-    "summary": { "type": "string", "minLength": 1 },
-    "lessonArcLine": { "type": ["string", "null"], "minLength": 1 },
-    "signalLine": { "type": "string", "minLength": 1 },
-    "planLine": { "type": "string", "minLength": 1 },
-    "thisWeekLine": { "type": "string", "minLength": 1 },
-    "comebackLine": { "type": ["string", "null"], "minLength": 1 },
+    "headline": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lessonArcLine": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "signalLine": {
+      "type": "string",
+      "minLength": 1
+    },
+    "planLine": {
+      "type": "string",
+      "minLength": 1
+    },
+    "thisWeekLine": {
+      "type": "string",
+      "minLength": 1
+    },
+    "comebackLine": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
     "proofPoints": {
       "type": "array",
       "minItems": 1,
-      "items": { "type": "string", "minLength": 1 }
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "primaryAction": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
-      "required": ["kind", "title", "reason", "ctaLabel", "estimatedMinutes", "sessionType", "section"],
+      "required": [
+        "kind",
+        "title",
+        "reason",
+        "ctaLabel",
+        "estimatedMinutes",
+        "sessionType",
+        "section"
+      ],
       "properties": {
         "kind": {
           "enum": [
@@ -35,20 +85,97 @@
             "start_module"
           ]
         },
-        "title": { "type": "string", "minLength": 1 },
-        "reason": { "type": "string", "minLength": 1 },
-        "ctaLabel": { "type": "string", "minLength": 1 },
-        "estimatedMinutes": { "type": ["integer", "null"], "minimum": 1 },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ctaLabel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "estimatedMinutes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
         "sessionType": {
-          "type": ["string", "null"],
-          "enum": ["diagnostic", "quick_win", "review", "timed_set", "module_simulation", null]
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "diagnostic",
+            "quick_win",
+            "review",
+            "timed_set",
+            "module_simulation",
+            null
+          ]
         },
         "section": {
-          "type": ["string", "null"],
-          "enum": ["reading_writing", "math", null]
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "reading_writing",
+            "math",
+            null
+          ]
         },
-        "itemId": { "type": ["string", "null"], "minLength": 1 },
-        "focusSkill": { "type": ["string", "null"], "minLength": 1 }
+        "itemId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "focusSkill": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "realismProfile": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "standard",
+            "extended",
+            "exam",
+            null
+          ]
+        },
+        "itemCount": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "timeLimitSec": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 60
+        },
+        "recommendedPaceSec": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
       }
     }
   }

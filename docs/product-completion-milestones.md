@@ -33,6 +33,7 @@ The next slice toward private beta should stay narrow and reviewable while split
 ### Lane 1 — Strengthen exam/practice realism and learner-surface cohesion
 - Keep the learner shell, diagnostic preflight, reveal, quick-win flow, module flow, and return-path copy telling one consistent story about the next best action.
 - Make practice and exam profiles feel section-specific and honest about their shape instead of like one generic block with different labels.
+- Make `next_best_action`, `studyModes`, diagnostic reveal, and module-start behavior carry the same section/profile metadata so the learner sees the same module shape that actually starts.
 - Preserve the current no-new-deps posture and keep the exam path pure: the assessment surfaces should stay assessment-first, not instruction-first.
 
 ### Lane 2 — Deepen authored lesson-pack and narrative cohesion

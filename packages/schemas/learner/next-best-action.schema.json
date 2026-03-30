@@ -39,24 +39,83 @@
       "minLength": 1
     },
     "estimatedMinutes": {
-      "type": ["integer", "null"],
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 1
     },
     "sessionType": {
-      "type": ["string", "null"],
-      "enum": ["diagnostic", "quick_win", "review", "timed_set", "module_simulation", null]
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "diagnostic",
+        "quick_win",
+        "review",
+        "timed_set",
+        "module_simulation",
+        null
+      ]
     },
     "section": {
-      "type": ["string", "null"],
-      "enum": ["reading_writing", "math", null]
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "reading_writing",
+        "math",
+        null
+      ]
     },
     "itemId": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
     },
     "focusSkill": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
+    },
+    "realismProfile": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "standard",
+        "extended",
+        "exam",
+        null
+      ]
+    },
+    "itemCount": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "timeLimitSec": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 60
+    },
+    "recommendedPaceSec": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
     }
   }
 }

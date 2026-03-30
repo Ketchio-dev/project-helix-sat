@@ -130,6 +130,14 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.equal(duplicateIds(indexSource).length, 0);
 });
 
+test('learner shell carries module realism metadata through next-action wiring', () => {
+  assert.match(appSource, /action\.realismProfile/);
+  assert.match(appSource, /moduleRealismProfile/);
+  assert.match(appSource, /startModuleSession\(/);
+  assert.match(appSource, /startModuleSession\(action\.section \?\? null, action\.realismProfile \?\? null\)/);
+  assert.match(appSource, /action\.itemCount/);
+});
+
 test('repo ships release-bar gating and a no-dependency playwright learner smoke runner', () => {
   assert.equal(packageJson.scripts['smoke:learner'], 'node scripts/run-playwright-learner-smoke.mjs');
   assert.equal(packageJson.scripts['audit:helix:bars'], 'node scripts/check-content-release-bars.mjs');

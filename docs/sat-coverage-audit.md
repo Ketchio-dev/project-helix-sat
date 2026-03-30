@@ -29,6 +29,7 @@ Project Helix SAT now **covers the full ontology slice in its shipped audit** an
 - Timed sets still provide short exam-mode reps
 - Module simulation still defaults to a **12-item** section-specific exam block
 - The learner shell now also exposes **optional 16-item extended modules** for denser Reading/Writing and Math practice plus an **exam profile** at 27 Reading/Writing items / 22 Math items, while the standard audit snapshot stays on the default 12-item shape
+- Recommended module CTAs now preserve the same section/profile metadata through launch, so the shell no longer labels one profile and silently starts another
 - Completed sessions expose **Review Session** actions backed by `/api/session/review`
 - Remediation cards now carry more authored teaching language instead of relying only on raw rationale summaries
 

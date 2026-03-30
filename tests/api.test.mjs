@@ -1108,6 +1108,69 @@ test('api returns a richer diagnostic reveal after diagnostic completion and unl
   });
 });
 
+test('store dashboard module actions expose realism metadata that matches module-start shape', () => {
+  const store = createStore();
+  const { user } = store.registerUser({
+    name: 'Module Metadata Student',
+    email: nextUniqueEmail('module-metadata-student'),
+    password: 'pass1234',
+  });
+
+  store.updateGoalProfile(user.id, {
+    targetScore: 1450,
+    targetTestDate: '2026-09-12',
+    dailyMinutes: 30,
+    selfReportedWeakArea: 'algebra',
+  });
+
+  const diagnostic = store.startDiagnostic(user.id);
+  for (const [index, item] of diagnostic.items.entries()) {
+    store.submitAttempt({
+      userId: user.id,
+      itemId: item.itemId,
+      ...(index === 0 ? buildIncorrectAttemptAnswer(item.itemId) : buildAttemptAnswer(item.itemId)),
+      sessionId: diagnostic.session.id,
+      mode: 'learn',
+      confidenceLevel: 3,
+      responseTimeMs: 30000,
+    });
+  }
+
+  const quickWin = store.startQuickWin(user.id);
+  for (const item of quickWin.items) {
+    store.submitAttempt({
+      userId: user.id,
+      itemId: item.itemId,
+      ...buildAttemptAnswer(item.itemId),
+      sessionId: quickWin.session.id,
+      mode: 'learn',
+      confidenceLevel: 4,
+      responseTimeMs: 15000,
+    });
+  }
+
+  const dashboard = store.getDashboard(user.id);
+  const moduleAction = dashboard.studyModes.find((mode) => mode.action?.kind === 'start_module')?.action ?? null;
+
+  assert.ok(moduleAction, 'dashboard should expose at least one start_module study mode');
+  assert.ok(['reading_writing', 'math'].includes(moduleAction.section), 'module action should resolve a concrete section');
+  assert.ok(['standard', 'extended', 'exam'].includes(moduleAction.realismProfile));
+  assert.equal(typeof moduleAction.itemCount, 'number');
+  assert.equal(typeof moduleAction.timeLimitSec, 'number');
+  assert.equal(typeof moduleAction.recommendedPaceSec, 'number');
+
+  const started = store.startModuleSimulation(user.id, {
+    section: moduleAction.section,
+    realismProfile: moduleAction.realismProfile,
+  });
+
+  assert.equal(started.session.section, moduleAction.section);
+  assert.equal(started.session.realism_profile, moduleAction.realismProfile);
+  assert.equal(started.items.length, moduleAction.itemCount);
+  assert.equal(started.timing.timeLimitSec, moduleAction.timeLimitSec);
+  assert.equal(started.timing.recommendedPaceSec, moduleAction.recommendedPaceSec);
+});
+
 test('api returns a weekly digest with strengths, risks, and focus after learner activity', async () => {
   await withServer(async (baseUrl) => {
     const registered = await registerSession(baseUrl, {

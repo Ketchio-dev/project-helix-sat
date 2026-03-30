@@ -864,7 +864,8 @@ async function performNextBestAction(action) {
       return;
     case 'start_module':
       if (action.section) $('#moduleSection').value = action.section;
-      await startModuleSession(action.section ?? null);
+      if (action.realismProfile && $('#moduleRealismProfile')) $('#moduleRealismProfile').value = action.realismProfile;
+      await startModuleSession(action.section ?? null, action.realismProfile ?? null);
       return;
     default:
       return;
@@ -1014,6 +1015,10 @@ function renderNextBestAction(action) {
   if (action.estimatedMinutes) meta.push(`~${action.estimatedMinutes} min`);
   if (action.section) meta.push(formatSectionName(action.section));
   if (action.sessionType) meta.push(toDisplaySessionType(action.sessionType));
+  if (action.realismProfile === 'exam') meta.push('Exam profile');
+  if (action.realismProfile === 'extended') meta.push('Extended practice');
+  if (action.realismProfile === 'standard') meta.push('Standard practice');
+  if (action.itemCount) meta.push(`${action.itemCount} questions`);
   if (meta.length) {
     copyBlock.append(node('p', { className: 'muted', text: meta.join(' · ') }));
   }
@@ -2460,13 +2465,13 @@ async function startTimedSetSession() {
   }
 }
 
-async function startModuleSession(sectionOverride = null) {
+async function startModuleSession(sectionOverride = null, realismProfileOverride = null) {
   try {
     state.dashboardExpanded = false;
     state.showDiagnosticPreflight = false;
     state.dismissDiagnosticPreflight = false;
     const section = sectionOverride ?? $('#moduleSection')?.value ?? 'reading_writing';
-    const realismProfileSelection = $('#moduleRealismProfile')?.value ?? 'standard';
+    const realismProfileSelection = realismProfileOverride ?? $('#moduleRealismProfile')?.value ?? 'standard';
     const realismProfile = ['standard', 'extended', 'exam'].includes(realismProfileSelection)
       ? realismProfileSelection
       : 'standard';

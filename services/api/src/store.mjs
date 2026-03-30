@@ -161,6 +161,12 @@ function sectionLabel(key) {
   return SECTION_LABELS[key] ?? key;
 }
 
+function moduleRealismLabel(profile = 'standard') {
+  if (profile === 'exam') return 'exam profile';
+  if (profile === 'extended') return 'extended practice';
+  return 'standard practice';
+}
+
 function capitalize(value = '') {
   return value ? value.charAt(0).toUpperCase() + value.slice(1) : '';
 }
@@ -355,17 +361,30 @@ function getSessionElapsedSec(session) {
 
 function getModuleSessionShape(section = 'math', options = {}) {
   const baseShape = MODULE_SESSION_SHAPE[section] ?? MODULE_SESSION_SHAPE.math;
-  if (options?.realismProfile === 'exam' && baseShape?.exam) {
-    return baseShape.exam;
-  }
-  if (options?.realismProfile === 'extended' && baseShape?.extended) {
-    return baseShape.extended;
-  }
+  const profileShape = options?.realismProfile === 'exam' && baseShape?.exam
+    ? baseShape.exam
+    : options?.realismProfile === 'extended' && baseShape?.extended
+      ? baseShape.extended
+      : baseShape;
   return {
-    itemCount: baseShape.itemCount,
-    recommendedPaceSec: baseShape.recommendedPaceSec,
-    timeLimitSec: baseShape.itemCount * baseShape.recommendedPaceSec,
+    itemCount: profileShape.itemCount,
+    recommendedPaceSec: profileShape.recommendedPaceSec,
+    timeLimitSec: profileShape.timeLimitSec ?? (profileShape.itemCount * profileShape.recommendedPaceSec),
   };
+}
+
+function chooseRecommendedModuleRealismProfile({ goalProfile = null, preferDepth = false } = {}) {
+  const dailyMinutes = Number.isFinite(goalProfile?.dailyMinutes) ? goalProfile.dailyMinutes : 0;
+
+  if (!preferDepth) {
+    return 'standard';
+  }
+
+  if (dailyMinutes >= 35) {
+    return 'exam';
+  }
+
+  return 'extended';
 }
 
 function getExamTiming(session) {
@@ -1834,6 +1853,9 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         : null;
       const inferredSection = targetSkillState?.section
         ?? (targetSkill?.startsWith('math_') ? 'math' : targetSkill ? 'reading_writing' : null);
+      const moduleRealismProfile = chooseRecommendedModuleRealismProfile({
+        goalProfile,
+      });
 
       if (firstBlock?.block_type === 'timed_set') {
         return applyComebackFraming({
@@ -1850,19 +1872,29 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         }, api.getComebackState(userId));
       }
 
+      const moduleSection = inferredSection ?? 'math';
+      const moduleShape = getModuleSessionShape(moduleSection, { realismProfile: moduleRealismProfile });
+      const moduleProfileLabel = moduleRealismLabel(moduleRealismProfile);
+
       return applyComebackFraming({
         kind: 'start_module',
         title: targetSkill
-          ? `Start your ${formatSkillLabel(targetSkill)} repair block`
-          : `Start your ${inferredSection ? sectionLabel(inferredSection) : 'focus'} block`,
+          ? `Start your ${moduleProfileLabel} ${formatSkillLabel(targetSkill).toLowerCase()} block`
+          : `Start your ${inferredSection ? sectionLabel(inferredSection) : 'focus'} ${moduleProfileLabel} block`,
         reason: targetSkill
-          ? `${firstBlock?.objective ?? plan.rationale_summary} Helix is opening on ${formatSkillLabel(targetSkill).toLowerCase()} because it looks like the fastest score-moving lane.`
-          : (firstBlock?.objective ?? plan.rationale_summary),
-        ctaLabel: targetSkill ? `Start ${formatSkillLabel(targetSkill)} block` : (inferredSection ? `Start ${sectionLabel(inferredSection)} module` : 'Start focus module'),
-        estimatedMinutes: firstBlock?.minutes ?? 15,
+          ? `${firstBlock?.objective ?? plan.rationale_summary} Helix wants the next ${moduleProfileLabel} block to stay honest about how ${formatSkillLabel(targetSkill).toLowerCase()} holds up.`
+          : `${firstBlock?.objective ?? plan.rationale_summary} Helix is keeping the next block honest by naming the exact ${moduleProfileLabel} it wants you to run.`,
+        ctaLabel: targetSkill
+          ? `Start ${moduleProfileLabel} ${formatSkillLabel(targetSkill)} block`
+          : (inferredSection ? `Start ${sectionLabel(inferredSection)} ${moduleProfileLabel}` : `Start ${moduleProfileLabel} block`),
+        estimatedMinutes: Math.max(1, Math.ceil(moduleShape.timeLimitSec / 60)),
         sessionType: 'module_simulation',
-        section: inferredSection,
+        section: moduleSection,
         focusSkill: targetSkill ?? null,
+        realismProfile: moduleRealismProfile,
+        itemCount: moduleShape.itemCount,
+        timeLimitSec: moduleShape.timeLimitSec,
+        recommendedPaceSec: moduleShape.recommendedPaceSec,
       }, api.getComebackState(userId));
     },
 
@@ -1928,6 +1960,10 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           section: deepSection,
           estimatedMinutes: Math.max(20, goalProfile.dailyMinutes ?? 25),
           ctaLabel: 'Start the deeper block',
+          realismProfile: chooseRecommendedModuleRealismProfile({
+            goalProfile,
+            preferDepth: true,
+          }),
         }), comebackState);
 
       return [
@@ -3231,16 +3267,23 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
     section = null,
     estimatedMinutes = 20,
     ctaLabel = 'Start practice block',
+    realismProfile = 'standard',
   } = {}) {
+    const resolvedSection = section ?? 'math';
+    const shape = getModuleSessionShape(resolvedSection, { realismProfile });
     return {
       kind: 'start_module',
       title,
       reason,
       ctaLabel,
-      estimatedMinutes,
+      estimatedMinutes: Math.max(estimatedMinutes, Math.ceil(shape.timeLimitSec / 60)),
       sessionType: 'module_simulation',
-      section,
+      section: resolvedSection,
       focusSkill,
+      realismProfile,
+      itemCount: shape.itemCount,
+      timeLimitSec: shape.timeLimitSec,
+      recommendedPaceSec: shape.recommendedPaceSec,
     };
   }
 

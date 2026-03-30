@@ -85,7 +85,7 @@ describe('CTA hierarchy: studentActionCopy wording quality', () => {
     { kind: 'resume_active_session', title: 'Resume', reason: 'Unfinished session.' },
     { kind: 'start_retry_loop', title: 'Retry loop', reason: 'Fix the pattern.', ctaLabel: 'Retry now' },
     { kind: 'start_timed_set', title: 'Timed set', reason: 'Test under pressure.' },
-    { kind: 'start_module', title: 'Module', reason: 'Full block.' },
+    { kind: 'start_module', title: 'Module', reason: 'Full block.', section: 'math', realismProfile: 'extended' },
     { kind: 'review_mistakes', title: 'Review', reason: 'Check recent errors.' },
   ];
 
@@ -133,7 +133,7 @@ describe('CTA hierarchy: distinct verb per action kind', () => {
       { kind: 'resume_active_session', title: 'Resume', reason: 'Unfinished.' },
       { kind: 'start_retry_loop', title: 'Retry', reason: 'Fix the trap.' },
       { kind: 'start_timed_set', title: 'Timed set', reason: 'Pressure test.' },
-      { kind: 'start_module', title: 'Module', reason: 'Full block.' },
+      { kind: 'start_module', title: 'Module', reason: 'Full block.', section: 'reading_writing', realismProfile: 'exam' },
       { kind: 'review_mistakes', title: 'Review', reason: 'Check errors.' },
     ];
 
@@ -177,6 +177,34 @@ describe('CTA hierarchy: quick-win skill contextualization', () => {
       reason: 'Short focused burst.',
     });
     assert.match(copy.ctaLabel, /practice/i, 'Generic quick-win CTA should say "practice"');
+  });
+});
+
+describe('CTA hierarchy: module realism copy differentiates exam and standard blocks', () => {
+  it('start_module exam profile copy is not generic practice wording', () => {
+    const copy = studentActionCopy({
+      kind: 'start_module',
+      title: 'Math exam block',
+      reason: 'Use a full-length block.',
+      section: 'math',
+      realismProfile: 'exam',
+      itemCount: 22,
+    });
+    assert.match(copy.ctaLabel, /exam/i);
+    assert.doesNotMatch(copy.ctaLabel, /practice block/i);
+  });
+
+  it('start_module standard profile copy stays practice-oriented', () => {
+    const copy = studentActionCopy({
+      kind: 'start_module',
+      title: 'Math repair block',
+      reason: 'Use a shorter block.',
+      section: 'math',
+      realismProfile: 'standard',
+      itemCount: 12,
+    });
+    assert.doesNotMatch(copy.ctaLabel, /exam/i);
+    assert.match(copy.ctaLabel, /practice|block/i);
   });
 });
 
@@ -458,5 +486,25 @@ describe('CTA hierarchy: dashboard integration coherence', () => {
         'study mode keys should be quick/standard/deep',
       );
     }
+  });
+
+  it('deep study mode exposes module realism metadata for longer blocks', () => {
+    const store = createStore();
+    const userId = registerAndSetGoal(store, 'Deep Mode Metadata');
+    completeDiagnostic(store, userId);
+
+    const quickWin = store.startQuickWin(userId);
+    for (const item of quickWin.items) {
+      const canonical = DEMO_ITEM_MAP.get(item.itemId) ?? item;
+      store.submitAttempt(buildLearnAttempt(userId, canonical, quickWin.session.id, { correct: true }));
+    }
+
+    const deepMode = store.getStudyModes(userId).find((mode) => mode.key === 'deep');
+    assert.ok(deepMode, 'deep study mode should exist');
+    assert.equal(deepMode.action.kind, 'start_module');
+    assert.equal(deepMode.action.realismProfile, 'extended');
+    assert.equal(typeof deepMode.action.itemCount, 'number');
+    assert.equal(typeof deepMode.action.timeLimitSec, 'number');
+    assert.ok(deepMode.action.estimatedMinutes >= 20);
   });
 });
