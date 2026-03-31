@@ -51,7 +51,7 @@ The prompt in `scripts/generate-content.mjs` should be treated as a digital-SAT 
 - Keep setups concise and Bluebook-like: the math should be the challenge, not verbose story framing.
 - Use authentic SAT algebra, advanced math, data-analysis, geometry, and trig reasoning.
 - Make wrong answers arise from realistic student work (sign errors, partial completion, formula misuse, unit mistakes, graph misreads).
-- The current generator intentionally emits `single_select` only. Hand-authored grid-ins now cover the live app slice, so docs and audits must keep the authored/grid-in scope explicit instead of implying generator-level format parity.
+- The current generator intentionally emits `single_select` only. Hand-authored student-produced responses now cover the live app slice, so docs and audits must keep the authored SPR scope explicit instead of implying generator-level format parity.
 
 ### Cross-cutting requirements
 - Exactly 4 answer choices for every generated item.
@@ -66,8 +66,8 @@ Treat `docs/audits/project-helix-sat-coverage.md` as the source of truth. Narrat
 
 The latest coverage audit (`npm run audit:helix`) identifies these priorities:
 
-1. Push section-specific module realism beyond the current 12-item default / 18-item extended slices toward exam-shaped practice profiles.
-2. Broaden math format realism beyond the current authored 14 grid-ins so student-produced response is a meaningful repeated experience, not a token format; the shipped selector now guarantees repeated grid-in reps in Math modules, so future content work should deepen that slice rather than treating it as a one-off novelty.
+1. Push section-specific module realism beyond the current 14-item default / 20-item extended slices toward exam-shaped practice profiles.
+2. Broaden math format realism beyond the current authored 14 math student-produced responses so SPR work is a meaningful repeated experience, not a token format; the shipped selector now guarantees repeated student-response reps in Math modules, so future content work should deepen that slice rather than treating it as a one-off novelty.
 3. Deepen authored lesson packs from the current all-skill middle-pack baseline toward fuller retry / near-transfer / revisit depth for the highest-traffic skills.
 4. Keep `/api/session/review`, README, this content guide, and generated audit output saying the same thing.
 

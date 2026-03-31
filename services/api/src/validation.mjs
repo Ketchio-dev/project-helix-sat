@@ -162,7 +162,7 @@ const reviewRecommendationsResponseSchema = {
     },
     remediationCards: {
       type: 'array',
-      items: { type: 'object' },
+      items: loadedSchemas.get('learner/review-remediation-card.schema.json'),
     },
     revisitQueue: {
       type: 'array',

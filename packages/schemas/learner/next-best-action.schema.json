@@ -84,6 +84,20 @@
       ],
       "minLength": 1
     },
+    "profileLabel": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "profileStory": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
     "realismProfile": {
       "type": [
         "string",
@@ -102,6 +116,16 @@
         "null"
       ],
       "minimum": 1
+    },
+    "structureBreakpoints": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      }
     },
     "timeLimitSec": {
       "type": [

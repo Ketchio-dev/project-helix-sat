@@ -50,9 +50,13 @@ as static files — no framework, no build step, no design dependency chain.
   7. `exam_profile_module_start`
 - CI/browser smoke is expected to fail with the checkpoint name so regressions map
   to a concrete learner surface instead of a generic end-to-end failure.
+- Smoke assertions should prefer stable `id` hooks, control values, and runtime
+  metadata over long-form copy snapshots.
 
 ## Manual browser signoff still required
 
 - final visual/copy sanity pass in the legacy learner shell
+- grid-in/meta-chip sanity pass remains manual unless the UI exposes a stable
+  non-copy selector for it
 - exploratory React-shell parity check before promoting React to the beta path
 - any cross-browser spot checks beyond the Chromium smoke lane

@@ -14,13 +14,17 @@ const demoItemMap = new Map(
 );
 let uniqueUserCounter = 0;
 
+function isStudentProducedResponse(item) {
+  return ['grid_in', 'student_produced_response', 'student-produced-response'].includes(item?.item_format);
+}
+
 function buildAttemptAnswer(itemId) {
   const item = demoItemMap.get(itemId);
   if (!item) throw new Error(`Missing item ${itemId}`);
-  const value = item.item_format === 'grid_in'
+  const value = isStudentProducedResponse(item)
     ? (item.responseValidation?.acceptedResponses?.[0] ?? item.answerKey)
     : item.answerKey;
-  return item.item_format === 'grid_in'
+  return isStudentProducedResponse(item)
     ? { freeResponse: value }
     : { selectedAnswer: value };
 }
@@ -28,7 +32,7 @@ function buildAttemptAnswer(itemId) {
 function buildIncorrectAttemptAnswer(itemId) {
   const item = demoItemMap.get(itemId);
   if (!item) throw new Error(`Missing item ${itemId}`);
-  if (item.item_format === 'grid_in') {
+  if (isStudentProducedResponse(item)) {
     return { freeResponse: STUDENT_RESPONSE_FIXTURES[item.itemId]?.incorrect ?? '0' };
   }
   const wrongChoice = item.choices.find((choice) => choice.key !== item.answerKey)?.key ?? 'A';
@@ -50,6 +54,26 @@ function expectedMathStudentResponseTarget({ itemCount, realismProfile, section 
   if (itemCount >= 12) return 3;
   if (itemCount >= 8) return 2;
   return 1;
+}
+
+function toDifficultyScore(item) {
+  if (item?.difficulty_band === 'easy') return 0;
+  if (item?.difficulty_band === 'hard') return 2;
+  return 1;
+}
+
+function toStageAverages(items = [], breakpoints = []) {
+  const values = [];
+  let cursor = 0;
+  for (const breakpoint of breakpoints) {
+    const stageItems = items.slice(cursor, breakpoint);
+    cursor = breakpoint;
+    const average = stageItems.length
+      ? stageItems.reduce((sum, item) => sum + toDifficultyScore(item), 0) / stageItems.length
+      : 0;
+    values.push(average);
+  }
+  return values;
 }
 
 function buildAttemptBody(item, {
@@ -222,7 +246,7 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
     assert.equal(diagnostic.items.length, 13);
     assert.equal(diagnostic.items.filter((item) => item.section === 'reading_writing').length, 5);
     assert.equal(diagnostic.items.filter((item) => item.section === 'math').length, 8);
-    assert.equal(diagnostic.items.filter((item) => item.item_format === 'grid_in').length, 1);
+    assert.equal(diagnostic.items.filter((item) => isStudentProducedResponse(item)).length, 1);
 
     const attemptOne = await fetch(`${baseUrl}/api/attempt/submit`, {
       method: 'POST',
@@ -546,14 +570,14 @@ test('api serves module simulation start, completion, finish, and dashboard/hist
     assert.equal(moduleSimulation.session.type, 'module_simulation');
     assert.equal(moduleSimulation.session.exam_mode, true);
     assert.equal(moduleSimulation.session.section, 'math');
-    assert.equal(moduleSimulation.timing.timeLimitSec, 1260);
-    assert.equal(moduleSimulation.timing.recommendedPaceSec, 105);
-    assert.equal(moduleSimulation.items.length, 12);
+    assert.equal(moduleSimulation.timing.timeLimitSec, 1400);
+    assert.equal(moduleSimulation.timing.recommendedPaceSec, 100);
+    assert.equal(moduleSimulation.items.length, 14);
     assert.ok(moduleSimulation.currentItem);
     assert.equal(moduleSimulation.moduleSummary.sessionId, moduleSimulation.session.id);
     assert.ok(new Set(moduleSimulation.items.map((item) => item.skill)).size >= 6);
     assert.ok(new Set(moduleSimulation.items.map((item) => item.domain)).size >= 4);
-    const gridInItems = moduleSimulation.items.filter((item) => item.item_format === 'grid_in');
+    const gridInItems = moduleSimulation.items.filter((item) => isStudentProducedResponse(item));
     assert.ok(gridInItems.length >= 3);
     assert.equal(gridInItems[0].responseValidation.acceptedResponses, undefined);
 
@@ -634,10 +658,10 @@ test('store can start an extended math module shape without leaking exam review 
 
   assert.equal(moduleSimulation.session.type, 'module_simulation');
   assert.equal(moduleSimulation.session.section, 'math');
-  assert.equal(moduleSimulation.timing.timeLimitSec, 1800);
-  assert.equal(moduleSimulation.timing.recommendedPaceSec, 100);
-  assert.equal(moduleSimulation.items.length, 18);
-  assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 5);
+  assert.equal(moduleSimulation.timing.timeLimitSec, 1900);
+  assert.equal(moduleSimulation.timing.recommendedPaceSec, 95);
+  assert.equal(moduleSimulation.items.length, 20);
+  assert.ok(moduleSimulation.items.filter((item) => isStudentProducedResponse(item)).length >= 5);
 
   const attempt = store.submitAttempt({
     userId: 'demo-student',
@@ -669,10 +693,10 @@ test('api can start an extended math module shape through the module-start contr
 
     assert.equal(moduleSimulation.session.type, 'module_simulation');
     assert.equal(moduleSimulation.session.section, 'math');
-    assert.equal(moduleSimulation.timing.timeLimitSec, 1800);
-    assert.equal(moduleSimulation.timing.recommendedPaceSec, 100);
-    assert.equal(moduleSimulation.items.length, 18);
-    assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 5);
+    assert.equal(moduleSimulation.timing.timeLimitSec, 1900);
+    assert.equal(moduleSimulation.timing.recommendedPaceSec, 95);
+    assert.equal(moduleSimulation.items.length, 20);
+    assert.ok(moduleSimulation.items.filter((item) => isStudentProducedResponse(item)).length >= 5);
   });
 });
 
@@ -686,9 +710,9 @@ test('api can start an extended reading-writing module shape through the module-
 
     assert.equal(moduleSimulation.session.type, 'module_simulation');
     assert.equal(moduleSimulation.session.section, 'reading_writing');
-    assert.equal(moduleSimulation.timing.timeLimitSec, 1620);
-    assert.equal(moduleSimulation.timing.recommendedPaceSec, 90);
-    assert.equal(moduleSimulation.items.length, 18);
+    assert.equal(moduleSimulation.timing.timeLimitSec, 1680);
+    assert.equal(moduleSimulation.timing.recommendedPaceSec, 84);
+    assert.equal(moduleSimulation.items.length, 20);
     assert.ok(moduleSimulation.items.every((item) => item.section === 'reading_writing'));
     assert.ok(new Set(moduleSimulation.items.map((item) => item.skill)).size >= 8);
     assert.ok(new Set(moduleSimulation.items.map((item) => item.domain)).size >= 4);
@@ -708,7 +732,7 @@ test('store can start an exam math module profile without leaking exam review fi
   assert.equal(moduleSimulation.timing.timeLimitSec, 2100);
   assert.equal(moduleSimulation.timing.recommendedPaceSec, 95);
   assert.equal(moduleSimulation.items.length, 22);
-  assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 6);
+  assert.ok(moduleSimulation.items.filter((item) => isStudentProducedResponse(item)).length >= 6);
 
   const attempt = store.submitAttempt({
     userId: 'demo-student',
@@ -744,7 +768,7 @@ test('api can start an exam math module shape through the module-start contract'
     assert.equal(moduleSimulation.timing.timeLimitSec, 2100);
     assert.equal(moduleSimulation.timing.recommendedPaceSec, 95);
     assert.equal(moduleSimulation.items.length, 22);
-    assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 6);
+    assert.ok(moduleSimulation.items.filter((item) => isStudentProducedResponse(item)).length >= 6);
   });
 });
 
@@ -1171,6 +1195,8 @@ test('store dashboard module actions expose realism metadata that matches module
   assert.ok(['reading_writing', 'math'].includes(moduleAction.section), 'module action should resolve a concrete section');
   assert.ok(['standard', 'extended', 'exam'].includes(moduleAction.realismProfile));
   assert.equal(typeof moduleAction.itemCount, 'number');
+  assert.ok(Array.isArray(moduleAction.structureBreakpoints));
+  assert.equal(moduleAction.structureBreakpoints.at(-1), moduleAction.itemCount);
   assert.equal(typeof moduleAction.timeLimitSec, 'number');
   assert.equal(typeof moduleAction.recommendedPaceSec, 'number');
   if (moduleAction.section === 'math') {
@@ -1187,11 +1213,17 @@ test('store dashboard module actions expose realism metadata that matches module
   assert.equal(started.session.section, moduleAction.section);
   assert.equal(started.session.realism_profile, moduleAction.realismProfile);
   assert.equal(started.items.length, moduleAction.itemCount);
+  assert.deepEqual(started.timing.structureBreakpoints, moduleAction.structureBreakpoints);
   assert.equal(started.timing.timeLimitSec, moduleAction.timeLimitSec);
   assert.equal(started.timing.recommendedPaceSec, moduleAction.recommendedPaceSec);
+  const stageAverages = toStageAverages(started.items, started.timing.structureBreakpoints);
+  assert.ok(
+    stageAverages.at(-1) >= stageAverages[0],
+    'module sequence should get no easier from opening stage to final stage',
+  );
   if (moduleAction.section === 'math') {
     assert.ok(
-      started.items.filter((item) => item.item_format === 'grid_in').length >= moduleAction.studentResponseTarget,
+      started.items.filter((item) => isStudentProducedResponse(item)).length >= moduleAction.studentResponseTarget,
       'started math module should deliver at least the promised grid-in target',
     );
   }

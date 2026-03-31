@@ -199,6 +199,10 @@ paths:
       responses:
         '200':
           description: Review recommendations and a reflection prompt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewRecommendationsResponse'
   /api/progress/what-changed:
     get:
       summary: Fetch the learner-facing summary of what changed since the last completed work
@@ -380,6 +384,75 @@ components:
       $ref: ../../packages/schemas/learner/next-best-action.schema.json
     DiagnosticRevealResponse:
       $ref: ../../packages/schemas/learner/diagnostic-reveal.schema.json
+    ReviewRemediationCard:
+      $ref: ../../packages/schemas/learner/review-remediation-card.schema.json
+    ReviewRecommendationsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - generatedAt
+        - dominantError
+        - reflectionPrompt
+        - recommendations
+        - remediationCards
+        - revisitQueue
+        - lastReflection
+      properties:
+        generatedAt:
+          type: string
+        dominantError:
+          type:
+            - string
+            - 'null'
+        reflectionPrompt:
+          type: string
+        recommendations:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - itemId
+              - section
+              - skill
+              - prompt
+              - reason
+              - recommendedAction
+              - rationalePreview
+              - errorTag
+            properties:
+              itemId:
+                type: string
+              section:
+                type: string
+              skill:
+                type: string
+              prompt:
+                type: string
+              reason:
+                type: string
+              recommendedAction:
+                type: string
+              rationalePreview:
+                type:
+                  - string
+                  - 'null'
+              errorTag:
+                type:
+                  - string
+                  - 'null'
+        remediationCards:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewRemediationCard'
+        revisitQueue:
+          type: array
+          items:
+            type: object
+        lastReflection:
+          type:
+            - object
+            - 'null'
     CurriculumPath:
       $ref: ../../packages/schemas/planning/curriculum-path.schema.json
     ProgramPath:

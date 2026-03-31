@@ -17,6 +17,8 @@ const milestonesSource = fs.readFileSync(new URL('../docs/product-completion-mil
 const apiTestSource = fs.readFileSync(new URL('../tests/api.test.mjs', import.meta.url), 'utf8');
 const smokeRunnerSource = fs.readFileSync(new URL('../scripts/run-playwright-learner-smoke.mjs', import.meta.url), 'utf8');
 const generatedAuditSnapshot = fs.readFileSync(new URL('../docs/audits/project-helix-sat-coverage.md', import.meta.url), 'utf8');
+const validationSource = fs.readFileSync(new URL('../services/api/src/validation.mjs', import.meta.url), 'utf8');
+const foundationValidationSource = fs.readFileSync(new URL('../scripts/validate-foundation.mjs', import.meta.url), 'utf8');
 
 function duplicateIds(source) {
   const counts = new Map();
@@ -37,8 +39,9 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
     reading_writing: 33,
   });
   assert.deepEqual(audit.content.itemFormatCounts, {
-    grid_in: 14,
+    grid_in: 10,
     single_select: 65,
+    student_produced_response: 4,
   });
 
   assert.equal(audit.verdict.crossSectionCoverage, 'credible_for_mvp');
@@ -46,6 +49,7 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   assert.equal(audit.releaseBars.passed, true);
   assert.equal(audit.releaseBars.bars.length >= 6, true);
   assert.ok(audit.releaseBars.bars.every((bar) => bar.passed));
+  assert.ok(audit.releaseBars.bars.some((bar) => bar.key === 'multi_format_runtime_floor'));
 
   assert.equal(audit.ontologyCoverage.totalSkills, 19);
   assert.equal(audit.ontologyCoverage.coveredSkills, 19);
@@ -69,11 +73,11 @@ test('project helix audit captures current MVP coverage and blueprint gaps', () 
   });
   assert.equal(audit.sessions.timedSet.itemCount, 3);
   assert.equal(audit.sessions.timedSet.timeLimitSec, 210);
-  assert.equal(audit.sessions.moduleSimulation.itemCount, 12);
+  assert.equal(audit.sessions.moduleSimulation.itemCount, 14);
   assert.deepEqual(audit.sessions.moduleSimulation.sectionCounts, {
-    math: 12,
+    math: 14,
   });
-  assert.equal(audit.sessions.moduleSimulation.timeLimitSec, 1260);
+  assert.equal(audit.sessions.moduleSimulation.timeLimitSec, 1400);
   assert.equal(audit.sessions.sessionReview.blockedUntilCompletion, true);
   assert.ok(audit.majorRisks.some((entry) => entry.includes('Module simulation')), 'should flag module simulation length as a risk');
   assert.equal(audit.majorRisks.length, 1);
@@ -100,8 +104,8 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(indexSource, /Full dashboard/);
   assert.match(indexSource, /data-student-dashboard-detail/);
   assert.match(indexSource, /Exam Profile/);
-  assert.match(indexSource, /Standard Module \(12Q\)/);
-  assert.match(indexSource, /Extended Module \(18Q\)/);
+  assert.match(indexSource, /Standard RW Module \(14Q\)/);
+  assert.match(indexSource, /Extended RW Module \(20Q\)/);
   assert.match(indexSource, /Exam Profile \(22 Math \/ 27 RW\)/);
   assert.match(indexSource, /workspace-grid/);
   assert.match(indexSource, /workspace-rail/);
@@ -121,7 +125,7 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(learnerNarrativeSource, /Practice \$\{formatSkillLabel\(action\.focusSkill\)\}/);
   assert.match(appSource, /renderStudyModes/);
   assert.match(appSource, /syncModuleProfileControlLabels/);
-  assert.match(appSource, /18Q/);
+  assert.match(appSource, /extendedCount = 20/);
   assert.match(appSource, /renderReturnPath/);
   assert.match(appSource, /Standard practice/);
   assert.match(appSource, /Exam profile/);
@@ -184,16 +188,16 @@ test('docs stay aligned with cookie auth and current audit claims', () => {
   assert.doesNotMatch(readmeSource, /login UI with localStorage persistence/i);
   assert.match(readmeSource, /HttpOnly `helix_auth` cookie/i);
   assert.match(readmeSource, /19\/19 skills covered/i);
-  assert.match(readmeSource, /14 grid-ins/i);
-  assert.match(readmeSource, /3.*standard 12-question blocks/i);
-  assert.match(readmeSource, /5.*18-question extended blocks/i);
+  assert.match(readmeSource, /14 math student-produced responses/i);
+  assert.match(readmeSource, /3.*standard 14-question blocks/i);
+  assert.match(readmeSource, /5.*20-question extended blocks/i);
   assert.match(readmeSource, /6.*22-question exam profile/i);
   assert.doesNotMatch(contentReadmeSource, /Keep strengthening partial blueprint lanes/i);
   assert.doesNotMatch(contentReadmeSource, /Add the smallest safe grid-in/i);
   assert.match(contentReadmeSource, /source of truth/i);
-  assert.match(contentReadmeSource, /12-item default \/ 18-item extended/i);
-  assert.match(contentReadmeSource, /repeated grid-in reps in Math modules/i);
-  assert.match(readmeSource, /18-item extended modules/i);
+  assert.match(contentReadmeSource, /14-item default \/ 20-item extended/i);
+  assert.match(contentReadmeSource, /repeated student-response reps in Math modules/i);
+  assert.match(readmeSource, /20-item extended modules/i);
   assert.match(milestonesSource, /Private beta slice/i);
   assert.match(milestonesSource, /Strengthen exam\/practice realism and learner-surface cohesion/i);
   assert.match(milestonesSource, /Deepen authored lesson-pack and narrative cohesion/i);
@@ -206,10 +210,24 @@ test('docs stay aligned with cookie auth and current audit claims', () => {
   assert.match(webReadmeSource, /currently verified.*private-beta browser path/i);
   assert.match(webReadmeSource, /goal_setup_completion_resume/i);
   assert.match(webReadmeSource, /manual browser signoff/i);
+  assert.match(webReadmeSource, /stable `id` hooks, control values, and runtime\s+metadata/i);
+  assert.match(webReadmeSource, /grid-in\/meta-chip sanity pass remains manual\s+unless/i);
   assert.match(milestonesSource, /no new dependencies/i);
   assert.match(milestonesSource, /exam pure-ACK/i);
   assert.match(milestonesSource, /reviewable diffs/i);
   assert.match(contentReadmeSource, /npm run check:docs-truth/);
+});
+
+test('completion-critical learner contracts are frozen in schemas and validation', () => {
+  assert.match(milestonesSource, /Product contracts to freeze before major UI work/);
+  assert.match(validationSource, /learner\/goal-profile\.schema\.json/);
+  assert.match(validationSource, /learner\/diagnostic-reveal\.schema\.json/);
+  assert.match(validationSource, /planning\/plan-explanation\.schema\.json/);
+  assert.match(validationSource, /scoring\/projection-evidence\.schema\.json/);
+  assert.match(validationSource, /learner\/review-remediation-card\.schema\.json/);
+  assert.match(validationSource, /learner\/next-best-action\.schema\.json/);
+  assert.match(validationSource, /reporting\/weekly-report\.schema\.json/);
+  assert.match(foundationValidationSource, /packages\/schemas\/learner\/review-remediation-card\.schema\.json/);
 });
 
 

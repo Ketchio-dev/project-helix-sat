@@ -10,6 +10,79 @@ const SECTION_ORDER = {
 };
 const STUDENT_RESPONSE_FORMATS = new Set(['grid_in', 'student_produced_response', 'student-produced-response']);
 
+export const MODULE_REALISM_SHAPES = {
+  reading_writing: {
+    standard: {
+      itemCount: 14,
+      recommendedPaceSec: 90,
+      structureBreakpoints: [4, 9, 14],
+    },
+    extended: {
+      itemCount: 20,
+      recommendedPaceSec: 84,
+      structureBreakpoints: [6, 13, 20],
+    },
+    exam: {
+      itemCount: 27,
+      recommendedPaceSec: 71,
+      timeLimitSec: 1920,
+      structureBreakpoints: [8, 18, 27],
+    },
+  },
+  math: {
+    standard: {
+      itemCount: 14,
+      recommendedPaceSec: 100,
+      structureBreakpoints: [5, 10, 14],
+    },
+    extended: {
+      itemCount: 20,
+      recommendedPaceSec: 95,
+      structureBreakpoints: [7, 14, 20],
+    },
+    exam: {
+      itemCount: 22,
+      recommendedPaceSec: 95,
+      timeLimitSec: 2100,
+      structureBreakpoints: [7, 15, 22],
+    },
+  },
+};
+
+const MODULE_STAGE_DIFFICULTY_PRIORITY = {
+  standard: [
+    ['easy', 'medium', 'hard'],
+    ['medium', 'easy', 'hard'],
+    ['hard', 'medium', 'easy'],
+  ],
+  extended: [
+    ['medium', 'easy', 'hard'],
+    ['medium', 'hard', 'easy'],
+    ['hard', 'medium', 'easy'],
+  ],
+  exam: [
+    ['medium', 'easy', 'hard'],
+    ['medium', 'hard', 'easy'],
+    ['hard', 'medium', 'easy'],
+  ],
+};
+
+function normalizeRealismProfile(realismProfile = 'standard') {
+  return ['standard', 'extended', 'exam'].includes(realismProfile) ? realismProfile : 'standard';
+}
+
+export function getModuleRealismShape(section = 'math', realismProfile = 'standard') {
+  const sectionShapes = MODULE_REALISM_SHAPES[section] ?? MODULE_REALISM_SHAPES.math;
+  const profile = normalizeRealismProfile(realismProfile);
+  const profileShape = sectionShapes[profile] ?? sectionShapes.standard;
+  return {
+    itemCount: profileShape.itemCount,
+    recommendedPaceSec: profileShape.recommendedPaceSec,
+    timeLimitSec: profileShape.timeLimitSec ?? (profileShape.itemCount * profileShape.recommendedPaceSec),
+    structureBreakpoints: [...(profileShape.structureBreakpoints ?? [profileShape.itemCount])],
+  };
+}
+
 export function getMathStudentResponseTargetCount(count, options = {}) {
   if (!Number.isFinite(count) || count <= 0) return 0;
   if (options.section && options.section !== 'math') return 0;
@@ -472,6 +545,175 @@ function selectModuleItemsWithBreadth(items, count) {
   return selected;
 }
 
+function normalizeModuleBreakpoints(rawBreakpoints, count) {
+  if (!Array.isArray(rawBreakpoints) || !rawBreakpoints.length || count <= 0) {
+    return [count].filter((value) => value > 0);
+  }
+
+  const normalized = [];
+  for (const value of rawBreakpoints) {
+    const bounded = Math.min(count, Math.max(1, Math.round(value)));
+    if (!bounded) continue;
+    if (normalized.length && bounded <= normalized[normalized.length - 1]) continue;
+    normalized.push(bounded);
+  }
+
+  if (!normalized.length || normalized[normalized.length - 1] !== count) {
+    normalized.push(count);
+  }
+
+  return normalized;
+}
+
+function scaleStructureBreakpoints(shape, count) {
+  if (count <= 0) return [];
+  const breakpoints = shape?.structureBreakpoints ?? [shape?.itemCount ?? count];
+  if (shape?.itemCount === count) {
+    return normalizeModuleBreakpoints(breakpoints, count);
+  }
+
+  const scaled = breakpoints.map((breakpoint) => {
+    if (!shape?.itemCount || shape.itemCount <= 0) return count;
+    return (breakpoint / shape.itemCount) * count;
+  });
+  return normalizeModuleBreakpoints(scaled, count);
+}
+
+function getModuleStructureBreakpoints(count, options = {}) {
+  const explicitBreakpoints = normalizeModuleBreakpoints(options.structureBreakpoints, count);
+  if (explicitBreakpoints.length && explicitBreakpoints.at(-1) === count) {
+    return explicitBreakpoints;
+  }
+
+  const shape = getModuleRealismShape(options.section ?? 'math', options.realismProfile ?? 'standard');
+  return scaleStructureBreakpoints(shape, count);
+}
+
+function compareModuleStructureCandidate(left, right, context) {
+  const {
+    difficultyRank,
+    stageDomainCounts,
+    stageSkillCounts,
+    originalOrder,
+    section,
+    stageIndex,
+  } = context;
+  const leftDifficulty = difficultyRank[left.difficulty_band] ?? difficultyRank.medium;
+  const rightDifficulty = difficultyRank[right.difficulty_band] ?? difficultyRank.medium;
+  if (leftDifficulty !== rightDifficulty) return leftDifficulty - rightDifficulty;
+
+  if (section === 'math') {
+    const leftGrid = Number(isStudentProducedResponseItem(left));
+    const rightGrid = Number(isStudentProducedResponseItem(right));
+    const gridDelta = stageIndex === 0 ? rightGrid - leftGrid : leftGrid - rightGrid;
+    if (gridDelta !== 0) return gridDelta;
+  }
+
+  const leftDomainCount = stageDomainCounts.get(left.domain) ?? 0;
+  const rightDomainCount = stageDomainCounts.get(right.domain) ?? 0;
+  if (leftDomainCount !== rightDomainCount) return leftDomainCount - rightDomainCount;
+
+  const leftSkillCount = stageSkillCounts.get(left.skill) ?? 0;
+  const rightSkillCount = stageSkillCounts.get(right.skill) ?? 0;
+  if (leftSkillCount !== rightSkillCount) return leftSkillCount - rightSkillCount;
+
+  return (originalOrder.get(left.itemId) ?? Number.MAX_SAFE_INTEGER)
+    - (originalOrder.get(right.itemId) ?? Number.MAX_SAFE_INTEGER);
+}
+
+function shapeModuleSelectionFlow(selectedItems, count, options = {}) {
+  if (selectedItems.length <= 1) {
+    return selectedItems;
+  }
+
+  const breakpoints = getModuleStructureBreakpoints(count, options);
+  const realismProfile = normalizeRealismProfile(options.realismProfile ?? 'standard');
+  const stageDifficulties = MODULE_STAGE_DIFFICULTY_PRIORITY[realismProfile] ?? MODULE_STAGE_DIFFICULTY_PRIORITY.standard;
+  const originalOrder = new Map(selectedItems.map((item, index) => [item.itemId, index]));
+  const remaining = [...selectedItems];
+  const shaped = [];
+  let previousBreakpoint = 0;
+
+  for (const [stageIndex, breakpoint] of breakpoints.entries()) {
+    const stageSize = Math.max(0, breakpoint - previousBreakpoint);
+    previousBreakpoint = breakpoint;
+    if (!stageSize) continue;
+
+    const difficultyPriority = stageDifficulties[Math.min(stageIndex, stageDifficulties.length - 1)]
+      ?? stageDifficulties[stageDifficulties.length - 1]
+      ?? ['medium', 'easy', 'hard'];
+    const difficultyRank = difficultyPriority.reduce((map, difficulty, index) => ({ ...map, [difficulty]: index }), {});
+    const stageDomainCounts = new Map();
+    const stageSkillCounts = new Map();
+
+    for (let slot = 0; slot < stageSize && remaining.length; slot += 1) {
+      const nextItem = [...remaining].sort((left, right) => compareModuleStructureCandidate(left, right, {
+        difficultyRank,
+        stageDomainCounts,
+        stageSkillCounts,
+        originalOrder,
+        section: options.section,
+        stageIndex,
+      }))[0] ?? null;
+      if (!nextItem) break;
+
+      shaped.push(nextItem);
+      stageDomainCounts.set(nextItem.domain, (stageDomainCounts.get(nextItem.domain) ?? 0) + 1);
+      stageSkillCounts.set(nextItem.skill, (stageSkillCounts.get(nextItem.skill) ?? 0) + 1);
+
+      const removeIndex = remaining.findIndex((item) => item.itemId === nextItem.itemId);
+      if (removeIndex !== -1) {
+        remaining.splice(removeIndex, 1);
+      }
+    }
+  }
+
+  const completed = [...shaped, ...remaining].slice(0, count);
+  return rebalanceModuleStageDifficulty(completed, breakpoints);
+}
+
+function averageStageDifficulty(items, startIndex, endIndex) {
+  const stageItems = items.slice(startIndex, endIndex);
+  if (!stageItems.length) return 0;
+  return stageItems.reduce((sum, item) => sum + getDifficultyOrder(item), 0) / stageItems.length;
+}
+
+function rebalanceModuleStageDifficulty(items, breakpoints) {
+  const balanced = [...items];
+
+  for (let stageIndex = 1; stageIndex < breakpoints.length; stageIndex += 1) {
+    const stageEnd = breakpoints[stageIndex];
+    const previousStart = stageIndex === 1 ? 0 : breakpoints[stageIndex - 2];
+    const previousEnd = breakpoints[stageIndex - 1];
+
+    while (averageStageDifficulty(balanced, previousStart, previousEnd) > averageStageDifficulty(balanced, previousEnd, stageEnd)) {
+      let previousSwapIndex = -1;
+      let currentSwapIndex = -1;
+
+      for (let index = previousStart; index < previousEnd; index += 1) {
+        if (previousSwapIndex === -1 || getDifficultyOrder(balanced[index]) > getDifficultyOrder(balanced[previousSwapIndex])) {
+          previousSwapIndex = index;
+        }
+      }
+
+      for (let index = previousEnd; index < stageEnd; index += 1) {
+        if (currentSwapIndex === -1 || getDifficultyOrder(balanced[index]) < getDifficultyOrder(balanced[currentSwapIndex])) {
+          currentSwapIndex = index;
+        }
+      }
+
+      if (previousSwapIndex === -1 || currentSwapIndex === -1) break;
+      if (getDifficultyOrder(balanced[previousSwapIndex]) <= getDifficultyOrder(balanced[currentSwapIndex])) break;
+
+      const previousItem = balanced[previousSwapIndex];
+      balanced[previousSwapIndex] = balanced[currentSwapIndex];
+      balanced[currentSwapIndex] = previousItem;
+    }
+  }
+
+  return balanced;
+}
+
 function ensureMathStudentResponseExposure(selected, rankedItems, options = {}) {
   if (options.section !== 'math') {
     return selected;
@@ -521,12 +763,68 @@ function ensureMathStudentResponseExposure(selected, rankedItems, options = {}) 
   return upgradedSelection;
 }
 
+function getDesiredModuleHardCount(count, options = {}) {
+  const realismProfile = normalizeRealismProfile(options.realismProfile ?? 'standard');
+  if (realismProfile === 'exam') return Math.max(3, Math.floor(count / 6));
+  if (realismProfile === 'extended') return Math.max(2, Math.floor(count / 8));
+  return Math.max(1, Math.floor(count / 10));
+}
+
+function ensureModuleDifficultyHeadroom(selected, rankedItems, options = {}) {
+  const desiredHardCount = getDesiredModuleHardCount(selected.length, options);
+  const upgradedSelection = [...selected];
+  const selectedIds = new Set(upgradedSelection.map((item) => item.itemId));
+  const currentHardCount = upgradedSelection.filter((item) => item.difficulty_band === 'hard').length;
+  if (currentHardCount >= desiredHardCount) {
+    return upgradedSelection;
+  }
+
+  const hardCandidates = rankedItems.filter((item) => item.difficulty_band === 'hard' && !selectedIds.has(item.itemId));
+  const desiredStudentResponseCount = options.section === 'math'
+    ? getMathStudentResponseTargetCount(upgradedSelection.length, options)
+    : 0;
+
+  let hardCount = currentHardCount;
+  for (const candidate of hardCandidates) {
+    const replaceableIndex = upgradedSelection
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.difficulty_band !== 'hard')
+      .filter(({ item }) => {
+        if (options.section !== 'math') return true;
+        if (!isStudentProducedResponseItem(item)) return true;
+        const currentStudentResponseCount = upgradedSelection.filter(isStudentProducedResponseItem).length;
+        return currentStudentResponseCount > desiredStudentResponseCount;
+      })
+      .sort((left, right) => {
+        const difficultyDelta = getDifficultyOrder(left.item) - getDifficultyOrder(right.item);
+        if (difficultyDelta !== 0) return difficultyDelta;
+        return Number(isStudentProducedResponseItem(left.item)) - Number(isStudentProducedResponseItem(right.item));
+      })[0]?.index ?? -1;
+
+    if (replaceableIndex === -1) break;
+
+    selectedIds.delete(upgradedSelection[replaceableIndex].itemId);
+    upgradedSelection[replaceableIndex] = candidate;
+    selectedIds.add(candidate.itemId);
+    hardCount += 1;
+
+    if (hardCount >= desiredHardCount) {
+      break;
+    }
+  }
+
+  return upgradedSelection;
+}
+
 function selectModuleItems(items, count, skillOrder, exposureCounts = {}, options = {}) {
   if (options.section) {
     const sectionItems = items
       .filter((item) => item.section === options.section)
       .sort((left, right) => compareModule(left, right, skillOrder, exposureCounts));
-    return ensureMathStudentResponseExposure(selectModuleItemsWithBreadth(sectionItems, count), sectionItems, options);
+    const withBreadth = selectModuleItemsWithBreadth(sectionItems, count);
+    const withStudentResponse = ensureMathStudentResponseExposure(withBreadth, sectionItems, options);
+    const withDifficultyHeadroom = ensureModuleDifficultyHeadroom(withStudentResponse, sectionItems, options);
+    return shapeModuleSelectionFlow(withDifficultyHeadroom, count, options);
   }
 
   const perSectionTarget = Math.floor(count / 2);

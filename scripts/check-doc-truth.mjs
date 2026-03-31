@@ -9,6 +9,8 @@ const readmeSource = fs.readFileSync(new URL('../README.md', import.meta.url), '
 const contentReadmeSource = fs.readFileSync(new URL('../content/README.md', import.meta.url), 'utf8');
 const narrativeAuditSource = fs.readFileSync(new URL('../docs/sat-coverage-audit.md', import.meta.url), 'utf8');
 const qualityBriefSource = fs.readFileSync(new URL('../docs/quality/bluebook-khan-slice.md', import.meta.url), 'utf8');
+const milestonesSource = fs.readFileSync(new URL('../docs/product-completion-milestones.md', import.meta.url), 'utf8');
+const validationSource = fs.readFileSync(new URL('../services/api/src/validation.mjs', import.meta.url), 'utf8');
 
 const audit = buildProjectHelixSatAudit({ ontology, routerSource, appSource, apiTestSource });
 
@@ -20,12 +22,13 @@ function invariant(ok, message) {
 
 const expectedCoverageLine = `${audit.ontologyCoverage.coveredSkills}/${audit.ontologyCoverage.totalSkills} skills covered`;
 const expectedBankLine = `${audit.content.itemCount} items / ${audit.content.rationaleCount} rationales`;
-const expectedGridInLine = `${audit.formatRealism.mathGridInCount} grid-ins`;
+const expectedGridInLine = `${audit.formatRealism.mathGridInCount} math student-produced responses`;
 const expectedDefaultModuleLine = `${audit.sessions.moduleSimulation.itemCount}-item default modules`;
-const expectedExtendedModuleLine = '18-item extended modules';
+const expectedExtendedModuleLine = '20-item extended modules';
 const expectedCookieLine = 'HttpOnly `helix_auth` cookie';
 const expectedSourceOfTruthLine = 'source of truth';
 const expectedReleaseBarLine = 'npm run audit:helix:bars';
+const expectedContractFreezeLine = 'Product contracts to freeze before major UI work';
 
 invariant(readmeSource.includes(expectedCoverageLine), `README drift: missing "${expectedCoverageLine}"`);
 invariant(readmeSource.includes(expectedBankLine), `README drift: missing "${expectedBankLine}"`);
@@ -36,23 +39,25 @@ invariant(readmeSource.includes(expectedCookieLine), `README drift: missing cook
 invariant(!/localStorage token persistence/i.test(readmeSource), 'README drift: stale localStorage auth statement still present');
 
 invariant(contentReadmeSource.includes(expectedSourceOfTruthLine), 'content/README drift: missing source-of-truth guidance');
-invariant(contentReadmeSource.includes(`${audit.sessions.moduleSimulation.itemCount}-item default / 18-item extended`), 'content/README drift: missing current module realism guidance');
-invariant(contentReadmeSource.includes(`${audit.formatRealism.mathGridInCount} grid-ins`), 'content/README drift: missing current grid-in count');
+invariant(contentReadmeSource.includes(`${audit.sessions.moduleSimulation.itemCount}-item default / 20-item extended`), 'content/README drift: missing current module realism guidance');
+invariant(contentReadmeSource.includes(`${audit.formatRealism.mathGridInCount} math student-produced responses`), 'content/README drift: missing current SPR count');
 invariant(contentReadmeSource.includes(expectedReleaseBarLine), 'content/README drift: missing release-bar verification command');
 
 invariant(
   narrativeAuditSource.includes(expectedCoverageLine) || narrativeAuditSource.includes(`${audit.ontologyCoverage.coveredSkills} covered, ${audit.ontologyCoverage.partialSkills} partial, ${audit.ontologyCoverage.missingSkills.length} missing`),
   `docs/sat-coverage-audit.md drift: missing current ontology coverage summary`,
 );
-invariant(narrativeAuditSource.includes(`${audit.formatRealism.mathGridInCount} math grid-ins`) || narrativeAuditSource.includes(`${audit.formatRealism.mathGridInCount}-item math grid-in`) || narrativeAuditSource.includes(`${audit.formatRealism.mathGridInCount} grid-ins`), 'docs/sat-coverage-audit.md drift: missing current grid-in count');
+invariant(narrativeAuditSource.includes(`${audit.formatRealism.mathGridInCount} math student-produced responses`) || narrativeAuditSource.includes(`${audit.formatRealism.mathGridInCount}-item math student-produced-response`) || narrativeAuditSource.includes(`${audit.formatRealism.mathGridInCount} student-produced responses`), 'docs/sat-coverage-audit.md drift: missing current SPR count');
 invariant(narrativeAuditSource.includes(`${audit.sessions.moduleSimulation.itemCount}-item`), 'docs/sat-coverage-audit.md drift: missing current default module size');
 invariant(narrativeAuditSource.includes(expectedReleaseBarLine), 'docs/sat-coverage-audit.md drift: missing release-bar command');
 
 invariant(qualityBriefSource.includes(`${audit.ontologyCoverage.coveredSkills} covered, ${audit.ontologyCoverage.partialSkills} partial, ${audit.ontologyCoverage.missingSkills.length} missing`), 'quality brief drift: missing current ontology coverage summary');
 invariant(qualityBriefSource.includes(`${audit.sessions.moduleSimulation.itemCount}-item default block`), 'quality brief drift: missing current default module size');
 invariant(qualityBriefSource.includes(expectedReleaseBarLine), 'quality brief drift: missing release-bar command');
+invariant(milestonesSource.includes(expectedContractFreezeLine), 'milestones drift: missing product-contract freeze section');
+invariant(validationSource.includes('learner/review-remediation-card.schema.json'), 'validation drift: review remediation card contract is not frozen in validation');
 
 console.log('Documentation truth checks passed');
 console.log(`- README: ${expectedCoverageLine}, ${expectedBankLine}, ${expectedGridInLine}`);
-console.log(`- Content guide: ${audit.sessions.moduleSimulation.itemCount}-item default / 18-item extended, ${audit.formatRealism.mathGridInCount} grid-ins`);
-console.log(`- Narrative docs: release-bar command and current coverage snapshot present`);
+console.log(`- Content guide: ${audit.sessions.moduleSimulation.itemCount}-item default / 20-item extended, ${audit.formatRealism.mathGridInCount} math student-produced responses`);
+console.log(`- Narrative docs: release-bar command, contract freeze section, and current coverage snapshot present`);

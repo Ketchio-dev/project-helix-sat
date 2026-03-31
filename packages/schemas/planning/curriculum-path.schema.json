@@ -106,7 +106,8 @@
           "dueInDays",
           "reason",
           "source",
-          "lessonPackTier"
+          "lessonPackTier",
+          "durabilitySignal"
         ],
         "properties": {
           "skillId": {
@@ -141,6 +142,10 @@
               "full",
               null
             ]
+          },
+          "durabilitySignal": {
+            "type": "string",
+            "minLength": 1
           }
         }
       }

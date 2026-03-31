@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helixsat.dev/schemas/learner/review-remediation-card.schema.json",
+  "title": "ReviewRemediationCard",
+  "type": "object",
+  "required": [
+    "itemId",
+    "section",
+    "skill",
+    "misconception",
+    "decisiveClue",
+    "correctionRule",
+    "teachCard",
+    "workedExample",
+    "packDepth",
+    "retryCue",
+    "retryItem",
+    "retryAction",
+    "transferItem",
+    "transferAction",
+    "revisitPlan",
+    "lessonArc",
+    "coachLanguage",
+    "lessonAssetIds",
+    "confidenceBefore",
+    "confidenceAfter",
+    "nextScheduledRevisit",
+    "revisitStatus"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "itemId": { "type": "string", "minLength": 1 },
+    "section": { "type": "string", "minLength": 1 },
+    "skill": { "type": "string", "minLength": 1 },
+    "misconception": { "type": "string", "minLength": 1 },
+    "decisiveClue": { "type": "string", "minLength": 1 },
+    "correctionRule": { "type": "string", "minLength": 1 },
+    "teachCard": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "workedExample": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "packDepth": {
+      "type": "string",
+      "enum": ["middle", "full"]
+    },
+    "retryCue": { "type": ["string", "null"] },
+    "retryItem": {
+      "type": "object",
+      "required": ["itemId", "prompt"],
+      "additionalProperties": false,
+      "properties": {
+        "itemId": { "type": "string", "minLength": 1 },
+        "prompt": { "type": "string", "minLength": 1 }
+      }
+    },
+    "retryAction": {
+      "type": "object",
+      "required": ["kind", "itemId", "ctaLabel"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "itemId": { "type": "string", "minLength": 1 },
+        "ctaLabel": { "type": "string", "minLength": 1 }
+      }
+    },
+    "transferItem": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "transferAction": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "revisitPlan": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "lessonArc": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "coachLanguage": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "lessonAssetIds": {
+      "type": ["array", "object"],
+      "items": { "type": "string", "minLength": 1 },
+      "additionalProperties": true
+    },
+    "confidenceBefore": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 4
+    },
+    "confidenceAfter": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 4
+    },
+    "nextScheduledRevisit": { "type": "string", "minLength": 1 },
+    "revisitStatus": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    }
+  }
+}

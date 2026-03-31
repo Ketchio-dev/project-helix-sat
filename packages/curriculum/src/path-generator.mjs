@@ -120,19 +120,59 @@ function scoreAnchor(node, selfReportedWeakArea = '') {
   return stageWeight + weaknessScore + weakAreaBoost;
 }
 
+function scoreSupportCandidate(anchorNode, candidate, { isPrereq = false } = {}) {
+  if (!anchorNode || !candidate || candidate.skillId === anchorNode.skillId) return Number.NEGATIVE_INFINITY;
+
+  const sameSectionBoost = candidate.section === anchorNode.section ? 18 : -12;
+  const prereqBoost = isPrereq ? 26 : 0;
+  const stageWeight = candidate.stage === 'foundation_repair'
+    ? 22
+    : candidate.stage === 'controlled_practice'
+      ? 16
+      : candidate.stage === 'diagnosing'
+        ? 14
+        : candidate.stage === 'mixed_practice'
+          ? 8
+          : candidate.stage === 'retention_watch'
+            ? 4
+            : candidate.stage === 'mastered'
+              ? -20
+              : 0;
+  const weaknessWeight = (1 - candidate.mastery) * 18
+    + (1 - candidate.timedMastery) * 12
+    + candidate.retentionRisk * 10
+    + candidate.confidenceCalibration * 8;
+  const sharedDomainBoost = candidate.domain === anchorNode.domain ? 8 : 0;
+
+  return sameSectionBoost + prereqBoost + stageWeight + weaknessWeight + sharedDomainBoost;
+}
+
 function pickSupport(anchorNode, nodeMap, stateMap) {
   if (!anchorNode) return null;
-  for (const prereqId of anchorNode.prereqIds ?? []) {
-    const skill = getCurriculumSkill(prereqId);
-    if (!skill) continue;
-    return buildNode(skill, stateMap.get(prereqId) ?? null);
-  }
-  for (const candidate of nodeMap.values()) {
-    if (candidate.skillId !== anchorNode.skillId && candidate.section === anchorNode.section && candidate.stage !== 'mastered') {
-      return candidate;
-    }
-  }
-  return null;
+
+  const prereqCandidates = (anchorNode.prereqIds ?? [])
+    .map((prereqId) => {
+      const skill = getCurriculumSkill(prereqId);
+      if (!skill) return null;
+      return buildNode(skill, stateMap.get(prereqId) ?? null);
+    })
+    .filter(Boolean);
+
+  const rankedPrereq = [...prereqCandidates]
+    .sort((left, right) => scoreSupportCandidate(anchorNode, right, { isPrereq: true }) - scoreSupportCandidate(anchorNode, left, { isPrereq: true }))[0] ?? null;
+
+  const fallbackCandidate = [...nodeMap.values()]
+    .filter((candidate) => candidate.skillId !== anchorNode.skillId)
+    .filter((candidate) => candidate.section === anchorNode.section)
+    .filter((candidate) => candidate.stage !== 'mastered')
+    .sort((left, right) => scoreSupportCandidate(anchorNode, right) - scoreSupportCandidate(anchorNode, left))[0] ?? null;
+
+  if (!rankedPrereq) return fallbackCandidate;
+  if (!fallbackCandidate) return rankedPrereq;
+
+  return scoreSupportCandidate(anchorNode, rankedPrereq, { isPrereq: true }) >= scoreSupportCandidate(anchorNode, fallbackCandidate)
+    ? rankedPrereq
+    : fallbackCandidate;
 }
 
 function pickMaintenance(anchorNode, supportNode, nodes) {
@@ -157,6 +197,41 @@ function pickNextUnlock(anchorNode, nodeMap) {
   return null;
 }
 
+function getRevisitDurabilitySignal(entry = {}) {
+  const status = entry?.status ?? null;
+  const lastAccuracy = typeof entry?.lastAccuracy === 'number' ? entry.lastAccuracy : null;
+  const attemptCount = Number.isFinite(entry?.attemptCount) ? entry.attemptCount : 0;
+
+  if (status === 'retry_recommended') return 'did_not_hold';
+  if (status === 'retry_started') return 'in_repair';
+  if (status === 'revisit_due' && lastAccuracy !== null) {
+    if (lastAccuracy >= 0.67 && attemptCount >= 1) return 'held_once';
+    if (lastAccuracy < 0.67) return 'did_not_hold';
+  }
+
+  return 'unknown';
+}
+
+function buildQueueRevisitReason(entry, label, fallbackReason) {
+  const durabilitySignal = getRevisitDurabilitySignal(entry);
+  if (durabilitySignal === 'did_not_hold') {
+    return `The last ${label.toLowerCase()} repair did not hold yet, so carry this retry forward before adding new volume.`;
+  }
+  if (durabilitySignal === 'held_once') {
+    return `${label} held on the last retry, so this revisit carries that fix forward and checks whether it still sticks.`;
+  }
+  if (durabilitySignal === 'in_repair') {
+    return `${label} is in an active retry loop, so revisit carryover stays ahead of new difficulty.`;
+  }
+  return fallbackReason;
+}
+
+function pickReviewLead(reviewQueue = []) {
+  return [...reviewQueue]
+    .filter((entry) => !entry?.completedAt)
+    .sort((left, right) => new Date(left?.dueAt ?? left?.createdAt ?? 0) - new Date(right?.dueAt ?? right?.createdAt ?? 0))[0] ?? null;
+}
+
 function buildRevisits(anchorNode, supportNode, reviewQueue = [], today = new Date()) {
   const rows = [];
   for (const entry of reviewQueue.slice(0, 4)) {
@@ -167,11 +242,16 @@ function buildRevisits(anchorNode, supportNode, reviewQueue = [], today = new Da
       skillId: entry.skill ?? null,
       label: reviewSkill?.label ?? (entry.skill ? humanizeSkillId(entry.skill) : 'Scheduled review'),
       dueInDays: clamp(Math.ceil((startOfDay(dueDate) - startOfDay(today)) / 86400000), 0, CURRICULUM_HORIZON_DAYS),
-      reason: entry.status === 'revisit_due'
-        ? (reviewBlueprint?.revisitPrompt ?? 'Spaced revisit is due now.')
-        : (reviewBlueprint?.retryCue ?? 'Recent trap still needs one more correction loop.'),
+      reason: buildQueueRevisitReason(
+        entry,
+        reviewSkill?.label ?? (entry.skill ? humanizeSkillId(entry.skill) : 'Scheduled review'),
+        entry.status === 'revisit_due'
+          ? (reviewBlueprint?.revisitPrompt ?? 'Spaced revisit is due now.')
+          : (reviewBlueprint?.retryCue ?? 'Recent trap still needs one more correction loop.'),
+      ),
       source: 'review_queue',
       lessonPackTier: reviewBlueprint?.packDepth ?? reviewSkill?.lesson_pack_tier ?? null,
+      durabilitySignal: getRevisitDurabilitySignal(entry),
     });
   }
   for (const node of [anchorNode, supportNode].filter(Boolean)) {
@@ -184,6 +264,7 @@ function buildRevisits(anchorNode, supportNode, reviewQueue = [], today = new Da
         reason: nodeBlueprint?.revisitPrompt ?? `${node.label} should come back on a ${day}-day spacing interval.`,
         source: 'curriculum_cadence',
         lessonPackTier: node.lessonPackTier ?? nodeBlueprint?.packDepth ?? null,
+        durabilitySignal: 'scheduled',
       });
     }
   }
@@ -192,7 +273,7 @@ function buildRevisits(anchorNode, supportNode, reviewQueue = [], today = new Da
     .slice(0, 6);
 }
 
-function buildRecoveryPath(anchorNode, supportNode) {
+function buildRecoveryPath(anchorNode, supportNode, reviewLead = null) {
   if (!anchorNode) {
     return {
       trigger: 'No anchor skill is set yet.',
@@ -201,11 +282,34 @@ function buildRecoveryPath(anchorNode, supportNode) {
     };
   }
 
+  const supportIsPrereq = Boolean(supportNode?.skillId && anchorNode.prereqIds?.includes(supportNode.skillId));
+  const supportAdjustment = supportNode
+    ? (supportIsPrereq
+        ? `Swap one timed block for controlled practice in ${supportNode.label} so the prerequisite gap stops blocking ${anchorNode.label}, then re-run a retry loop on ${anchorNode.label}.`
+        : `Swap one timed block for controlled practice in ${supportNode.label} as a support lane, then use that cleaner entry to re-run a retry loop on ${anchorNode.label}.`)
+    : `Swap one timed block for controlled practice on ${anchorNode.label} and re-run a retry loop before new volume.`;
+  const reviewSignal = getRevisitDurabilitySignal(reviewLead);
+  const reviewLabel = reviewLead?.skill ? humanizeSkillId(reviewLead.skill) : null;
+
+  if (reviewSignal === 'did_not_hold' && reviewLabel) {
+    return {
+      trigger: `If ${reviewLabel.toLowerCase()} still misses on revisit evidence, treat it as a durability break and slow the path down.`,
+      adjustment: `Carry one short retry on ${reviewLabel} before new timed volume so the fix can stick, then ${supportAdjustment.charAt(0).toLowerCase()}${supportAdjustment.slice(1)}`,
+      nextCheckInDays: 2,
+    };
+  }
+
+  if (reviewSignal === 'held_once' && reviewLabel) {
+    return {
+      trigger: `${reviewLabel} held on the last retry, so verify it still holds at spacing before accelerating volume.`,
+      adjustment: `Carry one spaced revisit check on ${reviewLabel}, then ${supportAdjustment.charAt(0).toLowerCase()}${supportAdjustment.slice(1)}`,
+      nextCheckInDays: 3,
+    };
+  }
+
   return {
     trigger: `If ${anchorNode.label.toLowerCase()} stays below the mastery gate this week or confidence remains miscalibrated, slow the path down.`,
-    adjustment: supportNode
-      ? `Swap one timed block for controlled practice in ${supportNode.label} and re-run a retry loop on ${anchorNode.label}.`
-      : `Swap one timed block for controlled practice on ${anchorNode.label} and re-run a retry loop before new volume.`,
+    adjustment: supportAdjustment,
     nextCheckInDays: 3,
   };
 }
@@ -223,6 +327,7 @@ function focusSessionKind(stage) {
 }
 
 function buildDailyFocuses({ today, anchorNode, supportNode, maintenanceNode, horizonDays }) {
+  const supportIsPrereq = Boolean(supportNode?.skillId && anchorNode?.prereqIds?.includes(supportNode.skillId));
   const focusPattern = [
     ['anchor', anchorNode],
     ['anchor', anchorNode],
@@ -244,7 +349,11 @@ function buildDailyFocuses({ today, anchorNode, supportNode, maintenanceNode, ho
       skillId: node.skillId,
       label: node.label,
       stage: node.stage,
-      objective: node.objectives[0] ?? `Advance ${node.label}.`,
+      objective: focusType === 'support' && anchorNode && supportNode && node.skillId === supportNode.skillId
+        ? (supportIsPrereq
+            ? `${supportNode.label} is the soft prerequisite support lane for ${anchorNode.label}, so use it to unblock the next stronger rep.`
+            : `${supportNode.label} is the support lane for ${anchorNode.label}, so use it as the quickest workaround entry before returning to the anchor.`)
+        : (node.objectives[0] ?? `Advance ${node.label}.`),
       sessionKind: focusSessionKind(node.stage),
       lessonPackTier: node.lessonPackTier ?? 'middle',
     });
@@ -263,6 +372,7 @@ export function generateCurriculumPath({ profile = {}, skillStates = [], reviewQ
   const maintenanceNode = pickMaintenance(anchorNode, supportNode, nodes);
   const nextUnlock = pickNextUnlock(anchorNode, nodeMap);
   const today = startOfDay(generatedAt);
+  const reviewLead = pickReviewLead(reviewQueue);
   const revisits = buildRevisits(anchorNode, supportNode, reviewQueue, today);
 
   return {
@@ -273,7 +383,7 @@ export function generateCurriculumPath({ profile = {}, skillStates = [], reviewQ
     supportSkill: supportNode,
     maintenanceSkill: maintenanceNode,
     nextUnlock,
-    recoveryPath: buildRecoveryPath(anchorNode, supportNode),
+    recoveryPath: buildRecoveryPath(anchorNode, supportNode, reviewLead),
     revisitCadence: revisits,
     weeklyAllocation: {
       anchorShare: 0.6,

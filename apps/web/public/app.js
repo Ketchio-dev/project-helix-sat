@@ -198,7 +198,7 @@ function buildActionMeta(action = null, { fallbackMinutes = null } = {}) {
   if (action.realismProfile) meta.push(formatRealismProfile(action.realismProfile));
   if (action.itemCount) meta.push(`${action.itemCount} questions`);
   if (action.section === 'math' && action.studentResponseTarget) {
-    meta.push(`${action.studentResponseTarget} grid-ins`);
+    meta.push(`${action.studentResponseTarget} student responses`);
   }
   return meta;
 }
@@ -209,9 +209,12 @@ function syncModuleProfileControlLabels(sectionOverride = null) {
 
   const section = sectionOverride ?? $('#moduleSection')?.value ?? 'reading_writing';
   const examCount = section === 'math' ? 22 : 27;
+  const standardCount = 14;
+  const extendedCount = 20;
+  const sectionShortLabel = section === 'math' ? 'Math' : 'RW';
   const labelMap = {
-    standard: 'Standard Module (12Q)',
-    extended: 'Extended Module (18Q)',
+    standard: `Standard ${sectionShortLabel} Module (${standardCount}Q)`,
+    extended: `Extended ${sectionShortLabel} Module (${extendedCount}Q)`,
     exam: `Exam Profile (${examCount}Q)`,
   };
 
@@ -936,21 +939,65 @@ async function startRetryLoop(itemId = null) {
   }
 }
 
+function resetDashboardForSessionStart({ clearDiagnosticReveal = true } = {}) {
+  state.dashboardExpanded = false;
+  state.showDiagnosticPreflight = false;
+  state.dismissDiagnosticPreflight = false;
+  clearSessionNotice();
+  if (clearDiagnosticReveal) {
+    renderDiagnosticReveal(null);
+  }
+  renderNextBestAction(null);
+}
+
+async function activateStartedSession(result, {
+  mode = null,
+  beforeSettle = null,
+  afterSettle = null,
+} = {}) {
+  state.currentSessionId = result.session.id;
+  state.currentSessionType = result.session.type;
+  state.currentSessionProgress = result.sessionProgress ?? null;
+  if (mode && $('#modeSelect')) {
+    $('#modeSelect').value = mode;
+  }
+  if (typeof beforeSettle === 'function') {
+    beforeSettle(result);
+  }
+  state.activeSessionEnvelope = await settleStartedSession(result);
+  if (typeof afterSettle === 'function') {
+    afterSettle(result, state.activeSessionEnvelope);
+  }
+  renderItem(state.activeSessionEnvelope?.currentItem ?? null);
+  renderSessionProgress(result.sessionProgress);
+}
+
+function applyAttemptResultSideEffects(result) {
+  if (result.projection) renderProjection(result.projection);
+  if (result.plan) renderPlan(result.plan);
+  if (result.errorDna) renderErrorDna(result.errorDna);
+  if (result.quickWinSummary) renderQuickWinSummary(result.quickWinSummary);
+  if (result.diagnosticReveal) {
+    renderDiagnosticReveal(result.diagnosticReveal);
+    renderNextBestAction(result.diagnosticReveal.firstRecommendedAction ?? null);
+  }
+  if (result.review) renderReview(result.review);
+  if (result.summary?.kind === 'timed_set' && result.summary.payload) {
+    renderTimedSetSummary(result.summary.payload);
+  }
+  if (result.summary?.kind === 'module_simulation' && result.summary.payload) {
+    renderModuleSummary(result.summary.payload);
+  }
+}
+
 async function startQuickWinSession() {
   try {
+    resetDashboardForSessionStart();
     const result = await json('/api/quick-win/start', {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    state.currentSessionId = result.session.id;
-    state.currentSessionType = result.session.type;
-    state.currentSessionProgress = result.sessionProgress ?? null;
-    state.activeSessionEnvelope = await settleStartedSession(result);
-    $('#modeSelect').value = 'learn';
-    clearSessionNotice();
-    renderNextBestAction(null);
-    renderItem(state.activeSessionEnvelope.currentItem);
-    renderSessionProgress(result.sessionProgress);
+    await activateStartedSession(result, { mode: 'learn' });
     $('#itemArea')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
     $('#attemptResult').textContent = error.message;
@@ -1122,6 +1169,10 @@ function renderDiagnosticReveal(reveal) {
 
   if (reveal.whyThisPlan) {
     container.append(node('p', { className: 'lead-line', text: reveal.whyThisPlan }));
+  }
+
+  if (reveal.lessonArcLine) {
+    container.append(node('p', { className: 'muted', text: reveal.lessonArcLine }));
   }
 
   if (Array.isArray(reveal.evidenceBullets) && reveal.evidenceBullets.length) {
@@ -1452,6 +1503,7 @@ function renderLatestSessionOutcome(outcome) {
   if (normalized.primaryAction && copy) {
     const wrap = node('div', { className: 'mini-stack' });
     wrap.append(node('span', { className: 'section-tag', text: 'Do this next' }));
+    wrap.append(node('p', { className: 'muted', text: `Helix is rolling this result directly into ${copy.title}.` }));
     wrap.append(node('p', { className: 'lead-line', text: copy.reason }));
     const button = node('button', { text: copy.ctaLabel });
     button.addEventListener('click', () => performNextBestAction(normalized.primaryAction));
@@ -2467,23 +2519,13 @@ $('#toggleDashboardDetails')?.addEventListener('click', () => {
 
 async function startDiagnosticSession() {
   try {
-    state.dashboardExpanded = false;
-    state.showDiagnosticPreflight = false;
-    state.dismissDiagnosticPreflight = false;
+    resetDashboardForSessionStart();
     const result = await json('/api/diagnostic/start', {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    state.currentSessionId = result.session.id;
-    state.currentSessionType = result.session.type;
-    state.currentSessionProgress = result.sessionProgress ?? null;
-    clearSessionNotice();
-    renderDiagnosticReveal(null);
-    renderNextBestAction(null);
     renderDiagnosticPreflight();
-    state.activeSessionEnvelope = await settleStartedSession(result);
-    renderItem(state.activeSessionEnvelope.currentItem);
-    renderSessionProgress(result.sessionProgress);
+    await activateStartedSession(result);
   } catch (error) {
     $('#diagnosticStatus').textContent = error.message;
   }
@@ -2491,36 +2533,29 @@ async function startDiagnosticSession() {
 
 async function startTimedSetSession() {
   try {
-    state.dashboardExpanded = false;
-    state.showDiagnosticPreflight = false;
-    state.dismissDiagnosticPreflight = false;
+    resetDashboardForSessionStart();
     const result = await json('/api/timed-set/start', {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    state.currentSessionId = result.session.id;
-    state.currentSessionType = result.session.type;
-    state.currentSessionProgress = result.sessionProgress ?? null;
-    clearSessionNotice();
-    renderDiagnosticReveal(null);
-    renderNextBestAction(null);
-    state.activeSessionEnvelope = await settleStartedSession(result);
-    renderTimedSetSummary({
-      sessionType: result.session.type,
-      startedAt: result.session.started_at ?? result.session.startedAt,
-      examMode: result.pacing?.exam_mode ?? result.timing?.examMode ?? true,
-      answered: result.sessionProgress?.answered ?? 0,
-      total: result.sessionProgress?.total ?? result.items?.length ?? 0,
-      accuracy: null,
-      correct: 0,
-      timeLimitSec: result.pacing?.time_limit_sec ?? result.timing?.timeLimitSec ?? result.session.time_limit_sec,
-      recommendedPaceSec: result.pacing?.recommended_pace_sec ?? result.timing?.recommendedPaceSec ?? result.session.recommended_pace_sec,
-      remainingTimeSec: result.pacing?.time_limit_sec ?? result.timing?.timeLimitSec ?? result.session.time_limit_sec,
-      paceStatus: 'not_started',
-      nextAction: 'Work through the set in exam mode, then finish to review your pacing.',
+    await activateStartedSession(result, {
+      afterSettle: (startedResult) => {
+        renderTimedSetSummary({
+          sessionType: startedResult.session.type,
+          startedAt: startedResult.session.started_at ?? startedResult.session.startedAt,
+          examMode: startedResult.pacing?.exam_mode ?? startedResult.timing?.examMode ?? true,
+          answered: startedResult.sessionProgress?.answered ?? 0,
+          total: startedResult.sessionProgress?.total ?? startedResult.items?.length ?? 0,
+          accuracy: null,
+          correct: 0,
+          timeLimitSec: startedResult.pacing?.time_limit_sec ?? startedResult.timing?.timeLimitSec ?? startedResult.session.time_limit_sec,
+          recommendedPaceSec: startedResult.pacing?.recommended_pace_sec ?? startedResult.timing?.recommendedPaceSec ?? startedResult.session.recommended_pace_sec,
+          remainingTimeSec: startedResult.pacing?.time_limit_sec ?? startedResult.timing?.timeLimitSec ?? startedResult.session.time_limit_sec,
+          paceStatus: 'not_started',
+          nextAction: 'Work through the set in exam mode, then finish to review your pacing.',
+        });
+      },
     });
-    renderItem(state.activeSessionEnvelope.currentItem);
-    renderSessionProgress(result.sessionProgress);
   } catch (error) {
     handleSessionConflict(error, 'Finish or resume the current exam session before starting another timed set.');
   }
@@ -2528,9 +2563,7 @@ async function startTimedSetSession() {
 
 async function startModuleSession(sectionOverride = null, realismProfileOverride = null) {
   try {
-    state.dashboardExpanded = false;
-    state.showDiagnosticPreflight = false;
-    state.dismissDiagnosticPreflight = false;
+    resetDashboardForSessionStart();
     const section = sectionOverride ?? $('#moduleSection')?.value ?? 'reading_writing';
     const realismProfileSelection = realismProfileOverride ?? $('#moduleRealismProfile')?.value ?? 'standard';
     const realismProfile = ['standard', 'extended', 'exam'].includes(realismProfileSelection)
@@ -2540,34 +2573,29 @@ async function startModuleSession(sectionOverride = null, realismProfileOverride
       method: 'POST',
       body: JSON.stringify({ section, realismProfile }),
     });
-    state.currentSessionId = result.session.id;
-    state.currentSessionType = result.session.type;
-    state.currentSessionProgress = result.sessionProgress ?? null;
-    clearSessionNotice();
-    renderDiagnosticReveal(null);
-    renderNextBestAction(null);
-    state.activeSessionEnvelope = await settleStartedSession(result);
-    renderModuleSummary({
-      sessionType: result.session.type,
-      startedAt: result.session.started_at ?? result.session.startedAt,
-      examMode: result.moduleSummary?.examMode ?? result.moduleSummary?.exam_mode ?? result.pacing?.exam_mode ?? true,
-      answered: result.sessionProgress?.answered ?? 0,
-      total: result.sessionProgress?.total ?? result.items?.length ?? 0,
-      accuracy: null,
-      correct: 0,
-      section: result.moduleSummary?.section ?? result.moduleBlueprint?.section ?? result.session.section,
-      focusDomain: result.moduleSummary?.focusDomain ?? result.moduleSummary?.focus_domain ?? result.moduleBlueprint?.focusDomain,
-      timeLimitSec: result.moduleSummary?.timeLimitSec ?? result.moduleSummary?.time_limit_sec ?? result.pacing?.time_limit_sec ?? result.session.time_limit_sec,
-      recommendedPaceSec: result.moduleSummary?.recommendedPaceSec ?? result.moduleSummary?.recommended_pace_sec ?? result.pacing?.recommended_pace_sec ?? result.session.recommended_pace_sec,
-      remainingTimeSec: result.moduleSummary?.remainingTimeSec ?? result.moduleSummary?.remaining_time_sec ?? result.pacing?.time_limit_sec ?? result.session.time_limit_sec,
-      paceStatus: result.moduleSummary?.paceStatus ?? result.moduleSummary?.pace_status ?? 'not_started',
-      sectionBreakdown: result.moduleSummary?.sectionBreakdown ?? result.moduleSummary?.section_breakdown ?? result.moduleBlueprint?.sectionBreakdown,
-      domainBreakdown: result.moduleSummary?.domainBreakdown ?? result.moduleSummary?.domain_breakdown ?? result.moduleBlueprint?.domainBreakdown ?? result.breakdown,
-      readinessIndicator: result.moduleSummary?.readinessIndicator ?? result.moduleSummary?.readiness_indicator ?? result.moduleSummary?.readinessSignal ?? result.moduleSummary?.readiness_signal ?? result.readinessIndicator ?? 'Module started',
-      nextAction: result.moduleSummary?.nextAction ?? result.moduleSummary?.next_action ?? 'Complete the module in exam mode, then finish to review your pacing and breakdown.',
+    await activateStartedSession(result, {
+      afterSettle: (startedResult) => {
+        renderModuleSummary({
+          sessionType: startedResult.session.type,
+          startedAt: startedResult.session.started_at ?? startedResult.session.startedAt,
+          examMode: startedResult.moduleSummary?.examMode ?? startedResult.moduleSummary?.exam_mode ?? startedResult.pacing?.exam_mode ?? true,
+          answered: startedResult.sessionProgress?.answered ?? 0,
+          total: startedResult.sessionProgress?.total ?? startedResult.items?.length ?? 0,
+          accuracy: null,
+          correct: 0,
+          section: startedResult.moduleSummary?.section ?? startedResult.moduleBlueprint?.section ?? startedResult.session.section,
+          focusDomain: startedResult.moduleSummary?.focusDomain ?? startedResult.moduleSummary?.focus_domain ?? startedResult.moduleBlueprint?.focusDomain,
+          timeLimitSec: startedResult.moduleSummary?.timeLimitSec ?? startedResult.moduleSummary?.time_limit_sec ?? startedResult.pacing?.time_limit_sec ?? startedResult.session.time_limit_sec,
+          recommendedPaceSec: startedResult.moduleSummary?.recommendedPaceSec ?? startedResult.moduleSummary?.recommended_pace_sec ?? startedResult.pacing?.recommended_pace_sec ?? startedResult.session.recommended_pace_sec,
+          remainingTimeSec: startedResult.moduleSummary?.remainingTimeSec ?? startedResult.moduleSummary?.remaining_time_sec ?? startedResult.pacing?.time_limit_sec ?? startedResult.session.time_limit_sec,
+          paceStatus: startedResult.moduleSummary?.paceStatus ?? startedResult.moduleSummary?.pace_status ?? 'not_started',
+          sectionBreakdown: startedResult.moduleSummary?.sectionBreakdown ?? startedResult.moduleSummary?.section_breakdown ?? startedResult.moduleBlueprint?.sectionBreakdown,
+          domainBreakdown: startedResult.moduleSummary?.domainBreakdown ?? startedResult.moduleSummary?.domain_breakdown ?? startedResult.moduleBlueprint?.domainBreakdown ?? startedResult.breakdown,
+          readinessIndicator: startedResult.moduleSummary?.readinessIndicator ?? startedResult.moduleSummary?.readiness_indicator ?? startedResult.moduleSummary?.readinessSignal ?? startedResult.moduleSummary?.readiness_signal ?? startedResult.readinessIndicator ?? 'Module started',
+          nextAction: startedResult.moduleSummary?.nextAction ?? startedResult.moduleSummary?.next_action ?? 'Complete the module in exam mode, then finish to review your pacing and breakdown.',
+        });
+      },
     });
-    renderItem(state.activeSessionEnvelope.currentItem);
-    renderSessionProgress(result.sessionProgress);
   } catch (error) {
     handleSessionConflict(error, 'Finish or resume the current exam session before starting another module simulation.');
   }
@@ -2624,21 +2652,7 @@ $('#attemptForm').addEventListener('submit', async (event) => {
     }
     state.currentSessionType = result.sessionType ?? state.currentSessionType;
     state.currentSessionProgress = result.sessionProgress ?? state.currentSessionProgress;
-    if (result.projection) renderProjection(result.projection);
-    if (result.plan) renderPlan(result.plan);
-    if (result.errorDna) renderErrorDna(result.errorDna);
-    if (result.quickWinSummary) renderQuickWinSummary(result.quickWinSummary);
-    if (result.diagnosticReveal) {
-      renderDiagnosticReveal(result.diagnosticReveal);
-      renderNextBestAction(result.diagnosticReveal.firstRecommendedAction ?? null);
-    }
-    if (result.review) renderReview(result.review);
-    if (result.summary?.kind === 'timed_set' && result.summary.payload) {
-      renderTimedSetSummary(result.summary.payload);
-    }
-    if (result.summary?.kind === 'module_simulation' && result.summary.payload) {
-      renderModuleSummary(result.summary.payload);
-    }
+    applyAttemptResultSideEffects(result);
     renderSessionProgress(result.sessionProgress);
 
     if (result.correctAnswer === undefined) {

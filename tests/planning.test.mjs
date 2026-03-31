@@ -56,6 +56,9 @@ test('daily planner v1 centers the day on the curriculum anchor and due revisits
       itemId: 'math_linear_01',
       skill: 'math_linear_equations',
       dueAt: '2026-03-26',
+      status: 'revisit_due',
+      lastAccuracy: 0.75,
+      attemptCount: 1,
     }],
     projection: {
       readiness_indicator: 'approaching_goal',
@@ -69,7 +72,59 @@ test('daily planner v1 centers the day on the curriculum anchor and due revisits
   });
 
   assert.match(plan.rationale_summary, /current anchor skill/i);
+  assert.match(plan.rationale_summary, /held on the last retry|verifies spaced carryover/i);
   assert.ok(plan.blocks.some((block) => block.block_type === 'review'));
   assert.ok(plan.blocks.some((block) => block.block_type === 'timed_set' || block.block_type === 'mini_module'));
   assert.equal(plan.blocks[0].target_skills[0], 'math_linear_equations');
+});
+
+test('daily planner slows into durability repair when latest revisit evidence did not hold', () => {
+  const plan = generateDailyPlan({
+    profile: {
+      daily_minutes: 40,
+      target_test_date: '2026-05-20',
+    },
+    skillStates: [{
+      skill_id: 'math_linear_equations',
+      section: 'math',
+      mastery: 0.45,
+      timed_mastery: 0.39,
+      retention_risk: 0.5,
+      careless_risk: 0.3,
+    }],
+    errorDna: {
+      unsupported_inference: 1,
+    },
+    curriculumPath: {
+      anchorSkill: {
+        skillId: 'math_linear_equations',
+        label: 'Linear Equations',
+        stage: 'foundation_repair',
+      },
+      supportSkill: {
+        skillId: 'math_linear_functions',
+        label: 'Linear Functions',
+      },
+    },
+    reviewQueue: [{
+      itemId: 'math_linear_01',
+      skill: 'math_linear_equations',
+      dueAt: '2026-03-26',
+      status: 'retry_recommended',
+      lastAccuracy: 0.33,
+      attemptCount: 2,
+    }],
+    sessionHistory: [{
+      type: 'review',
+      status: 'complete',
+    }],
+    date: '2026-03-26',
+  });
+
+  const reviewBlock = plan.blocks.find((block) => block.block_type === 'review');
+  assert.ok(reviewBlock);
+  assert.match(reviewBlock.objective, /did not hold|carry the correction forward/i);
+  assert.match(reviewBlock.expected_benefit, /re-lock the correction|before timed pressure/i);
+  assert.match(plan.rationale_summary, /did not hold|durability repair is first|slowing today on purpose/i);
+  assert.match(plan.fallback_plan.trigger, /retry carryover/i);
 });

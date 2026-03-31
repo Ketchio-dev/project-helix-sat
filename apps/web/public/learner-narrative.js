@@ -64,24 +64,25 @@ export function studentActionCopy(action) {
       };
     case 'start_module': {
       const sectionLabel = formatSectionLabel(action.section);
+      const countLabel = action.itemCount ? `${action.itemCount}Q` : null;
       if (action.realismProfile === 'exam') {
         return {
-          title,
-          reason,
-          ctaLabel: action.ctaLabel ?? `Start ${sectionLabel ?? 'your'} exam profile`,
+          title: title ?? `${sectionLabel ?? 'Your'} exam-profile section`,
+          reason: action.reason ?? action.profileStory ?? 'Run the full exam-profile section so Helix can read pacing, stamina, and misses under real pressure.',
+          ctaLabel: action.ctaLabel ?? `Start ${sectionLabel ?? 'your'} exam profile${countLabel ? ` (${countLabel})` : ''}`,
         };
       }
       if (action.realismProfile === 'extended') {
         return {
-          title,
-          reason,
-          ctaLabel: action.ctaLabel ?? `Start ${sectionLabel ?? 'your'} extended block`,
+          title: title ?? `${sectionLabel ?? 'Your'} extended section`,
+          reason: action.reason ?? action.profileStory ?? 'Run the longer practice section so Helix can test the fix before full exam pacing.',
+          ctaLabel: action.ctaLabel ?? `Start ${sectionLabel ?? 'your'} extended block${countLabel ? ` (${countLabel})` : ''}`,
         };
       }
       return {
-        title,
-        reason,
-        ctaLabel: action.ctaLabel ?? 'Start practice block',
+        title: title ?? `${sectionLabel ?? 'Your'} standard section`,
+        reason: action.reason ?? action.profileStory ?? 'Run the main score-moving section before Helix widens the block again.',
+        ctaLabel: action.ctaLabel ?? `Start standard block${countLabel ? ` (${countLabel})` : ''}`,
       };
     }
     case 'review_mistakes':

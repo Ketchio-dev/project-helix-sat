@@ -10,7 +10,7 @@ const DEMO_ITEM_MAP = new Map(
 );
 
 function buildLearnAttempt(userId, item, sessionId, { correct = true } = {}) {
-  if (item.item_format === 'grid_in') {
+  if (['grid_in', 'student_produced_response', 'student-produced-response'].includes(item.item_format)) {
     const accepted = item.responseValidation?.acceptedResponses?.[0] ?? item.answerKey;
     return {
       userId,
@@ -504,10 +504,10 @@ describe('CTA hierarchy: dashboard integration coherence', () => {
     assert.equal(deepMode.action.kind, 'start_module');
     assert.equal(deepMode.action.realismProfile, 'extended');
     assert.match(deepMode.label, /Extended/i);
-    assert.match(deepMode.summary, /18-question|extended practice/i);
+    assert.match(deepMode.summary, /20-question|extended practice/i);
     assert.equal(typeof deepMode.action.itemCount, 'number');
     assert.equal(typeof deepMode.action.timeLimitSec, 'number');
-    assert.equal(deepMode.action.itemCount, 18);
+    assert.equal(deepMode.action.itemCount, 20);
     assert.ok(deepMode.action.estimatedMinutes >= 20);
     if (deepMode.action.section === 'math') {
       assert.equal(deepMode.action.studentResponseTarget, 5);

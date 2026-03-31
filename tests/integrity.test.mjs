@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { createStore } from '../services/api/src/store.mjs';
 import { projectScoreBand } from '../packages/scoring/src/score-predictor.mjs';
 import { generateDailyPlan } from '../packages/assessment/src/daily-plan-generator.mjs';
-import { buildCurriculumLessonBundle, getLessonBlueprint } from '../packages/curriculum/src/lesson-assets.mjs';
+import { buildCurriculumLessonBundle, FULL_PACK_REQUIRED_FIELDS, FULL_PACK_SKILL_IDS, getLessonBlueprint } from '../packages/curriculum/src/lesson-assets.mjs';
 import { generateCurriculumPath, generateProgramPath } from '../packages/curriculum/src/path-generator.mjs';
 import { inferSkillStage, getCurriculumSkill } from '../packages/curriculum/src/mastery-gates.mjs';
 import { createEvent } from '../packages/telemetry/src/events.mjs';
@@ -18,8 +18,12 @@ const DEMO_ITEM_MAP = new Map(
   Object.values(createDemoData().items).map((item) => [item.itemId, item]),
 );
 
+function isStudentProducedResponse(item) {
+  return ['grid_in', 'student_produced_response', 'student-produced-response'].includes(item?.item_format);
+}
+
 function buildAttemptPayload(item, sessionId, mode = 'exam') {
-  if (item.item_format === 'grid_in') {
+  if (isStudentProducedResponse(item)) {
     return {
       userId: DEMO_USER_ID,
       itemId: item.itemId,
@@ -73,7 +77,7 @@ async function withMockedNow(isoString, run) {
 }
 
 function buildLearnAttemptPayload(userId, item, sessionId, { correct = true } = {}) {
-  if (item.item_format === 'grid_in') {
+  if (isStudentProducedResponse(item)) {
     const accepted = item.responseValidation?.acceptedResponses?.[0] ?? item.answerKey;
     return {
       userId,
@@ -638,22 +642,11 @@ describe('integrity: curriculum lesson bundle', () => {
   });
 
   it('marks every curriculum skill with a middle/full lesson-pack tier and full-pack depth for the fixed cohort', async () => {
+    assert.equal(FULL_PACK_SKILL_IDS.length, 11);
     const curriculum = JSON.parse(
       await readFile(new URL('../docs/curriculum/curriculum.v1.json', import.meta.url), 'utf8'),
     );
-    const expectedFullPackSkills = new Set([
-      'rw_transitions',
-      'rw_inferences',
-      'rw_command_of_evidence',
-      'rw_central_ideas_and_details',
-      'rw_sentence_boundaries',
-      'math_area_and_perimeter',
-      'math_linear_equations',
-      'math_linear_functions',
-      'math_systems_of_linear_equations',
-      'math_trigonometry',
-      'math_quadratic_functions',
-    ]);
+    const expectedFullPackSkills = new Set(FULL_PACK_SKILL_IDS);
 
     for (const skill of curriculum.skills) {
       assert.ok(['middle', 'full'].includes(skill.lesson_pack_tier), `expected lesson_pack_tier for ${skill.skill_id}`);
@@ -666,10 +659,9 @@ describe('integrity: curriculum lesson bundle', () => {
 
       if (expectedFullPackSkills.has(skill.skill_id)) {
         assert.equal(skill.lesson_pack_tier, 'full');
-        assert.ok(blueprint.contrastRule, `expected contrast rule for ${skill.skill_id}`);
-        assert.ok(blueprint.nearTransferCheck, `expected near-transfer check for ${skill.skill_id}`);
-        assert.ok(blueprint.exitTicketPrompt, `expected exit ticket for ${skill.skill_id}`);
-        assert.ok(blueprint.coachLine, `expected coach line for ${skill.skill_id}`);
+        for (const field of FULL_PACK_REQUIRED_FIELDS) {
+          assert.ok(blueprint[field], `expected ${field} for ${skill.skill_id}`);
+        }
       }
     }
   });
@@ -705,7 +697,9 @@ describe('integrity: curriculum path generator', () => {
         {
           skill: 'math_linear_equations',
           dueAt: new Date().toISOString(),
-          status: 'revisit_due',
+          status: 'retry_recommended',
+          lastAccuracy: 0.5,
+          attemptCount: 2,
         },
       ],
     });
@@ -717,10 +711,13 @@ describe('integrity: curriculum path generator', () => {
     assert.ok(['middle', 'full'].includes(path.supportSkill.lessonPackTier));
     assert.ok(path.revisitCadence.length >= 1);
     assert.ok(path.revisitCadence.every((row) => Object.hasOwn(row, 'lessonPackTier')));
-    assert.match(path.revisitCadence[0].reason, /revisit|cite|solve|reuse|prove/i);
+    assert.ok(path.revisitCadence.every((row) => Object.hasOwn(row, 'durabilitySignal')));
+    assert.match(path.revisitCadence[0].reason, /did not hold|carry this retry forward|correction loop/i);
+    assert.equal(path.revisitCadence[0].durabilitySignal, 'did_not_hold');
     assert.equal(path.dailyFocuses.length, 14);
     assert.ok(path.dailyFocuses.every((row) => ['middle', 'full'].includes(row.lessonPackTier)));
-    assert.ok(path.recoveryPath.adjustment.includes('retry loop'));
+    assert.match(path.recoveryPath.trigger, /durability break|did not hold/i);
+    assert.match(path.recoveryPath.adjustment, /Carry one short retry|retry loop/i);
   });
 });
 

@@ -108,8 +108,9 @@ export function buildFormatRealismAudit(items) {
 export const CONTENT_RELEASE_BAR_THRESHOLDS = {
   coveredSkills: 19,
   minimumMathGridIn: 14,
-  minimumDefaultModuleItems: 12,
+  minimumDefaultModuleItems: 14,
   minimumRetakeResistanceMultiplier: 2,
+  minimumShippedFormats: 2,
 };
 
 export function buildContentReleaseBars({ content, ontologyCoverage, formatRealism, sessions, appFlow }) {
@@ -141,10 +142,17 @@ export function buildContentReleaseBars({ content, ontologyCoverage, formatReali
     },
     {
       key: 'minimum_math_grid_in',
-      label: 'Minimum math grid-in slice',
+      label: 'Minimum math student-response slice',
       passed: formatRealism.mathGridInCount >= CONTENT_RELEASE_BAR_THRESHOLDS.minimumMathGridIn,
-      actual: `${formatRealism.mathGridInCount} grid-in items`,
-      threshold: `${CONTENT_RELEASE_BAR_THRESHOLDS.minimumMathGridIn}+ grid-in items`,
+      actual: `${formatRealism.mathGridInCount} student-produced-response items`,
+      threshold: `${CONTENT_RELEASE_BAR_THRESHOLDS.minimumMathGridIn}+ student-produced-response items`,
+    },
+    {
+      key: 'multi_format_runtime_floor',
+      label: 'Multi-format runtime floor',
+      passed: Object.keys(formatRealism.itemFormatCounts).length >= CONTENT_RELEASE_BAR_THRESHOLDS.minimumShippedFormats && formatRealism.hasMathGridIn,
+      actual: `${Object.keys(formatRealism.itemFormatCounts).length} shipped formats with math SPR=${formatRealism.hasMathGridIn}`,
+      threshold: `${CONTENT_RELEASE_BAR_THRESHOLDS.minimumShippedFormats}+ shipped formats with math student-produced response enabled`,
     },
     {
       key: 'default_module_floor',

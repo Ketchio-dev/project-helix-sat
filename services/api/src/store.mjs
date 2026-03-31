@@ -3,7 +3,7 @@ import { createDemoData, DEMO_USER_ID } from './demo-data.mjs';
 import { hashPassword, verifyPassword, createToken, needsPasswordRehash } from './auth.mjs';
 import { HttpError } from './http-utils.mjs';
 import { generateDailyPlan } from '../../../packages/assessment/src/daily-plan-generator.mjs';
-import { getMathStudentResponseTargetCount, selectSessionItems } from '../../../packages/assessment/src/item-selector.mjs';
+import { getMathStudentResponseTargetCount, getModuleRealismShape, selectSessionItems } from '../../../packages/assessment/src/item-selector.mjs';
 import { buildCurriculumLessonBundle } from '../../../packages/curriculum/src/lesson-assets.mjs';
 import { generateCurriculumPath, generateProgramPath } from '../../../packages/curriculum/src/path-generator.mjs';
 import { projectScoreBand } from '../../../packages/scoring/src/score-predictor.mjs';
@@ -19,20 +19,6 @@ const STUDENT_RESPONSE_FORMATS = new Set(['grid_in', 'student_produced_response'
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 const DIFFICULTY_RANK = { easy: 0, medium: 1, hard: 2 };
-const MODULE_SESSION_SHAPE = {
-  reading_writing: {
-    itemCount: 12,
-    recommendedPaceSec: 95,
-    extended: { itemCount: 18, recommendedPaceSec: 90 },
-    exam: { itemCount: 27, recommendedPaceSec: 71, timeLimitSec: 1920 },
-  },
-  math: {
-    itemCount: 12,
-    recommendedPaceSec: 105,
-    extended: { itemCount: 18, recommendedPaceSec: 100 },
-    exam: { itemCount: 22, recommendedPaceSec: 95, timeLimitSec: 2100 },
-  },
-};
 
 export function isStudentProducedResponseItem(item) {
   return STUDENT_RESPONSE_FORMATS.has(item?.item_format);
@@ -167,6 +153,30 @@ function moduleRealismLabel(profile = 'standard') {
   return 'standard practice';
 }
 
+function moduleProfileHeadline(section = 'math', realismProfile = 'standard') {
+  const sectionText = sectionLabel(section);
+  if (realismProfile === 'exam') return `${sectionText} exam-profile section`;
+  if (realismProfile === 'extended') return `${sectionText} extended section`;
+  return `${sectionText} standard section`;
+}
+
+function moduleProfileStory({ section = 'math', realismProfile = 'standard', itemCount = null, studentResponseTarget = null } = {}) {
+  const countText = itemCount ? `${itemCount}-question` : 'section-shaped';
+  if (realismProfile === 'exam') {
+    return section === 'math'
+      ? `${countText} exam-profile rep with the full timed feel and ${studentResponseTarget ?? 0} student-response checks inside the block.`
+      : `${countText} exam-profile rep with the full timed feel and longer reading pressure across the block.`;
+  }
+  if (realismProfile === 'extended') {
+    return section === 'math'
+      ? `${countText} deeper practice block with a heavier student-response slice before full exam pacing.`
+      : `${countText} deeper practice block with longer passage stamina before full exam pacing.`;
+  }
+  return section === 'math'
+    ? `${countText} main score-moving block with repeated student-response exposure but lighter pressure than the exam profile.`
+    : `${countText} main score-moving block with lighter pacing pressure than the exam profile.`;
+}
+
 function describeModuleBlock(action = null) {
   if (!action) return 'practice block';
   const itemCountText = action.itemCount ? `${action.itemCount}-question ` : '';
@@ -281,9 +291,9 @@ function toLearnerPrimaryAction(action = null) {
     case 'start_module':
       return {
         ...action,
-        title: action.title ?? 'Run the next module',
-        reason: action.reason ?? 'Helix is ready to check whether the current fixes hold across a longer block.',
-        ctaLabel: action.ctaLabel ?? 'Start practice block',
+        title: action.title ?? (action.profileLabel ?? 'Run the next module'),
+        reason: action.reason ?? action.profileStory ?? 'Helix is ready to check whether the current fixes hold across a longer block.',
+        ctaLabel: action.ctaLabel ?? (action.realismProfile === 'exam' ? 'Start exam profile' : 'Start practice block'),
       };
     default:
       return action;
@@ -307,7 +317,11 @@ function toLearnerLessonArc(action = null) {
     case 'start_timed_set':
       return 'Push the repaired skill under time pressure, then review what held up.';
     case 'start_module':
-      return 'Take the section block in exam mode, then inspect which domains bent under time pressure.';
+      return action.realismProfile === 'exam'
+        ? 'Take the full exam-profile section first, then inspect which domains bent under real pacing pressure.'
+        : action.realismProfile === 'extended'
+          ? 'Take the longer practice section first, then inspect which domains still bend before full exam pacing.'
+          : 'Take the standard section first, then inspect which domains are ready for deeper or faster work.';
     default:
       return null;
   }
@@ -399,27 +413,20 @@ function getSessionElapsedSec(session) {
 }
 
 function getModuleSessionShape(section = 'math', options = {}) {
-  const baseShape = MODULE_SESSION_SHAPE[section] ?? MODULE_SESSION_SHAPE.math;
-  const profileShape = options?.realismProfile === 'exam' && baseShape?.exam
-    ? baseShape.exam
-    : options?.realismProfile === 'extended' && baseShape?.extended
-      ? baseShape.extended
-      : baseShape;
-  return {
-    itemCount: profileShape.itemCount,
-    recommendedPaceSec: profileShape.recommendedPaceSec,
-    timeLimitSec: profileShape.timeLimitSec ?? (profileShape.itemCount * profileShape.recommendedPaceSec),
-  };
+  return getModuleRealismShape(section, options?.realismProfile ?? 'standard');
 }
 
 function getModuleActionMetadata(section = 'math', realismProfile = 'standard') {
   const shape = getModuleSessionShape(section, { realismProfile });
+  const studentResponseTarget = getMathStudentResponseTargetCount(shape.itemCount, {
+    section,
+    realismProfile,
+  }) || null;
   return {
     ...shape,
-    studentResponseTarget: getMathStudentResponseTargetCount(shape.itemCount, {
-      section,
-      realismProfile,
-    }) || null,
+    studentResponseTarget,
+    profileLabel: moduleProfileHeadline(section, realismProfile),
+    profileStory: moduleProfileStory({ section, realismProfile, itemCount: shape.itemCount, studentResponseTarget }),
   };
 }
 
@@ -1602,15 +1609,24 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
 
       const sectionName = session.section ? sectionLabel(session.section) : null;
       const realismProfile = session.realism_profile ?? 'standard';
+      const profileStory = moduleProfileStory({
+        section: session.section ?? 'math',
+        realismProfile,
+        itemCount: progress.total,
+        studentResponseTarget: getMathStudentResponseTargetCount(progress.total, {
+          section: session.section ?? 'math',
+          realismProfile,
+        }) || null,
+      });
 
       let readinessSignal = 'needs_evidence';
       let nextAction = sectionName
-        ? `Finish the ${sectionName} module, then inspect which domains lost the most accuracy under time pressure.`
+        ? `Finish the ${moduleRealismLabel(realismProfile)} ${sectionName} block, then inspect which domains lost the most accuracy under time pressure.`
         : 'Finish the module, then inspect which section lost the most accuracy under time pressure.';
       if (expired && !progress.isComplete) {
         readinessSignal = 'expired_unfinished';
         nextAction = sectionName
-          ? `Time expired. Finish the ${sectionName} module now, then repair the weakest ${sectionName} domains before attempting another module.`
+          ? `Time expired. Finish the ${moduleRealismLabel(realismProfile)} ${sectionName} block now, then repair the weakest ${sectionName} domains before attempting another module.`
           : 'Time expired. Finish the module now, then repair the weakest section before attempting another module.';
       } else if (progress.isComplete && accuracy !== null) {
         if (accuracy >= 0.75 && paceStatus === 'on_pace') {
@@ -1659,6 +1675,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         completed: progress.isComplete || expired,
         readinessSignal,
         realismProfile,
+        profileStory,
         section: session.section ?? sectionBreakdown[0]?.section ?? sectionBreakdown[0]?.key ?? null,
         focusDomain,
         sectionBreakdown,
@@ -1930,28 +1947,30 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
 
       const moduleSection = inferredSection ?? 'math';
       const moduleShape = getModuleActionMetadata(moduleSection, moduleRealismProfile);
-      const moduleProfileLabel = moduleRealismLabel(moduleRealismProfile);
 
       return applyComebackFraming({
         kind: 'start_module',
         title: targetSkill
-          ? `Start your ${moduleProfileLabel} ${formatSkillLabel(targetSkill).toLowerCase()} block`
-          : `Start your ${inferredSection ? sectionLabel(inferredSection) : 'focus'} ${moduleProfileLabel} block`,
+          ? `Start your ${moduleShape.profileLabel.toLowerCase()} on ${formatSkillLabel(targetSkill).toLowerCase()}`
+          : `Start your ${moduleShape.profileLabel.toLowerCase()}`,
         reason: targetSkill
-          ? `${firstBlock?.objective ?? plan.rationale_summary} Helix wants the next ${moduleProfileLabel} block to stay honest about how ${formatSkillLabel(targetSkill).toLowerCase()} holds up.`
-          : `${firstBlock?.objective ?? plan.rationale_summary} Helix is keeping the next block honest by naming the exact ${moduleProfileLabel} it wants you to run.`,
+          ? `${firstBlock?.objective ?? plan.rationale_summary} ${moduleShape.profileStory} Helix wants to see whether ${formatSkillLabel(targetSkill).toLowerCase()} still holds once the block feels more SAT-shaped.`
+          : `${firstBlock?.objective ?? plan.rationale_summary} ${moduleShape.profileStory}`,
         ctaLabel: targetSkill
-          ? `Start ${moduleProfileLabel} ${formatSkillLabel(targetSkill)} block`
-          : (inferredSection ? `Start ${sectionLabel(inferredSection)} ${moduleProfileLabel}` : `Start ${moduleProfileLabel} block`),
+          ? `Start ${moduleShape.profileLabel} on ${formatSkillLabel(targetSkill)}`
+          : `Start ${moduleShape.profileLabel}`,
         estimatedMinutes: Math.max(1, Math.ceil(moduleShape.timeLimitSec / 60)),
         sessionType: 'module_simulation',
         section: moduleSection,
         focusSkill: targetSkill ?? null,
         realismProfile: moduleRealismProfile,
         itemCount: moduleShape.itemCount,
+        structureBreakpoints: moduleShape.structureBreakpoints,
         timeLimitSec: moduleShape.timeLimitSec,
         recommendedPaceSec: moduleShape.recommendedPaceSec,
         studentResponseTarget: moduleShape.studentResponseTarget,
+        profileLabel: moduleShape.profileLabel,
+        profileStory: moduleShape.profileStory,
       }, api.getComebackState(userId));
     },
 
@@ -2091,16 +2110,19 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         })
         : buildModuleAction({
           title: `Tomorrow’s first block: ${tomorrowFocus.label}`,
-          reason: tomorrowFocus.objective,
+          reason: `${tomorrowFocus.objective} Keep the next block tied to the same repair story instead of turning it into generic practice.`,
           focusSkill: tomorrowFocus.skillId,
           section: tomorrowFocus.skillId?.startsWith('math_') ? 'math' : 'reading_writing',
           estimatedMinutes: plannedMinutes,
           ctaLabel: 'Start tomorrow’s block',
+          realismProfile: tomorrowFocus.focusType === 'anchor' ? 'extended' : 'standard',
         });
 
       return {
         headline: `Tomorrow: ${tomorrowFocus.label}`,
-        reason: tomorrowFocus.objective,
+        reason: tomorrowFocus.focusType === 'support'
+          ? `${tomorrowFocus.objective} This keeps the support lane connected to the same fix story instead of opening a side quest.`
+          : tomorrowFocus.objective,
         plannedMinutes,
         action: applyComebackFraming(action, comebackState),
       };
@@ -2173,6 +2195,11 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         : firstBlock?.target_skills?.[0]
           ? `Helix is opening on ${formatSkillLabel(firstBlock.target_skills[0])} because it looks like the fastest score-moving lane from your baseline evidence.`
           : 'Helix is using your baseline to start with the lane that should move points fastest.';
+      const lessonArcLine = firstRecommendedAction?.kind === 'start_retry_loop'
+        ? 'Repair the first leak, then prove the corrected move before you widen the block again.'
+        : firstRecommendedAction?.kind === 'start_module'
+          ? `${firstRecommendedAction.profileStory ?? 'Take the next section-shaped block.'} Then use the misses to decide the next repair.`
+          : 'Take the smallest honest next block first, then let Helix widen the work only after the signal holds.';
 
       return {
         sessionId: diagnosticSession.id,
@@ -2187,6 +2214,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         topScoreLeaks,
         whyThisPlan,
         evidenceBullets,
+        lessonArcLine,
         firstRecommendedAction,
       };
     },
@@ -2281,6 +2309,9 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
               timeLimitSec: session.time_limit_sec ?? null,
               recommendedPaceSec: session.recommended_pace_sec ?? null,
               examMode: session.exam_mode,
+              ...(isModuleSession(session)
+                ? { structureBreakpoints: getModuleSessionShape(session.section ?? 'math', { realismProfile: session.realism_profile ?? 'standard' }).structureBreakpoints }
+                : {}),
               ...getExamTiming(session),
             }
           : null,
@@ -2519,6 +2550,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         itemCount: moduleItemCount,
         recommendedPaceSec,
         timeLimitSec,
+        structureBreakpoints,
       } = getModuleSessionShape(section, options);
       const realismProfile = options?.realismProfile === 'exam'
         ? 'exam'
@@ -2532,7 +2564,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         moduleItemCount,
         recentItemIds,
         state.itemExposure,
-        { section, realismProfile },
+        { section, realismProfile, structureBreakpoints },
       );
       if (moduleItems.length !== moduleItemCount || moduleItems.some((item) => !item)) {
         throw new HttpError(500, 'Module configuration is missing one or more items');
@@ -3339,9 +3371,12 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       focusSkill,
       realismProfile,
       itemCount: shape.itemCount,
+      structureBreakpoints: shape.structureBreakpoints,
       timeLimitSec: shape.timeLimitSec,
       recommendedPaceSec: shape.recommendedPaceSec,
       studentResponseTarget: shape.studentResponseTarget,
+      profileLabel: shape.profileLabel,
+      profileStory: shape.profileStory,
     };
   }
 
@@ -3435,24 +3470,33 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       };
     }
 
-    const sectionText = summary.section ? sectionLabel(summary.section) : 'module';
+    const blockLabel = moduleProfileHeadline(summary.section ?? 'math', summary.realismProfile ?? 'standard');
     const focusDomain = summary.focusDomain ? humanizeIdentifier(summary.focusDomain) : null;
     const evidenceBullets = [
-      `${summary.correct ?? 0}/${summary.total ?? 0} correct across the latest ${sectionText.toLowerCase()} block.`,
+      `${summary.correct ?? 0}/${summary.total ?? 0} correct across the latest ${blockLabel.toLowerCase()}.`,
       summary.averageResponseTimeMs ? `Average pace was ${Math.round(summary.averageResponseTimeMs / 1000)} seconds per item.` : null,
       focusDomain ? `${focusDomain} carried the strongest domain signal in this block.` : null,
+      summary.profileStory ?? null,
     ].filter(Boolean);
     return {
       sessionId: summary.sessionId,
       sessionType: summary.sessionType,
       completedAt: summary.endedAt ?? null,
       headline: summary.readinessSignal === 'ready_to_extend'
-        ? `${sectionText} module says you can extend`
+        ? `${blockLabel} says you can extend`
         : summary.readinessSignal === 'repair_before_next_module'
-          ? `${sectionText} module says repair comes before more volume`
-          : `${sectionText} module refreshed your evidence`,
-      subheadline: 'Helix is using the latest module to decide whether to extend, stabilize, or repair first.',
-      statusPill: 'Module signal updated',
+          ? `${blockLabel} says repair comes before more volume`
+          : `${blockLabel} refreshed your evidence`,
+      subheadline: summary.realismProfile === 'exam'
+        ? 'Helix is treating this as a real test-day rep and deciding whether your pacing, stamina, and misses justify another full section.'
+        : summary.realismProfile === 'extended'
+          ? 'Helix is using this longer practice block to decide whether you should extend further or repair before full exam pressure.'
+          : 'Helix is using this standard section to decide whether to extend, stabilize, or repair first.',
+      statusPill: summary.realismProfile === 'exam'
+        ? 'Exam-profile signal updated'
+        : summary.realismProfile === 'extended'
+          ? 'Extended-block signal updated'
+          : 'Module signal updated',
       metrics: [
         ['Accuracy', summary.accuracy === null ? '—' : `${Math.round((summary.accuracy ?? 0) * 100)}%`],
         ['Average time', summary.averageResponseTimeMs ? `${Math.round(summary.averageResponseTimeMs / 1000)}s/item` : '—'],

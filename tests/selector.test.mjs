@@ -1,10 +1,34 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { selectSessionItems } from '../packages/assessment/src/item-selector.mjs';
+import { getModuleRealismShape, selectSessionItems } from '../packages/assessment/src/item-selector.mjs';
 import { createDemoData } from '../services/api/src/demo-data.mjs';
 
 function makeItem(itemId, skill, section = 'reading_writing', difficulty_band = 'medium') {
   return { itemId, skill, section, difficulty_band };
+}
+
+function toDifficultyScore(item) {
+  if (item?.difficulty_band === 'easy') return 0;
+  if (item?.difficulty_band === 'hard') return 2;
+  return 1;
+}
+
+function isStudentProducedResponse(item) {
+  return ['grid_in', 'student_produced_response', 'student-produced-response'].includes(item?.item_format);
+}
+
+function toStageAverages(items, breakpoints) {
+  const averages = [];
+  let cursor = 0;
+  for (const breakpoint of breakpoints) {
+    const stage = items.slice(cursor, breakpoint);
+    cursor = breakpoint;
+    const average = stage.length
+      ? stage.reduce((sum, item) => sum + toDifficultyScore(item), 0) / stage.length
+      : 0;
+    averages.push(average);
+  }
+  return averages;
 }
 
 describe('selectSessionItems', () => {
@@ -29,7 +53,7 @@ describe('selectSessionItems', () => {
     assert.equal(result.length, 13);
     assert.equal(result.filter((item) => item.section === 'reading_writing').length, 5);
     assert.equal(result.filter((item) => item.section === 'math').length, 8);
-    assert.equal(result.filter((item) => item.item_format === 'grid_in').length, 1);
+    assert.equal(result.filter((item) => isStudentProducedResponse(item)).length, 1);
     assert.ok(result.some((item) => item.difficulty_band === 'hard'));
     assert.ok(new Set(result.filter((item) => item.section === 'reading_writing').map((item) => item.domain)).size >= 3);
     assert.ok(new Set(result.filter((item) => item.section === 'math').map((item) => item.domain)).size >= 3);
@@ -81,13 +105,13 @@ describe('selectSessionItems', () => {
 
   it('math module_simulation now surfaces at least one student-produced-response item when the bank supports it', () => {
     const result = selectSessionItems(demoItems, [], 'module_simulation', 4, [], {}, { section: 'math' });
-    assert.ok(result.some((item) => item.item_format === 'grid_in'));
+    assert.ok(result.some((item) => isStudentProducedResponse(item)));
   });
 
   it('standard math module_simulation blocks preserve repeated student-produced-response practice', () => {
     const result = selectSessionItems(demoItems, [], 'module_simulation', 12, [], {}, { section: 'math' });
     assert.equal(result.length, 12);
-    assert.ok(result.filter((item) => item.item_format === 'grid_in').length >= 3);
+    assert.ok(result.filter((item) => isStudentProducedResponse(item)).length >= 3);
     assert.ok(new Set(result.map((item) => item.skill)).size >= 6);
     assert.ok(new Set(result.map((item) => item.domain)).size >= 4);
   });
@@ -95,7 +119,7 @@ describe('selectSessionItems', () => {
   it('math bank now spreads student-produced-response items across many distinct skills', () => {
     const gridInSkills = new Set(
       demoItems
-        .filter((item) => item.section === 'math' && item.item_format === 'grid_in')
+        .filter((item) => item.section === 'math' && isStudentProducedResponse(item))
         .map((item) => item.skill),
     );
     assert.ok(gridInSkills.size >= 10, `Expected at least 10 math grid-in skills, got ${gridInSkills.size}`);
@@ -107,7 +131,7 @@ describe('selectSessionItems', () => {
   it('extended math module_simulation blocks surface a denser student-produced-response slice', () => {
     const result = selectSessionItems(demoItems, [], 'module_simulation', 18, [], {}, { section: 'math' });
     assert.equal(result.length, 18);
-    assert.ok(result.filter((item) => item.item_format === 'grid_in').length >= 5);
+    assert.ok(result.filter((item) => isStudentProducedResponse(item)).length >= 5);
     assert.ok(new Set(result.map((item) => item.skill)).size >= 8);
   });
 
@@ -122,7 +146,7 @@ describe('selectSessionItems', () => {
   it('exam math module_simulation blocks surface a larger numeric-entry slice', () => {
     const result = selectSessionItems(demoItems, [], 'module_simulation', 22, [], {}, { section: 'math', realismProfile: 'exam' });
     assert.equal(result.length, 22);
-    assert.ok(result.filter((item) => item.item_format === 'grid_in').length >= 6);
+    assert.ok(result.filter((item) => isStudentProducedResponse(item)).length >= 6);
     assert.ok(new Set(result.map((item) => item.skill)).size >= 10);
   });
 
@@ -132,6 +156,26 @@ describe('selectSessionItems', () => {
     assert.ok(result.every((item) => item.section === 'reading_writing'));
     assert.ok(new Set(result.map((item) => item.skill)).size >= 7);
     assert.ok(new Set(result.map((item) => item.domain)).size >= 4);
+  });
+
+  it('exam profile module_simulation follows staged difficulty flow across structure breakpoints', () => {
+    const mathShape = getModuleRealismShape('math', 'exam');
+    const mathResult = selectSessionItems(demoItems, [], 'module_simulation', mathShape.itemCount, [], {}, {
+      section: 'math',
+      realismProfile: 'exam',
+      structureBreakpoints: mathShape.structureBreakpoints,
+    });
+    const mathStageAverages = toStageAverages(mathResult, mathShape.structureBreakpoints);
+    assert.ok(mathStageAverages[2] >= mathStageAverages[0], 'math exam final stage should not be easier than opening stage');
+
+    const rwShape = getModuleRealismShape('reading_writing', 'exam');
+    const rwResult = selectSessionItems(demoItems, [], 'module_simulation', rwShape.itemCount, [], {}, {
+      section: 'reading_writing',
+      realismProfile: 'exam',
+      structureBreakpoints: rwShape.structureBreakpoints,
+    });
+    const rwStageAverages = toStageAverages(rwResult, rwShape.structureBreakpoints);
+    assert.ok(rwStageAverages[2] >= rwStageAverages[0], 'R&W exam final stage should not be easier than opening stage');
   });
 
 

@@ -12,8 +12,8 @@ This note tracks the **current fidelity slice** for Project Helix SAT for the cu
 - 79 demo items total (`math=46`, `reading_writing=33`)
 - 19 ontology skills tracked: 19 covered, 0 partial, 0 missing
 - No singleton-skill lanes remain
-- 14 hand-authored Math items now use `grid_in`
-- Module simulation is section-separated, ships with a 12-item default block, and now exposes optional 18-item extended profiles for denser Reading/Writing and Math practice
+- 14 hand-authored Math items now use student-produced-response formats across `grid_in` and `student_produced_response`
+- Module simulation is section-separated, ships with a 14-item default block, and now exposes optional 20-item extended profiles for denser Reading/Writing and Math practice
 - Lesson blueprints now cover the full current curriculum map, and the curriculum now distinguishes an all-skill middle-pack baseline from an 11-skill full-pack cohort, even though the runtime still ships lightweight remediation bundles rather than full courseware
 - `/api/session/review`, remediation cards, retry loops, curriculum paths, and weekly evidence surfaces are wired into the learner flow
 
@@ -31,22 +31,22 @@ This note tracks the **current fidelity slice** for Project Helix SAT for the cu
 - Audit and docs now describe prompt improvements honestly without claiming Bluebook parity.
 
 ### Still needed (not in this commit)
-- Expanded math grid-in support beyond 14 items and into more skill families.
-- Module realism improvements beyond the current 12-item section-specific blocks.
+- Expanded math student-produced-response support beyond 14 items and into more skill families.
+- Module realism improvements beyond the current 14-item section-specific blocks.
 - Richer authored lesson depth so curriculum remediation depends less on the current middle/full lesson-pack scaffolding plus rationale-derived copy.
 
 ## What this slice should improve next
 
 ### Format realism
 - Expand the math grid-in / student-produced-response slice beyond the current 14 items so the format is no longer a narrow hand-authored slice.
-- Keep the shipped selector honest about repeated Math numeric-entry exposure: standard modules should not collapse back below 3 grid-ins, extended modules should keep a denser 5-grid-in slice, and exam-profile Math blocks should keep the strongest 6-grid-in rep.
-- New grid-in items should cover additional math skills (not just the same lane) and work end to end in all session types.
+- Keep the shipped selector honest about repeated Math numeric-entry exposure: standard modules should not collapse back below 3 student responses, extended modules should keep a denser 5-response slice, and exam-profile Math blocks should keep the strongest 6-response rep.
+- New student-produced-response items should cover additional math skills (not just the same lane) and work end to end in all session types.
 - Do not overclaim generator support while the richer format is still demo-bank-only.
 
 ### Module realism
 - Keep module simulation section-separated.
-- Keep the default 12-item module shape stable until audit/docs intentionally move together.
-- Treat the 18-item extended module profiles as honest intermediate realism steps, not as full Bluebook parity.
+- Keep the default 14-item module shape stable until audit/docs intentionally move together.
+- Treat the 20-item extended module profiles as honest intermediate realism steps, not as full Bluebook parity.
 - The learner should be able to tell whether a module is Reading/Writing or Math without inferring it from a mixed item list.
 - Summary, history, restore flows, and the web controls should keep telling the same section-specific story.
 
@@ -80,7 +80,7 @@ Before merging, confirm all of the following:
 - Multiple math grid-in / student-produced-response items work end to end without regressing existing `single_select` behavior.
 - Module simulation no longer presents itself as a mixed-section mini-set.
 - `npm run audit:helix` and `docs/audits/project-helix-sat-coverage.md` agree.
-- `npm run audit:helix:bars` passes before merge; release bars now enforce full blueprint coverage, 14 math grid-ins, a 12-item default module floor, zero singleton skills, and section retake-resistance above 2x module size.
+- `npm run audit:helix:bars` passes before merge; release bars now enforce full blueprint coverage, 14 math student-produced responses, a multi-format runtime floor, a 14-item default module floor, zero singleton skills, and section retake-resistance above 2x module size.
 - Refresh `docs/audits/project-helix-sat-coverage.md` from `node scripts/audit-project-helix-sat.mjs` output instead of hand-editing the snapshot.
 - `docs/sat-coverage-audit.md` matches the same story as the generated audit.
 - `content/README.md` still describes the real generation/runtime contract.
@@ -89,7 +89,7 @@ Before merging, confirm all of the following:
 ## Still not promised after this slice
 
 - Full official-exam replication
-- Full-length SAT module sizing (real modules are still much longer than the current 12-item default and 18-item extended demo modules in both sections)
+- Full-length SAT module sizing (real modules are still much longer than the current 14-item default and 20-item extended demo modules in both sections)
 - Broad generator-native support for every SAT interaction type
 - Production-depth coverage across every skill bucket
 - Full courseware-style lesson sequences beyond the current middle/full lesson-pack layer

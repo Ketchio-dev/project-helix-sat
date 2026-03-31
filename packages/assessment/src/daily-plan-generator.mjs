@@ -90,6 +90,22 @@ function fitBlocksToTime(blocks, totalMinutes) {
   return normalized;
 }
 
+function getReviewDurabilitySignal(reviewDue = null) {
+  if (!reviewDue) return 'none';
+  const status = reviewDue.status ?? null;
+  const lastAccuracy = typeof reviewDue.lastAccuracy === 'number' ? reviewDue.lastAccuracy : null;
+  const attemptCount = Number.isFinite(reviewDue.attemptCount) ? reviewDue.attemptCount : 0;
+
+  if (status === 'retry_recommended') return 'did_not_hold';
+  if (status === 'retry_started') return 'in_repair';
+  if (status === 'revisit_due' && lastAccuracy !== null) {
+    if (lastAccuracy >= 0.67 && attemptCount >= 1) return 'held_once';
+    if (lastAccuracy < 0.67) return 'did_not_hold';
+  }
+
+  return 'scheduled';
+}
+
 export function generateDailyPlan({
   profile,
   skillStates,
@@ -124,9 +140,12 @@ export function generateDailyPlan({
   const anchorSkillId = anchorSkill?.skillId ?? anchorSkill?.skill_id ?? null;
   const supportLabel = supportSkill?.label ?? formatSkillLabel(supportSkill?.skill_id ?? '');
   const supportSkillId = supportSkill?.skillId ?? supportSkill?.skill_id ?? null;
+  const anchorPrereqs = Array.isArray(anchorSkill?.prereqIds) ? anchorSkill.prereqIds : [];
+  const supportIsPrereq = Boolean(supportSkillId && anchorPrereqs.includes(supportSkillId));
   const maintenanceLabel = maintenanceSkill?.label ?? formatSkillLabel(maintenanceSkill?.skill_id ?? '');
   const maintenanceSkillId = maintenanceSkill?.skillId ?? maintenanceSkill?.skill_id ?? null;
   const revisitLabel = reviewDue?.skill ? formatSkillLabel(reviewDue.skill) : null;
+  const revisitDurability = getReviewDurabilitySignal(reviewDue);
   const readiness = projection?.readiness_indicator ?? 'building';
   const momentum = Number(projection?.momentum_score ?? 0);
   const needsTimedEvidence = examSoon || readiness === 'approaching_goal' || readiness === 'test_ready' || momentum >= 0.58;
@@ -148,9 +167,17 @@ export function generateDailyPlan({
     blocks.push({
       block_type: 'review',
       minutes: totalMinutes >= 40 ? 10 : 8,
-      objective: `Run the scheduled revisit for ${revisitLabel} before the error pattern hardens again.`,
+      objective: revisitDurability === 'did_not_hold'
+        ? `Re-run ${revisitLabel} first because the last fix did not hold; carry the correction forward before new volume.`
+        : revisitDurability === 'held_once'
+          ? `Run the spaced revisit for ${revisitLabel} to confirm the prior repair still holds after time has passed.`
+          : `Run the scheduled revisit for ${revisitLabel} before the error pattern hardens again.`,
       target_skills: reviewDue.skill ? [reviewDue.skill] : [],
-      expected_benefit: 'Pays down revisit debt and keeps the last fix from fading.',
+      expected_benefit: revisitDurability === 'did_not_hold'
+        ? 'Slows the plan enough to re-lock the correction before timed pressure returns.'
+        : revisitDurability === 'held_once'
+          ? 'Carries over proof that the fix can survive spacing, not just immediate retries.'
+          : 'Pays down revisit debt and keeps the last fix from fading.',
       frustration_risk: 'low',
     });
   }
@@ -183,9 +210,13 @@ export function generateDailyPlan({
     blocks.push({
       block_type: 'review',
       minutes: 8,
-      objective: `Use ${supportLabel} as the support lane so the anchor block does not stall on a missing prerequisite.`,
+      objective: supportIsPrereq
+        ? `Use ${supportLabel} as the prerequisite support lane so the anchor block does not stall on the missing setup.`
+        : `Use ${supportLabel} as the support lane so ${anchorLabel.toLowerCase()} has a cleaner workaround entry before the next anchor rep.`,
       target_skills: [supportSkillId],
-      expected_benefit: 'Shore up the prerequisite that unlocks cleaner gains in the anchor skill.',
+      expected_benefit: supportIsPrereq
+        ? 'Shore up the prerequisite that unlocks cleaner gains in the anchor skill.'
+        : 'Create a faster repair entry so the anchor skill can move without stalling.',
       frustration_risk: 'low',
     });
   }
@@ -213,20 +244,42 @@ export function generateDailyPlan({
   });
 
   const rationaleBits = [];
-  if (revisitLabel) rationaleBits.push(`${revisitLabel} is due for a spaced revisit`);
+  if (revisitLabel) {
+    rationaleBits.push(revisitDurability === 'did_not_hold'
+      ? `${revisitLabel} did not hold on the last check, so durability repair is first`
+      : revisitDurability === 'held_once'
+        ? `${revisitLabel} held on the last retry, so today verifies spaced carryover`
+        : `${revisitLabel} is due for a spaced revisit`);
+  }
   if (anchorLabel) rationaleBits.push(`${anchorLabel} is the current anchor skill`);
-  if (supportLabel && supportSkillId !== anchorSkillId) rationaleBits.push(`${supportLabel} is covering the prerequisite gap`);
+  if (supportLabel && supportSkillId !== anchorSkillId) {
+    rationaleBits.push(supportIsPrereq
+      ? `${supportLabel} is covering the prerequisite gap`
+      : `${supportLabel} is providing a softer entry back into ${anchorLabel.toLowerCase()}`);
+  }
   if (examSoon) rationaleBits.push('the test date is close enough to require paced evidence');
+
+  const durabilityTail = revisitDurability === 'did_not_hold'
+    ? 'Helix is slowing today on purpose so tomorrow is built on a fix that actually stuck.'
+    : revisitDurability === 'held_once'
+      ? 'Helix is extending the repair into tomorrow only if today confirms the fix still holds at spacing.'
+      : latestCompletedSession?.type === 'quick_win'
+        ? 'Helix is converting the quick win into a real repair sprint today.'
+        : 'Helix is keeping the day centered on the current sprint instead of chasing every weak signal at once.';
+
+  const fallbackReviewBlock = revisitDurability === 'did_not_hold' ? 'retry carryover' : 'revisit';
 
   return {
     date,
     total_minutes: totalMinutes,
     planner_version: 'v1-curriculum-aware',
     status: 'active',
-    rationale_summary: `${rationaleBits.join('; ')}. ${latestCompletedSession?.type === 'quick_win' ? 'Helix is converting the quick win into a real repair sprint today.' : 'Helix is keeping the day centered on the current sprint instead of chasing every weak signal at once.'}`,
+    rationale_summary: `${rationaleBits.join('; ')}. ${durabilityTail}`,
     blocks: fitBlocksToTime(blocks, totalMinutes),
     fallback_plan: {
-      trigger: 'If time drops under 15 minutes or energy falls after the anchor block, keep only the anchor rep, one revisit, and the reflection.',
+      trigger: reviewDue
+        ? `If time drops under 15 minutes or energy falls after the anchor block, keep only the anchor rep, one ${fallbackReviewBlock}, and the reflection.`
+        : 'If time drops under 15 minutes or energy falls after the anchor block, keep only the anchor rep, one revisit, and the reflection.',
       blocks: ['warmup', reviewDue ? 'review' : 'drill', 'reflection'],
     },
     stop_condition: examSoon

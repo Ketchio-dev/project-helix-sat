@@ -23,6 +23,15 @@ const demoItemMap = new Map(
   Object.values(createDemoData().items).map((item) => [item.itemId, item]),
 );
 
+function isStudentProducedResponse(item) {
+  return ['grid_in', 'student_produced_response', 'student-produced-response'].includes(item?.item_format)
+    || ['grid_in', 'student_produced_response', 'student-produced-response'].includes(item?.responseValidation?.kind);
+}
+
+function countItemFormat(items, format) {
+  return items.filter((item) => item.item_format === format).length;
+}
+
 function countBy(items, getKey) {
   return items.reduce((counts, item) => {
     const key = getKey(item);
@@ -33,7 +42,7 @@ function countBy(items, getKey) {
 
 function pickExamResponse(item) {
   const source = demoItemMap.get(item.itemId) ?? item;
-  if (source.item_format === 'grid_in' || source.responseValidation?.kind === 'grid_in') {
+  if (isStudentProducedResponse(source)) {
     return source.responseValidation?.acceptedResponses?.[0] ?? source.answerKey;
   }
   return source.answerKey ?? item.choices[0]?.key;
@@ -93,15 +102,17 @@ test('coverage audit: demo item bank spans both SAT sections and all top-level d
   }
 
   assert.ok(items.every((item) => item.itemId && item.skill && item.domain && item.section));
-  assert.ok(items.every((item) => (
-    item.item_format === 'grid_in'
-      ? Array.isArray(item.choices) && item.choices.length === 0
-      : Array.isArray(item.choices) && item.choices.length === 4
-  )));
+    assert.ok(items.every((item) => (
+      isStudentProducedResponse(item)
+        ? Array.isArray(item.choices) && item.choices.length === 0
+        : Array.isArray(item.choices) && item.choices.length === 4
+    )));
   assert.ok(items.every((item) => typeof item.answerKey === 'string' && item.answerKey.length >= 1));
   assert.ok(rationales.every((rationale) => Array.isArray(rationale.hint_ladder) && rationale.hint_ladder.length >= 3));
-  const mathGridInItems = items.filter((item) => item.item_format === 'grid_in' && item.section === 'math');
+  const mathGridInItems = items.filter((item) => isStudentProducedResponse(item) && item.section === 'math');
   assert.equal(mathGridInItems.length, 14);
+  assert.equal(countItemFormat(items, 'student_produced_response'), 4);
+  assert.equal(countItemFormat(items, 'grid_in'), 10);
   assert.ok(items.some((item) => item.skill === 'rw_punctuation'));
   assert.ok(items.filter((item) => item.skill === 'rw_transitions').length >= 8);
   assert.ok(items.filter((item) => item.skill === 'math_linear_equations').length >= 7);
@@ -140,7 +151,7 @@ test('coverage audit: learner app flow exposes both sections through timed and m
         headers: studentSession.headers,
         body: JSON.stringify({
           itemId: item.itemId,
-          [item.item_format === 'grid_in' ? 'freeResponse' : 'selectedAnswer']: pickExamResponse(item),
+          [isStudentProducedResponse(item) ? 'freeResponse' : 'selectedAnswer']: pickExamResponse(item),
           sessionId: timedSet.session.id,
           mode: 'exam',
           confidenceLevel: 3,
@@ -167,12 +178,12 @@ test('coverage audit: learner app flow exposes both sections through timed and m
     }).then((res) => res.json());
 
     const moduleSections = countBy(moduleSimulation.items, (item) => item.section);
-    assert.equal(moduleSimulation.items.length, 12);
-    assert.equal(moduleSimulation.timing.timeLimitSec, 1260);
-    assert.deepEqual(moduleSections, { math: 12 });
+    assert.equal(moduleSimulation.items.length, 14);
+    assert.equal(moduleSimulation.timing.timeLimitSec, 1400);
+    assert.deepEqual(moduleSections, { math: 14 });
     assert.ok(new Set(moduleSimulation.items.map((item) => item.skill)).size >= 6);
     assert.ok(new Set(moduleSimulation.items.map((item) => item.domain)).size >= 4);
-    assert.ok(moduleSimulation.items.filter((item) => item.item_format === 'grid_in').length >= 3);
+    assert.ok(moduleSimulation.items.filter((item) => isStudentProducedResponse(item)).length >= 3);
 
     let finalModuleAttempt = null;
     for (const item of moduleSimulation.items) {
@@ -181,7 +192,7 @@ test('coverage audit: learner app flow exposes both sections through timed and m
         headers: studentSession.headers,
         body: JSON.stringify({
           itemId: item.itemId,
-          [item.item_format === 'grid_in' ? 'freeResponse' : 'selectedAnswer']: pickExamResponse(item),
+          [isStudentProducedResponse(item) ? 'freeResponse' : 'selectedAnswer']: pickExamResponse(item),
           sessionId: moduleSimulation.session.id,
           mode: 'exam',
           confidenceLevel: 3,

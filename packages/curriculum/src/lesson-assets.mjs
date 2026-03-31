@@ -272,6 +272,12 @@ const FULL_PACK_OVERRIDES = {
     nearTransferCheck: 'Before locking the answer, ask whether the transition signals the exact relationship you named, not just a vaguely related one.',
     exitTicketPrompt: 'What relationship did you identify between the two ideas, and which word best labels it?',
     coachLine: 'Transitions improve fast when you stop chasing polished wording and start naming the sentence-to-sentence logic first.',
+    teachDeep: 'Transitions are the logic-labels of a passage. Instead of asking what sounds good, ask what the relationship actually is. If Sentence B adds to Sentence A, use an addition word. If it pivots, use a contrast word. The logic must exist before the word does.',
+    workedDeep: 'Watch how we ignore the choices and just name the move. The author is moving from a general claim to a specific instance, so we need an example-signal like "For instance" or "Specifically."',
+    retryDeep: 'Now you try naming the move. Is it a cause-and-effect relationship or just a sequence in time? Label it in one word before you look at the choices.',
+    transferDeep: 'This one looks different because the transition is in the middle of a complex sentence, but the logic-check is the same: what is the relationship between the two clauses?',
+    revisitDeep: 'When you see this skill again, don’t let your ear take over. Force the logic-label first.',
+    nextDayCarryover: 'Yesterday you focused on naming the logic before looking at the words. Carry that same discipline into today’s set: relationship first, label second.',
   },
   rw_inferences: {
     retryCue: 'Find the exact line first, then force yourself to say the smallest claim that line proves.',
@@ -281,6 +287,12 @@ const FULL_PACK_OVERRIDES = {
     nearTransferCheck: 'Before locking the answer, ask whether every word in your choice is explicitly earned by the passage.',
     exitTicketPrompt: 'In one sentence: what exact words in the passage force your answer?',
     coachLine: 'Inference questions get safer when you prove the answer from the line before you compare polished choices.',
+    teachDeep: 'An SAT inference is not a guess; it is a forced conclusion. If the text says "A is larger than B," the right inference is "B is smaller than A." If you have to imagine a middle step to make it true, it is not an inference—it is a story.',
+    workedDeep: 'Observe the constraint: we are looking for the strongest claim that MUST be true based on the lines. We avoid "interesting" choices and stick to "defensible" ones.',
+    retryDeep: 'Find the specific phrase that acts as the anchor. If you cannot point to the exact words that force the conclusion, you are probably guessing.',
+    transferDeep: 'This item shifts the subject matter, but the rule of evidence is identical: find the clue, name the smallest possible conclusion, and ignore anything that adds new info.',
+    revisitDeep: 'On this revisit, remember that the right answer often feels "boring" because it stays so close to the text. That is the winning move.',
+    nextDayCarryover: 'Keep your inferences restrained today. Remember: the text must earn every word in the answer choice.',
   },
   rw_command_of_evidence: {
     retryCue: 'State the claim out loud first, then scan only for the line that would let you defend it.',
@@ -290,6 +302,12 @@ const FULL_PACK_OVERRIDES = {
     nearTransferCheck: 'After choosing the line, ask whether it would still prove the claim if all other context vanished.',
     exitTicketPrompt: 'What exact claim is your evidence proving, and why would the other lines fail that job?',
     coachLine: 'Evidence questions improve when you turn them into a proof task instead of a topic-matching task.',
+    teachDeep: 'Evidence is a "receipt" check. If someone claims a store is expensive, "they sell designer shoes" is evidence. "The store is in a big mall" is just a related fact. You are looking for the specific detail that makes the claim true.',
+    workedDeep: 'We start by naming the claim in the prompt. Then we look for the detail that would be impossible to ignore if we were trying to prove that exact claim to a skeptic.',
+    retryDeep: 'Be careful not to pick a line just because it mentions the same keywords. Ask: "Does this line actually prove the point, or does it just talk about the subject?"',
+    transferDeep: 'In this new context, the claim might be more subtle, but the "receipt" logic still holds. Which line is the smoking gun for the author\'s specific point?',
+    revisitDeep: 'Don\'t let the topic distract you. The job is always to match the specific claim to the specific proof.',
+    nextDayCarryover: 'Remember your "receipt" check today. Don\'t settle for "on-topic"—demand "proving."',
   },
   rw_central_ideas_and_details: {
     retryCue: 'Collect two repeated details first, then compress them into one umbrella claim.',
@@ -299,6 +317,12 @@ const FULL_PACK_OVERRIDES = {
     nearTransferCheck: 'Ask whether your answer could still stand after you add two more major details from the passage.',
     exitTicketPrompt: 'Which repeated detail pattern makes your main-idea choice unavoidable?',
     coachLine: 'Main-idea questions stabilize when you gather repeated support before naming the umbrella claim.',
+    teachDeep: 'The central idea is the "umbrella" that covers all the major points. If an answer choice only explains the first half of the passage, it is a detail, not the main idea. The right answer must be big enough to hold everything together.',
+    workedDeep: 'Notice how we skip the first enticing detail because it doesn\'t explain what the rest of the passage is doing. We look for the claim that stays true from the first line to the last.',
+    retryDeep: 'Identify the pattern. What does the author keep coming back to? That repetition is your signal for the central idea.',
+    transferDeep: 'Even with a different topic, the structure is the same: find the through-line that connects all the supporting details.',
+    revisitDeep: 'Check your choice against the whole passage. If it only covers one paragraph, it is too narrow.',
+    nextDayCarryover: 'Today, practice building the "umbrella" claim. Don\'t let one memorable sentence distract you from the passage\'s overall job.',
   },
   rw_sentence_boundaries: {
     retryCue: 'Bracket the clauses before you choose any punctuation mark.',
@@ -308,6 +332,12 @@ const FULL_PACK_OVERRIDES = {
     nearTransferCheck: 'Before you commit, ask whether both sides of the punctuation are complete thoughts, fragments, or modifier attachments.',
     exitTicketPrompt: 'What clause boundary did you identify, and which punctuation rule did it force?',
     coachLine: 'Sentence-boundary questions become predictable once you stop listening for rhythm and start marking clause structure.',
+    teachDeep: 'Sentences are built from "Independent Clauses"—groups of words that can stand alone as a complete thought. Punctuation exists to manage the borders between these clauses. If you have two complete thoughts, you MUST use a period, a semicolon, or a comma plus a FANBOYS conjunction.',
+    workedDeep: 'We bracket the first thought and the second thought. Since both are independent, we know a lone comma would create a "comma splice." We need the semicolon here to keep the boundary legal.',
+    retryDeep: 'Try bracketing the clauses yourself. Can the first part stand on its own? Can the second part? That answer tells you exactly which punctuation marks are allowed.',
+    transferDeep: 'The sentence is longer here, but the structural check is identical. Find the subject-verb pairs and identify where one thought ends and the next begins.',
+    revisitDeep: 'Stop listening to the rhythm. Check the clauses. That is the only way to avoid the traps.',
+    nextDayCarryover: 'Take the "bracketing" habit with you today. Solve the structure first, then pick the mark.',
   },
   math_linear_equations: {
     retryCue: 'Write the equation or inequality in full before you isolate the variable.',
@@ -317,6 +347,12 @@ const FULL_PACK_OVERRIDES = {
     nearTransferCheck: 'Ask whether your chosen value is just the algebra boundary or the actual greatest/least valid answer.',
     exitTicketPrompt: 'What final context check did you run after solving the algebra?',
     coachLine: 'Linear-equation misses often come after the algebra, when the prompt still needs one last validity check.',
+    teachDeep: 'Algebra on the SAT is often a two-step process: solve the equation, then apply the context. If x < 5.2 and x must be an integer, the answer isn\'t 5.2—it\'s 5. Always read the very last sentence of the prompt before you bubble.',
+    workedDeep: 'We set up the inequality based on the budget constraint. After solving for x, we get 12.4. But the question asks for the "maximum whole number," so we must truncate to 12.',
+    retryDeep: 'Set up the full relationship first. Don\'t do mental math on the units. Once you have a value, look back at the prompt: what specific type of number are they asking for?',
+    transferDeep: 'The numbers are messier here, but the goal is the same: find the boundary, then pick the specific value that fits the real-world rule in the question.',
+    revisitDeep: 'Did you check the constraint? Solving the algebra is only half the battle.',
+    nextDayCarryover: 'Today, make "Read the last sentence twice" your default move for every algebra problem.',
   },
   math_area_and_perimeter: {
     retryCue: 'Name the target measure first—area, perimeter, surface area, or volume—before touching the numbers.',
@@ -326,6 +362,12 @@ const FULL_PACK_OVERRIDES = {
     nearTransferCheck: 'Before committing, ask whether your setup is solving for the exact measure named in the prompt or for a different geometric quantity.',
     exitTicketPrompt: 'What measure was the prompt actually asking for, and how did that force your setup?',
     coachLine: 'Geometry misses here usually come from measure selection, so lock the target quantity before the arithmetic starts.',
+    teachDeep: 'Geometry is about identifying the "target." Before you calculate, ask: "Am I covering a surface (Area) or walking a border (Perimeter)?" Mixing these up is the most common trap on the test.',
+    workedDeep: 'The question mentions a "fence around the garden," which signals Perimeter. We ignore the area formula and focus on the sum of the sides.',
+    retryDeep: 'Name the target measure. If you are painting a wall, is that perimeter or area? Lock that in before you reach for the formula.',
+    transferDeep: 'This is a 3D shape, but the logic is the same: are they asking for the space inside (Volume) or the material on the outside (Surface Area)?',
+    revisitDeep: 'Double-check the measure. Don\'t solve the wrong problem perfectly.',
+    nextDayCarryover: 'Start every geometry problem today by writing "A", "P", "V", or "SA" at the top of your scratch paper.',
   },
   math_linear_functions: {
     retryCue: 'Name the rate and the starting value before you compare equations, tables, or graphs.',
@@ -335,6 +377,12 @@ const FULL_PACK_OVERRIDES = {
     nearTransferCheck: 'Before committing, ask which quantity is the change per unit and which quantity is the starting amount.',
     exitTicketPrompt: 'What is the rate, what is the start value, and where did each appear in the representation?',
     coachLine: 'Linear-function fluency comes from telling one consistent rate-and-start story across every representation.',
+    teachDeep: 'Every linear function is just a story about a "Starting Value" (the y-intercept) and a "Constant Rate of Change" (the slope). Whether you see a table, a graph, or an equation, your only job is to find those two numbers.',
+    workedDeep: 'Looking at the table, we see that for every 1 unit increase in x, y increases by 3. That\'s our rate. When x is 0, y is 5. That\'s our start. The equation must be y = 3x + 5.',
+    retryDeep: 'Find the rate first. How much does the value change for each single step? Then find the starting point. If the table doesn\'t show x=0, use the rate to work backward.',
+    transferDeep: 'Now we have a word problem. Find the "flat fee" (start value) and the "hourly rate" (slope). The structure is exactly the same as the table we just solved.',
+    revisitDeep: 'Can you name the rate and the start value? If you have those, the equation is already finished.',
+    nextDayCarryover: 'Today, treat every linear problem as a hunt for the "start" and the "rate."',
   },
   math_systems_of_linear_equations: {
     retryCue: 'Choose substitution or elimination on purpose, then verify the ordered pair against both equations.',
@@ -344,6 +392,12 @@ const FULL_PACK_OVERRIDES = {
     nearTransferCheck: 'Before locking the answer, plug the pair back in and ask what each coordinate represents in the story or graph.',
     exitTicketPrompt: 'How did you verify that your solution kept both equations true simultaneously?',
     coachLine: 'Systems get steadier when you treat them as one situation told twice and force both equations to agree.',
+    teachDeep: 'A "System" is just two different rules about the same two variables. The solution is the one point where BOTH rules are happy. You can solve by substituting one rule into the other, or by adding the rules together to eliminate a variable.',
+    workedDeep: 'Since both equations are set equal to y, substitution is the fastest path. We set the right sides equal to each other and solve for x first.',
+    retryDeep: 'Decide your strategy: substitution or elimination? If one variable is already isolated, substitute. If they are both in standard form (Ax + By = C), eliminate.',
+    transferDeep: 'This is a word problem, so the first step is writing the two rules. Look for two different totals—one for the count of items and one for the total cost.',
+    revisitDeep: 'Did you check your answer in BOTH equations? A common trap is a value that only works for one of them.',
+    nextDayCarryover: 'Choose your "solving style" early today. Lock in substitution or elimination based on how the equations are formatted.',
   },
   math_quadratic_functions: {
     retryCue: 'Name the target feature first—roots, vertex, intercepts, or form—before doing algebra.',
@@ -353,6 +407,12 @@ const FULL_PACK_OVERRIDES = {
     nearTransferCheck: 'Before committing, ask whether the prompt wants zeros, maximum/minimum, symmetry, or a rewritten form.',
     exitTicketPrompt: 'Which quadratic feature was the real target, and which representation made it visible?',
     coachLine: 'Quadratic questions simplify when you decide what feature matters before you start manipulating expressions.',
+    teachDeep: 'Quadratics have different "forms" for a reason. Standard form (ax² + bx + c) shows the y-intercept. Factored form shows the zeros (roots). Vertex form shows the maximum or minimum. Before you calculate, ask: "Which feature do I actually need?"',
+    workedDeep: 'The question asks for the "maximum height," which is the y-coordinate of the vertex. Since we are in standard form, we use -b/2a to find the x-coordinate first.',
+    retryDeep: 'Identify the target feature. Are they asking where it hits the ground (roots) or where it reaches its peak (vertex)? Choose your algebra path based on that goal.',
+    transferDeep: 'This question asks for the x-intercepts. Which form would make those most visible? Try factoring the expression instead of using the vertex formula.',
+    revisitDeep: 'Which form matches your goal? Don\'t do extra algebra if the right form already shows the answer.',
+    nextDayCarryover: 'Today, label every quadratic problem as "Vertex," "Roots," or "Intercept" before you touch the equation.',
   },
   math_trigonometry: {
     retryCue: 'Mark the reference angle and label opposite, adjacent, and hypotenuse before choosing sine, cosine, or tangent.',
@@ -362,8 +422,23 @@ const FULL_PACK_OVERRIDES = {
     nearTransferCheck: 'Before locking the answer, ask whether your ratio uses the correct sides relative to the marked angle and whether the result is reasonable for the triangle.',
     exitTicketPrompt: 'Which side labels relative to the reference angle forced your trig ratio choice?',
     coachLine: 'Trig gets steadier when you anchor everything to the reference angle and let the side labels choose the ratio for you.',
+    teachDeep: 'Trigonometry is just the study of "Ratio-Partners." Sine is the partner for Opposite/Hypotenuse. Cosine is the partner for Adjacent/Hypotenuse. Tangent is the partner for Opposite/Adjacent. The names only work once you know which angle you are standing at.',
+    workedDeep: 'We are standing at Angle A. The side across from us is 5 (Opposite), and the long side is 13 (Hypotenuse). Thepartner for O/H is Sine, so sin(A) = 5/13.',
+    retryDeep: 'Start by marking your angle. Then label the three sides: Hypotenuse (always the longest), Opposite (across from the angle), and Adjacent (the one helping form the angle). Only then pick your ratio.',
+    transferDeep: 'This triangle is rotated, but the labels don\'t change. Find the hypotenuse first, then label the other two relative to the target angle.',
+    revisitDeep: 'Did you label the sides? If you don\'t label, you are just guessing between Sine and Cosine.',
+    nextDayCarryover: 'Make side-labeling a non-negotiable step for every trig problem you see today.',
   },
+
 };
+
+export const FULL_PACK_SKILL_IDS = Object.freeze(Object.keys(FULL_PACK_OVERRIDES).sort());
+export const FULL_PACK_REQUIRED_FIELDS = Object.freeze([
+  'contrastRule',
+  'nearTransferCheck',
+  'exitTicketPrompt',
+  'coachLine',
+]);
 
 function firstSentence(text = '') {
   const normalized = `${text ?? ''}`.trim();
@@ -403,6 +478,12 @@ function buildCoachLanguage(skill, blueprint) {
     contrastRule: blueprint?.contrastRule ?? null,
     nearTransferCheck: blueprint?.nearTransferCheck ?? null,
     exitTicketPrompt: blueprint?.exitTicketPrompt ?? null,
+    teachDeep: blueprint?.teachDeep ?? null,
+    workedDeep: blueprint?.workedDeep ?? null,
+    retryDeep: blueprint?.retryDeep ?? null,
+    transferDeep: blueprint?.transferDeep ?? null,
+    revisitDeep: blueprint?.revisitDeep ?? null,
+    nextDayCarryover: blueprint?.nextDayCarryover ?? null,
   };
 }
 

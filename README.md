@@ -12,7 +12,7 @@ Adaptive SAT Intelligence Platform — an AI-powered SAT prep app with adaptive 
 - **Cold-start handling** — `insufficient_evidence` and `needs_diagnostic` states for new learners
 - **Curriculum-aware planning** — goal profile, next-best-action, daily plan, curriculum path, and multi-week program path
 - **Lesson-pack depth model** — every tracked skill now carries a middle/full lesson-pack tier so review, revisit, and planning surfaces share the same authored teaching arc
-- **Content library** — 79-item demo bank spanning both SAT sections with canonical rationales, hint ladders, and 14 math grid-ins
+- **Content library** — 79-item demo bank spanning both SAT sections with canonical rationales, hint ladders, and 14 math student-produced responses across grid-in and SPR forms
 - **Test suite** — automated regression coverage via `npm test` and `npm run check`
 - **Learner shell** — goal setup, 13-item baseline diagnostic, quick win, review remediation, and Playwright smoke coverage on the legacy learner shell (`apps/web/public/*`)
 
@@ -63,9 +63,9 @@ Sessions expire after 24 hours. Re-authenticate to obtain a fresh cookie.
 Current audit status (`npm run audit:helix`):
 - Cross-section coverage is **credible for MVP**
 - Blueprint coverage is **19/19 skills covered**, with **all 19 skills carrying middle-pack scaffolds** and **11 skills elevated to full-pack**
-- Current bank includes **79 items / 79 rationales**, **14 grid-ins**, **13-item baseline diagnostic**, **12-item default modules**, and **18-item extended modules**
+- Current bank includes **79 items / 79 rationales**, **14 math student-produced responses**, **13-item baseline diagnostic**, **14-item default modules**, and **20-item extended modules**
 - Biggest remaining realism gap is **full exam-length module parity**, not missing skill lanes
-- The current generator still emits `single_select` only, so hand-authored grid-ins carry the current math format-realism slice; shipped Math modules now deliberately surface repeated grid-in reps (**3** in standard 12-question blocks, **5** in 18-question extended blocks, **6** in the 22-question exam profile)
+- The current generator still emits `single_select` only, so hand-authored student-produced responses carry the current math format-realism slice; shipped Math modules now deliberately surface repeated student-response reps (**3** in standard 14-question blocks, **5** in 20-question extended blocks, **6** in the 22-question exam profile)
 
 See `docs/sat-coverage-audit.md` for the narrative audit and `content/README.md` for the content-generation guardrails used in this quality-upgrade slice. For the narrower review brief that defines this first upgrade slice, see `docs/quality/bluebook-khan-slice.md`.
 For the next highest-leverage slice toward private beta, see `docs/product-completion-milestones.md`.
