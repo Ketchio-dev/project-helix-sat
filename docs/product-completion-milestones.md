@@ -46,7 +46,8 @@ The next slice toward private beta should stay narrow and reviewable while split
 - Keep the smoke runner checking for duplicate IDs, answer-input handling, and section-specific module progress without introducing new runtime dependencies.
 - Keep guardrails explicit in docs so CI failures point to a concrete product surface instead of a generic smoke failure.
 - Name the checkpoints explicitly in the smoke runner and docs so failures read like `checkpoint:diagnostic_reveal_cta` instead of a generic script crash.
-- Keep the legacy learner shell as the current verified beta path until React-shell browser parity is automated.
+- **The legacy learner shell is the single supported private-beta surface.**
+- **The React app remains a secondary development surface and is parity-gated.** It must pass the same Playwright browser QA suite as the legacy shell before being promoted to co-primary.
 - Document the remaining manual signoff separately from the automated Chromium smoke path.
 
 Guardrails for all three lanes:

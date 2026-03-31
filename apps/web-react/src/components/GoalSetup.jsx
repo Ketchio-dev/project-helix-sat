@@ -3,16 +3,14 @@ import { useStore } from '../store'
 
 export default function GoalSetup({ profile, containerRef = null }) {
   const saveGoalProfile = useStore((s) => s.saveGoalProfile)
-  const [targetScore, setTargetScore] = useState(profile?.targetScore || profile?.target_score || '')
-  const [targetTestDate, setTargetTestDate] = useState(profile?.targetTestDate || profile?.target_test_date || '')
-  const [dailyMinutes, setDailyMinutes] = useState(profile?.dailyMinutes || profile?.daily_minutes || '')
-  const [weakArea, setWeakArea] = useState(profile?.selfReportedWeakArea || profile?.self_reported_weak_area || '')
+  const [targetScore, setTargetScore] = useState(profile?.targetScore || '')
+  const [targetTestDate, setTargetTestDate] = useState(profile?.targetTestDate || '')
+  const [dailyMinutes, setDailyMinutes] = useState(profile?.dailyMinutes || '')
+  const [weakArea, setWeakArea] = useState(profile?.selfReportedWeakArea || '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  const isComplete = profile?.isComplete
-    ?? profile?.is_complete
-    ?? Boolean(profile?.completedAt || profile?.completed_at)
+  const isComplete = profile?.isComplete ?? Boolean(profile?.completedAt)
   const isIncomplete = !profile || !isComplete
 
   if (!isIncomplete) return null

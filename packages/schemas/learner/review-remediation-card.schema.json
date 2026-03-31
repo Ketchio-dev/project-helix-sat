@@ -90,7 +90,31 @@
     "lessonAssetIds": {
       "type": ["array", "object"],
       "items": { "type": "string", "minLength": 1 },
-      "additionalProperties": true
+      "required": [
+        "teachCardId",
+        "workedExampleIds",
+        "retrySetId",
+        "transferSetId"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "teachCardId": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "workedExampleIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "retrySetId": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "transferSetId": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
     },
     "confidenceBefore": {
       "type": ["integer", "null"],

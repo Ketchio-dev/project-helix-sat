@@ -2,6 +2,43 @@ function hasText(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function shouldLeadWithNearTransfer(cardData = {}) {
+  const revisitStatus = cardData.revisitStatus ?? null;
+  const lastAccuracy = typeof revisitStatus?.lastAccuracy === 'number' ? revisitStatus.lastAccuracy : null;
+  const status = revisitStatus?.status ?? null;
+  const lastRemediationType = revisitStatus?.lastRemediationType ?? null;
+  return Boolean(
+    cardData.transferAction?.itemId
+    && (
+      lastRemediationType === 'retry'
+      || (status === 'revisit_due' && lastAccuracy !== null && lastAccuracy >= 0.67)
+    ),
+  );
+}
+
+export function getRemediationPrimaryAction(cardData = {}) {
+  const retryAction = cardData.retryAction?.itemId
+    ? {
+        kind: cardData.retryAction.kind ?? 'start_retry_loop',
+        itemId: cardData.retryAction.itemId,
+        ctaLabel: cardData.retryAction.ctaLabel ?? 'Start retry loop',
+        emphasis: 'retry',
+      }
+    : null;
+  const transferAction = cardData.transferAction?.itemId
+    ? {
+        kind: cardData.transferAction.kind ?? 'start_retry_loop',
+        itemId: cardData.transferAction.itemId,
+        ctaLabel: cardData.transferAction.ctaLabel ?? 'Start near-transfer',
+        emphasis: 'near_transfer',
+      }
+    : null;
+
+  if (!retryAction) return transferAction;
+  if (!transferAction) return retryAction;
+  return shouldLeadWithNearTransfer(cardData) ? transferAction : retryAction;
+}
+
 function buildLessonArcText(steps = []) {
   const titles = new Set(steps.map((step) => step.title));
   const arcParts = [];

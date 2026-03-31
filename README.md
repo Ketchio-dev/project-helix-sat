@@ -18,14 +18,16 @@ Adaptive SAT Intelligence Platform — an AI-powered SAT prep app with adaptive 
 
 ## Quick Start
 
+For the private-beta, the legacy learner shell is the single supported learner surface. The React app is a secondary development surface and is parity-gated. It will remain secondary until it passes the same Playwright browser QA suite as the legacy shell.
+
 ```bash
-# Start the legacy API + web shell
+# Start the legacy API + web shell (Supported Beta Surface)
 node services/api/server.mjs
 
 # Open in browser
 open http://localhost:4321
 
-# Or run the React app with an in-process API
+# Or run the React app (Secondary / Parity-Gated)
 npm run dev:react
 
 # Open in browser
@@ -36,9 +38,7 @@ open http://localhost:5173
 #   Password: demo1234
 ```
 
-For private-beta browser verification, the currently automated path is still the
-legacy learner shell. The React app remains a secondary development surface
-until parity browser QA lands.
+For private-beta browser verification, the legacy learner shell is the only automated path. The React app is not supported for beta use until parity browser QA lands.
 
 ## API Authentication
 
@@ -80,38 +80,21 @@ For the next highest-leverage slice toward private beta, see `docs/product-compl
 ## Repository layout
 ```text
 apps/
-  web/
-  mobile/
-  admin/
+  web/          (Primary Learner Beta Shell)
+  mobile/       (Skeleton only)
+  admin/        (Skeleton only)
 services/
   api/
-  worker/
+  worker/       (Skeleton only)
   tutor/
-  analytics/
-  content-pipeline/
+  analytics/    (Skeleton only)
+  content-pipeline/ (Skeleton only)
 packages/
-  assessment/
-  config/
-  content-dsl/
-  db/
-  evals/
-  prompts/
-  schemas/
-  scoring/
-  sdk/
-  telemetry/
-  types/
-  ui/
-docs/
-  architecture.md
-  roadmap.md
-  ontology/
-  taxonomy/
+...
 infrastructure/
-  terraform/
-scripts/
-tests/
+  terraform/    (Skeleton only)
 ```
+
 
 ## Validation
 
@@ -137,3 +120,5 @@ If the state file becomes malformed, the server falls back to seeded state
 and preserves the bad file as `*.corrupt-<timestamp>` for inspection.
 
 Limitation: file-backed mode is for a single local server process.
+
+See `docs/beta-ops.md` for managed-beta operating constraints, recovery behavior, and the persistence decision gate.

@@ -27,7 +27,7 @@ export default function Dashboard() {
   const handleStartAction = async (action) => {
     if (!action) return
 
-    const kind = action.kind || action.actionType || action.type || null
+    const kind = action.kind || null
     if (kind === 'complete_goal_setup') {
       goalSetupRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       goalSetupRef.current?.querySelector('input, select, button')?.focus()
@@ -40,7 +40,7 @@ export default function Dashboard() {
       return
     }
 
-    const sessionType = action.sessionType || action.session_type || kind
+    const sessionType = action.sessionType || kind
     const success = await startSession(sessionType, { section: action.section, itemId: action.itemId })
     if (success) navigate('/practice')
   }

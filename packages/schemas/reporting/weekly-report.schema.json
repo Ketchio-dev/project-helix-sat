@@ -5,20 +5,20 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "period_start",
-    "period_end",
+    "periodStart",
+    "periodEnd",
     "strengths",
     "risks",
-    "recommended_focus",
-    "completion_streak",
-    "next_week_opportunity"
+    "recommendedFocus",
+    "completionStreak",
+    "nextWeekOpportunity"
   ],
   "properties": {
-    "period_start": {
+    "periodStart": {
       "type": "string",
       "format": "date"
     },
-    "period_end": {
+    "periodEnd": {
       "type": "string",
       "format": "date"
     },
@@ -34,13 +34,13 @@
         "type": "string"
       }
     },
-    "recommended_focus": {
+    "recommendedFocus": {
       "type": "array",
       "items": {
         "type": "string"
       }
     },
-    "completion_streak": {
+    "completionStreak": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -79,10 +79,10 @@
         }
       }
     },
-    "next_week_opportunity": {
+    "nextWeekOpportunity": {
       "type": "string"
     },
-    "projected_momentum": {
+    "projectedMomentum": {
       "type": "string",
       "enum": [
         "declining",
@@ -91,10 +91,10 @@
         "strong"
       ]
     },
-    "parent_summary": {
+    "parentSummary": {
       "type": "string"
     },
-    "teacher_brief": {
+    "teacherBrief": {
       "type": "string"
     }
   }

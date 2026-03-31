@@ -1,0 +1,30 @@
+name: CI Baseline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run validation checks
+        run: npm run check
+
+      - name: Run learner smoke tests
+        run: npm run smoke:learner
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1

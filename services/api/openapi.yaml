@@ -386,6 +386,8 @@ components:
       $ref: ../../packages/schemas/learner/diagnostic-reveal.schema.json
     ReviewRemediationCard:
       $ref: ../../packages/schemas/learner/review-remediation-card.schema.json
+    SessionOutcome:
+      $ref: ../../packages/schemas/learner/session-outcome.schema.json
     ReviewRecommendationsResponse:
       type: object
       additionalProperties: false
@@ -543,9 +545,9 @@ components:
         tomorrowPreview:
           type: object
         latestSessionOutcome:
-          type:
-            - object
-            - 'null'
+          anyOf:
+            - $ref: '#/components/schemas/SessionOutcome'
+            - type: 'null'
         latestQuickWinSummary:
           type:
             - object

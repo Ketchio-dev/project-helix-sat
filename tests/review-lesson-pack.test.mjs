@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { describeReviewLessonPack } from '../apps/web/public/review-lesson-pack.js';
+import { describeReviewLessonPack, getRemediationPrimaryAction } from '../apps/web/public/review-lesson-pack.js';
 
 test('describeReviewLessonPack promotes the full lesson-pack sequence when present', () => {
   const lessonPack = describeReviewLessonPack({
@@ -80,4 +80,35 @@ test('describeReviewLessonPack falls back to the available lesson-pack steps onl
       },
     ],
   );
+});
+
+test('getRemediationPrimaryAction can promote near-transfer after a retry attempt exists', () => {
+  const primary = getRemediationPrimaryAction({
+    retryAction: { kind: 'start_retry_loop', itemId: 'item_anchor', ctaLabel: 'Start retry loop' },
+    transferAction: { kind: 'start_retry_loop', itemId: 'item_transfer', ctaLabel: 'Start near-transfer' },
+    revisitStatus: {
+      status: 'retry_recommended',
+      lastAccuracy: 0.4,
+      lastRemediationType: 'retry',
+    },
+  });
+
+  assert.equal(primary.emphasis, 'near_transfer');
+  assert.equal(primary.itemId, 'item_transfer');
+});
+
+test('getRemediationPrimaryAction promotes near-transfer when revisit is due after a successful retry', () => {
+  const primary = getRemediationPrimaryAction({
+    retryAction: { kind: 'start_retry_loop', itemId: 'item_anchor', ctaLabel: 'Start retry loop' },
+    transferAction: { kind: 'start_retry_loop', itemId: 'item_transfer', ctaLabel: 'Start near-transfer' },
+    revisitStatus: {
+      status: 'revisit_due',
+      lastAccuracy: 0.8,
+      lastRemediationType: 'retry',
+    },
+  });
+
+  assert.equal(primary.emphasis, 'near_transfer');
+  assert.equal(primary.itemId, 'item_transfer');
+  assert.equal(primary.ctaLabel, 'Start near-transfer');
 });

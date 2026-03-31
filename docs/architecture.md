@@ -14,16 +14,16 @@ Split only when load, ownership, or deployment cadence justifies it.
 
 ## Module map
 ### Frontend surfaces
-- `apps/web`: primary learner product and exam-mode surface
-- `apps/admin`: CMS, QA, analytics triage, item review
-- `apps/mobile`: optional learner companion, not primary exam surface
+- `apps/web`: primary learner product and single supported private-beta surface
+- `apps/admin`: skeleton only; planned for CMS, QA, analytics triage, item review
+- `apps/mobile`: skeleton only; planned as optional learner companion
 
 ### Backend/service boundaries
 - `services/api`: auth, learner profile, plan, attempts, review, projections API
 - `services/tutor`: tutor orchestration, tool routing, structured responses
-- `services/worker`: async jobs for reports, retraining, content processing
-- `services/analytics`: event ingestion transforms, warehouse sync, cohort reporting
-- `services/content-pipeline`: offline item generation/review/calibration pipeline
+- `services/worker`: skeleton only; planned for async jobs for reports, retraining, content processing
+- `services/analytics`: skeleton only; planned for event ingestion transforms, warehouse sync, cohort reporting
+- `services/content-pipeline`: skeleton only; planned for offline item generation/review/calibration pipeline
 
 ### Shared packages
 - `packages/schemas`: JSON schemas for runtime AI and API payloads

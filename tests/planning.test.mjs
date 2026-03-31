@@ -128,3 +128,52 @@ test('daily planner slows into durability repair when latest revisit evidence di
   assert.match(plan.rationale_summary, /did not hold|durability repair is first|slowing today on purpose/i);
   assert.match(plan.fallback_plan.trigger, /retry carryover/i);
 });
+
+test('daily planner reflects recent remediation handoff even when spaced revisit is scheduled for later', () => {
+  const plan = generateDailyPlan({
+    profile: {
+      daily_minutes: 35,
+      target_test_date: '2026-06-20',
+    },
+    skillStates: [{
+      skill_id: 'rw_inferences',
+      section: 'reading_writing',
+      mastery: 0.55,
+      timed_mastery: 0.48,
+      retention_risk: 0.42,
+      careless_risk: 0.2,
+    }],
+    errorDna: {
+      unsupported_inference: 2,
+    },
+    curriculumPath: {
+      anchorSkill: {
+        skillId: 'rw_inferences',
+        label: 'Inferences',
+        stage: 'targeted_repair',
+      },
+    },
+    reviewQueue: [{
+      itemId: 'rw_inf_01',
+      skill: 'rw_inferences',
+      dueAt: '2026-03-27',
+      status: 'revisit_due',
+      lastAccuracy: 1,
+      attemptCount: 2,
+      lastRemediationType: 'near_transfer',
+      lastRemediationAt: '2026-03-26T12:00:00.000Z',
+    }],
+    sessionHistory: [{
+      type: 'review',
+      status: 'complete',
+    }],
+    date: '2026-03-26',
+  });
+
+  assert.doesNotMatch(
+    (plan.blocks.find((block) => block.block_type === 'review')?.objective ?? ''),
+    /did not hold|carry the correction forward/i,
+  );
+  assert.match(plan.rationale_summary, /near-transfer/i);
+  assert.match(plan.rationale_summary, /2026-03-27/);
+});

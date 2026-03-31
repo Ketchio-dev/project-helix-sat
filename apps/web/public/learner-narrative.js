@@ -109,8 +109,8 @@ export function buildLearnerNarrative({ action = null, planExplanation = null, p
   const changeLine = whatChanged?.headline
     ?? (Array.isArray(whatChanged?.bullets) ? whatChanged.bullets[0] : null)
     ?? 'Your first completed session will unlock a clearer change story.';
-  const weekLine = weeklyDigest?.next_week_opportunity
-    ?? weeklyDigest?.recommended_focus?.[0]
+  const weekLine = weeklyDigest?.nextWeekOpportunity
+    ?? weeklyDigest?.recommendedFocus?.[0]
     ?? weeklyDigest?.strengths?.[0]
     ?? 'Keep the next action streak alive and Helix will tighten the plan further.';
 
@@ -120,7 +120,7 @@ export function buildLearnerNarrative({ action = null, planExplanation = null, p
     signalLine,
     planLine,
     thisWeekLine: weekLine,
-    comebackLine: weeklyDigest?.next_week_opportunity ?? null,
+    comebackLine: weeklyDigest?.nextWeekOpportunity ?? null,
     proofPoints: [
       whatChanged?.headline,
       Array.isArray(whatChanged?.bullets) ? whatChanged.bullets[0] : null,

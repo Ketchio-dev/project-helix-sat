@@ -1,5 +1,5 @@
 import { buildLearnerNarrative, formatSkillLabel, studentActionCopy } from './learner-narrative.js';
-import { describeReviewLessonPack } from './review-lesson-pack.js';
+import { describeReviewLessonPack, getRemediationPrimaryAction } from './review-lesson-pack.js';
 import { normalizeTeacherAssignments, normalizeTeacherBrief } from './teacher-view-model.js';
 
 const state = {
@@ -191,7 +191,7 @@ function buildActionMeta(action = null, { fallbackMinutes = null } = {}) {
   if (minutes) meta.push(`~${minutes} min`);
   if (action.section) meta.push(formatSectionName(action.section));
   if (action.kind === 'start_module') {
-    meta.push('Module');
+    meta.push(action.profileLabel ?? 'Module');
   } else if (action.sessionType) {
     meta.push(toDisplaySessionType(action.sessionType));
   }
@@ -201,6 +201,18 @@ function buildActionMeta(action = null, { fallbackMinutes = null } = {}) {
     meta.push(`${action.studentResponseTarget} student responses`);
   }
   return meta;
+}
+
+function decorateActionButton(button, action, role = 'secondary') {
+  if (!button || !action) return;
+  button.setAttribute('data-cta-role', role);
+  if (role === 'primary') button.setAttribute('data-next-best-action', 'true');
+  button.dataset.actionKind = action.kind ?? '';
+  button.dataset.launchSessionType = action.sessionType ?? '';
+  button.dataset.launchSection = action.section ?? '';
+  button.dataset.launchRealismProfile = action.realismProfile ?? '';
+  button.dataset.launchProfileLabel = action.profileLabel ?? '';
+  button.dataset.launchItemCount = action.itemCount?.toString() ?? '';
 }
 
 function syncModuleProfileControlLabels(sectionOverride = null) {
@@ -234,15 +246,12 @@ function normalizeLatestSessionOutcome(source) {
 
   if (!raw) return null;
 
-  const sessionType = raw.sessionType ?? raw.session_type ?? raw.type ?? raw.kind ?? null;
+  const sessionType = raw.sessionType ?? null;
   const sessionLabel = raw.sessionLabel ?? raw.label ?? (sessionType ? toDisplaySessionType(sessionType) : 'Session');
-  const headline = raw.headline ?? raw.title ?? raw.summaryTitle ?? raw.summary_title ?? `${sessionLabel} outcome`;
-  const scoreBand = raw.scoreBand
-    ?? (raw.projected_total_low !== undefined && raw.projected_total_high !== undefined
-      ? { low: raw.projected_total_low, high: raw.projected_total_high }
-      : null);
-  const endedAt = raw.endedAt ?? raw.ended_at ?? raw.completedAt ?? raw.completed_at ?? null;
-  const startedAt = raw.startedAt ?? raw.started_at ?? null;
+  const headline = raw.headline ?? `${sessionLabel} outcome`;
+  const scoreBand = raw.scoreBand ?? null;
+  const endedAt = raw.endedAt ?? raw.completedAt ?? null;
+  const startedAt = raw.startedAt ?? null;
   const summary = raw.summary
     ?? raw.message
     ?? raw.comebackPrompt
@@ -256,7 +265,7 @@ function normalizeLatestSessionOutcome(source) {
       : [];
   const nextAction = raw.nextAction ?? raw.recommendedAction ?? raw.followUp ?? null;
   const status = raw.status
-    ?? (raw.completed || raw.completedAt || raw.completed_at ? 'completed' : raw.expired ? 'expired' : 'in progress');
+    ?? (raw.completed || raw.completedAt ? 'completed' : raw.expired ? 'expired' : 'in progress');
   const metrics = [];
 
   if (scoreBand?.low !== undefined && scoreBand?.high !== undefined) {
@@ -285,7 +294,7 @@ function normalizeLatestSessionOutcome(source) {
     : [
         raw.whyThisPlan,
         raw.comebackPrompt,
-        raw.readinessIndicator ?? raw.readinessSignal ?? raw.readiness_signal,
+        raw.readinessIndicator ?? raw.readinessSignal,
         raw.nextAction,
       ].filter(Boolean);
 
@@ -490,6 +499,12 @@ function renderProfile(profile) {
 function renderProjection(projection, evidence = null) {
   const container = $('#projection');
   clear(container);
+
+  if (!evidence || (!evidence.band && !evidence.signalLabel)) {
+    container.append(node('p', { className: 'muted', text: 'Complete your first diagnostic block to see your initial score range and evidence.' }));
+    return;
+  }
+
   const source = evidence?.band ? {
     predicted_total_low: evidence.band.low,
     predicted_total_high: evidence.band.high,
@@ -1081,7 +1096,7 @@ function renderNextBestAction(action) {
   const footnote = $('#nextBestActionFootnote');
   if (!section || !container) return;
 
-  if (!isStudentSurface() || !action) {
+  if (!isStudentSurface() || !action || !state.goalProfile?.isComplete) {
     section.style.display = 'none';
     clear(container);
     clear(alternatives);
@@ -1107,6 +1122,8 @@ function renderNextBestAction(action) {
   }
   const ctaBlock = node('div', { className: 'next-move-cta' });
   const button = node('button', { text: copy.ctaLabel });
+  decorateActionButton(button, action, 'primary');
+  button.dataset.launchCtaLabel = copy.ctaLabel;
   button.addEventListener('click', () => performNextBestAction(action));
   ctaBlock.append(button);
   shell.append(copyBlock, ctaBlock);
@@ -1117,6 +1134,7 @@ function renderNextBestAction(action) {
     const row = node('div', { className: 'row gap' });
     for (const secondaryAction of secondaryActions) {
       const secondaryButton = node('button', { className: 'secondary', text: secondaryAction.label });
+      secondaryButton.dataset.ctaRole = 'secondary';
       secondaryButton.addEventListener('click', secondaryAction.handler);
       row.append(secondaryButton);
     }
@@ -1143,7 +1161,7 @@ function renderDiagnosticReveal(reveal) {
   const container = $('#diagnosticReveal');
   if (!section || !container) return;
 
-  if (!reveal) {
+  if (!reveal || !state.goalProfile?.isComplete) {
     section.style.display = 'none';
     clear(container);
     return;
@@ -1203,6 +1221,7 @@ function renderDiagnosticReveal(reveal) {
     ctaWrap.append(node('span', { className: 'section-tag', text: 'Start here' }));
     ctaWrap.append(node('p', { className: 'lead-line', text: nextMove.reason }));
     const button = node('button', { text: nextMove.ctaLabel });
+    button.dataset.nextBestAction = 'true';
     button.addEventListener('click', () => performNextBestAction(reveal.firstRecommendedAction));
     ctaWrap.append(button);
     container.append(ctaWrap);
@@ -1245,7 +1264,7 @@ function renderLearnerNarrative(narrative) {
   clear(container);
   state.learnerNarrative = narrative ?? null;
 
-  if (!isStudentSurface() || !narrative || (!state.goalProfile?.isComplete && !narrative.headline && !narrative.summary)) {
+  if (!isStudentSurface() || !narrative || !state.goalProfile?.isComplete) {
     section.style.display = 'none';
     return;
   }
@@ -1302,12 +1321,12 @@ function renderWeeklyDigest(digest) {
   clear(container);
   const strengths = (Array.isArray(digest?.strengths) ? digest.strengths : []).filter(Boolean);
   const risks = (Array.isArray(digest?.risks) ? digest.risks : []).filter(Boolean);
-  const focus = (Array.isArray(digest?.recommended_focus) ? digest.recommended_focus : []).filter(Boolean);
-  const streak = digest?.completion_streak ?? null;
-  const nextWeekOpportunity = digest?.next_week_opportunity ?? null;
+  const focus = (Array.isArray(digest?.recommendedFocus) ? digest.recommendedFocus : []).filter(Boolean);
+  const streak = digest?.completionStreak ?? null;
+  const nextWeekOpportunity = digest?.nextWeekOpportunity ?? null;
   const hasContent = Boolean(
-    digest?.period_start
-    || digest?.period_end
+    digest?.periodStart
+    || digest?.periodEnd
     || strengths.length
     || risks.length
     || focus.length
@@ -1321,7 +1340,7 @@ function renderWeeklyDigest(digest) {
 
   container.append(node('p', {
     className: 'notice',
-    text: `${digest.period_start ?? 'This week'} → ${digest.period_end ?? 'in progress'} · momentum ${digest.projected_momentum ?? 'flat'}`,
+    text: `${digest.periodStart ?? 'This week'} → ${digest.periodEnd ?? 'in progress'} · momentum ${digest.projectedMomentum ?? 'flat'}`,
   }));
 
   if (streak?.headline) {
@@ -1978,10 +1997,13 @@ function renderReview(review) {
   const remediationCards = review.remediationCards ?? [];
   if (remediationCards.length) {
     const firstCard = remediationCards[0];
+    const primaryAction = getRemediationPrimaryAction(firstCard);
     const focusCard = node('article', { className: 'review-item' });
     focusCard.append(node('strong', { text: 'Do this first' }));
-    focusCard.append(node('p', { text: `${firstCard.skill}: ${firstCard.misconception}` }));
-    focusCard.append(node('p', { className: 'muted', text: firstCard.correctionRule }));
+    focusCard.append(node('p', { text: `Misconception: ${firstCard.misconception}` }));
+    focusCard.append(node('p', { className: 'muted', text: `Decisive clue: ${firstCard.decisiveClue}` }));
+    focusCard.append(node('p', { className: 'muted', text: `Correction rule: ${firstCard.correctionRule}` }));
+    focusCard.append(node('p', { className: 'muted', text: `Revisit next: ${firstCard.nextScheduledRevisit ?? 'scheduled after this loop'}` }));
     if (firstCard.coachLanguage?.coachLine) {
       focusCard.append(node('p', { className: 'notice', text: firstCard.coachLanguage.coachLine }));
     }
@@ -1989,10 +2011,12 @@ function renderReview(review) {
       className: 'muted',
       text: `Lesson pack: ${firstCard.packDepth === 'full' ? 'Full pack' : 'Middle pack'}${firstCard.retryCue ? ` · Retry cue: ${firstCard.retryCue}` : ''}` ,
     }));
-    const primaryRetryButton = node('button', { text: 'Try this again' });
-    primaryRetryButton.addEventListener('click', async () => startRetryLoop(firstCard.retryAction?.itemId ?? firstCard.itemId));
+    const primaryRetryButton = node('button', {
+      text: primaryAction?.emphasis === 'near_transfer' ? 'Start near-transfer' : 'Start retry loop',
+    });
+    primaryRetryButton.addEventListener('click', async () => startRetryLoop(primaryAction?.itemId ?? firstCard.retryAction?.itemId ?? firstCard.itemId));
     focusCard.append(primaryRetryButton);
-    if (firstCard.transferAction?.itemId) {
+    if (firstCard.transferAction?.itemId && primaryAction?.emphasis !== 'near_transfer') {
       const transferButton = node('button', { className: 'secondary', text: 'Try a close variant' });
       transferButton.addEventListener('click', async () => startRetryLoop(firstCard.transferAction.itemId));
       focusCard.append(transferButton);
@@ -2003,9 +2027,11 @@ function renderReview(review) {
   for (const cardData of remediationCards) {
     const card = node('article', { className: 'review-item' });
     const lessonPack = describeReviewLessonPack(cardData);
+    const primaryAction = getRemediationPrimaryAction(cardData);
     card.append(node('strong', { text: `${formatSectionName(cardData.section)} · ${cardData.skill}` }));
-    card.append(node('p', { text: `What went wrong: ${cardData.misconception}` }));
-    card.append(node('p', { className: 'muted', text: `Fix rule: ${cardData.correctionRule}` }));
+    card.append(node('p', { text: `Misconception: ${cardData.misconception}` }));
+    card.append(node('p', { className: 'muted', text: `Decisive clue: ${cardData.decisiveClue}` }));
+    card.append(node('p', { className: 'muted', text: `Correction rule: ${cardData.correctionRule}` }));
     if (cardData.coachLanguage?.coachLine) {
       card.append(node('p', { className: 'notice', text: cardData.coachLanguage.coachLine }));
     }
@@ -2024,9 +2050,9 @@ function renderReview(review) {
       }));
     }
     const retryButton = node('button', {
-      text: 'Try this again',
+      text: primaryAction?.emphasis === 'near_transfer' ? 'Start near-transfer' : 'Start retry loop',
     });
-    retryButton.addEventListener('click', async () => startRetryLoop(cardData.retryAction?.itemId ?? cardData.itemId));
+    retryButton.addEventListener('click', async () => startRetryLoop(primaryAction?.itemId ?? cardData.retryAction?.itemId ?? cardData.itemId));
     card.append(retryButton);
     const detailChildren = [node('p', { className: 'muted', text: `What to notice: ${cardData.decisiveClue}` })];
     if (cardData.revisitPlan?.prompt) {
@@ -2055,7 +2081,7 @@ function renderReview(review) {
       }
       detailChildren.push(stepGrid);
     }
-    if (cardData.transferAction?.itemId) {
+    if (cardData.transferAction?.itemId && primaryAction?.emphasis !== 'near_transfer') {
       const transferButton = node('button', {
         className: 'secondary',
         text: 'Try a close variant',

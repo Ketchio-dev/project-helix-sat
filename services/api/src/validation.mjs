@@ -8,6 +8,7 @@ const schemasRoot = resolve(moduleDir, '../../../packages/schemas');
 
 const loadedSchemas = loadJsonSchemas(schemasRoot);
 const nextBestActionResponseSchema = loadedSchemas.get('learner/next-best-action.schema.json');
+const sessionOutcomeResponseSchema = loadedSchemas.get('learner/session-outcome.schema.json');
 
 const sessionProgressSchema = {
   type: 'object',
@@ -314,7 +315,12 @@ const dashboardLearnerResponseSchema = {
         action: nextBestActionResponseSchema,
       },
     },
-    latestSessionOutcome: { type: ['object', 'null'] },
+    latestSessionOutcome: {
+      type: ['object', 'null'],
+      required: sessionOutcomeResponseSchema.required,
+      additionalProperties: false,
+      properties: sessionOutcomeResponseSchema.properties,
+    },
     latestQuickWinSummary: { type: ['object', 'null'] },
     latestTimedSetSummary: { type: ['object', 'null'] },
     latestModuleSummary: { type: ['object', 'null'] },
@@ -336,6 +342,7 @@ const responseSchemas = new Map([
   ['GoalProfileResponse', loadedSchemas.get('learner/goal-profile.schema.json')],
   ['NextBestActionResponse', loadedSchemas.get('learner/next-best-action.schema.json')],
   ['DiagnosticRevealResponse', loadedSchemas.get('learner/diagnostic-reveal.schema.json')],
+  ['SessionOutcome', loadedSchemas.get('learner/session-outcome.schema.json')],
   ['DashboardLearnerResponse', dashboardLearnerResponseSchema],
   ['AuthSessionResponse', authSessionResponseSchema],
   ['MeResponse', {

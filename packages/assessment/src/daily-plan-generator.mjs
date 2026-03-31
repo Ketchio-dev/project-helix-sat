@@ -106,6 +106,15 @@ function getReviewDurabilitySignal(reviewDue = null) {
   return 'scheduled';
 }
 
+function getRecentRemediationSummary(reviewDue = null) {
+  if (!reviewDue?.lastRemediationType || !reviewDue?.lastRemediationAt) return null;
+  const typeText = reviewDue.lastRemediationType === 'near_transfer' ? 'near-transfer' : 'retry';
+  return {
+    typeText,
+    happenedAt: reviewDue.lastRemediationAt,
+  };
+}
+
 export function generateDailyPlan({
   profile,
   skillStates,
@@ -146,6 +155,7 @@ export function generateDailyPlan({
   const maintenanceSkillId = maintenanceSkill?.skillId ?? maintenanceSkill?.skill_id ?? null;
   const revisitLabel = reviewDue?.skill ? formatSkillLabel(reviewDue.skill) : null;
   const revisitDurability = getReviewDurabilitySignal(reviewDue);
+  const recentRemediation = getRecentRemediationSummary(reviewDue);
   const readiness = projection?.readiness_indicator ?? 'building';
   const momentum = Number(projection?.momentum_score ?? 0);
   const needsTimedEvidence = examSoon || readiness === 'approaching_goal' || readiness === 'test_ready' || momentum >= 0.58;
@@ -250,6 +260,12 @@ export function generateDailyPlan({
       : revisitDurability === 'held_once'
         ? `${revisitLabel} held on the last retry, so today verifies spaced carryover`
         : `${revisitLabel} is due for a spaced revisit`);
+    if (recentRemediation) {
+      rationaleBits.push(`last ${recentRemediation.typeText} remediation was logged at ${recentRemediation.happenedAt}`);
+    }
+    if (reviewDue?.dueAt) {
+      rationaleBits.push(`next revisit is scheduled for ${reviewDue.dueAt}`);
+    }
   }
   if (anchorLabel) rationaleBits.push(`${anchorLabel} is the current anchor skill`);
   if (supportLabel && supportSkillId !== anchorSkillId) {

@@ -1,10 +1,10 @@
 export default function ActionCard({ action, onStart }) {
   if (!action) return null
 
-  const title = action.title || action.label || 'Start practicing'
-  const description = action.reason || action.description || action.subtitle || ''
-  const ctaLabel = action.ctaLabel || action.cta_label || 'Begin'
-  const minutes = action.estimatedMinutes || action.estimated_minutes || null
+  const title = action.title || 'Start practicing'
+  const description = action.reason || ''
+  const ctaLabel = action.ctaLabel || 'Begin'
+  const minutes = action.estimatedMinutes || null
 
   const handleClick = () => {
     onStart(action)

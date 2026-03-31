@@ -8,7 +8,7 @@ export default function SessionNotice({ session }) {
   if (!session) return null
 
   const inner = session.session || session
-  const sessionType = session.sessionType || inner.type || session.session_type || 'practice'
+  const sessionType = session.sessionType || inner.type || 'practice'
   const progress = session.sessionProgress || session.progress
   const label = sessionType.replace(/[-_]/g, ' ')
 

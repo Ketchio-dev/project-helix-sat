@@ -1,4 +1,3 @@
-import { createHintResponse } from '../../tutor/src/hint-engine.mjs';
 import {
   AUTH_COOKIE_NAME,
   getAuthTokenFromCookies,
@@ -8,6 +7,10 @@ import {
   verifyToken,
 } from './auth.mjs';
 import { HttpError, readJsonBody, sendJson, serveStaticFile } from './http-utils.mjs';
+import { registerLearnerDashboardRoutes } from './router/routes/learner-dashboard-routes.mjs';
+import { registerLearnerOnboardingRoutes } from './router/routes/learner-onboarding-routes.mjs';
+import { registerLearnerSessionRoutes } from './router/routes/learner-session-routes.mjs';
+import { registerTutorRoutes } from './router/routes/tutor-routes.mjs';
 import { validateRequest, validateResponse } from './validation.mjs';
 
 const AUTH_COOKIE_SAME_SITE = 'Lax';
@@ -209,105 +212,10 @@ export function createRouter({ store, webRoot }) {
     },
   });
 
-  registerRoute('GET', '/api/goal-profile', {
-    auth: 'authenticated',
-    learnerAccess: 'owner',
-    responseSchema: 'GoalProfileResponse',
-    async handler({ learnerId }) {
-      return { body: store.getGoalProfile(learnerId) };
-    },
-  });
-
-  registerRoute('POST', '/api/goal-profile', {
-    auth: 'authenticated',
-    learnerAccess: 'owner',
-    requestSchema: 'GoalProfileUpdateRequest',
-    responseSchema: 'GoalProfileResponse',
-    async handler({ learnerId, body }) {
-      return { body: store.updateGoalProfile(learnerId, body) };
-    },
-  });
-
-  registerRoute('GET', '/api/next-best-action', {
-    auth: 'authenticated',
-    learnerAccess: 'owner',
-    responseSchema: 'NextBestActionResponse',
-    async handler({ learnerId }) {
-      return { body: store.getNextBestAction(learnerId) };
-    },
-  });
-
-  registerRoute('GET', '/api/plan/explanation', {
-    auth: 'authenticated',
-    learnerAccess: 'read',
-    responseSchema: 'PlanExplanation',
-    async handler({ learnerId }) {
-      return { body: store.getPlanExplanation(learnerId) };
-    },
-  });
-
-  registerRoute('GET', '/api/projection/evidence', {
-    auth: 'authenticated',
-    learnerAccess: 'read',
-    responseSchema: 'ProjectionEvidence',
-    async handler({ learnerId }) {
-      return { body: store.getProjectionEvidence(learnerId) };
-    },
-  });
-
-  registerRoute('GET', '/api/progress/what-changed', {
-    auth: 'authenticated',
-    learnerAccess: 'read',
-    responseSchema: 'WhatChanged',
-    async handler({ learnerId }) {
-      return { body: store.getWhatChanged(learnerId) };
-    },
-  });
-
-  registerRoute('GET', '/api/learner/narrative', {
-    auth: 'authenticated',
-    learnerAccess: 'read',
-    responseSchema: 'LearnerNarrative',
-    async handler({ learnerId }) {
-      return { body: store.getLearnerNarrative(learnerId) };
-    },
-  });
-
-  registerRoute('GET', '/api/diagnostic/reveal', {
-    auth: 'authenticated',
-    learnerAccess: 'owner',
-    responseSchema: 'DiagnosticRevealResponse',
-    async handler({ learnerId, url }) {
-      return { body: store.getDiagnosticReveal(learnerId, url.searchParams.get('sessionId')) };
-    },
-  });
-
-  registerRoute('GET', '/api/reports/weekly', {
-    auth: 'authenticated',
-    learnerAccess: 'read',
-    responseSchema: 'WeeklyReport',
-    async handler({ learnerId }) {
-      return { body: store.getWeeklyDigest(learnerId) };
-    },
-  });
-
-  registerRoute('GET', '/api/curriculum/path', {
-    auth: 'authenticated',
-    learnerAccess: 'read',
-    responseSchema: 'CurriculumPath',
-    async handler({ learnerId }) {
-      return { body: store.getCurriculumPath(learnerId) };
-    },
-  });
-
-  registerRoute('GET', '/api/program/path', {
-    auth: 'authenticated',
-    learnerAccess: 'read',
-    responseSchema: 'ProgramPath',
-    async handler({ learnerId }) {
-      return { body: store.getProgramPath(learnerId) };
-    },
-  });
+  registerLearnerOnboardingRoutes(registerRoute, { store });
+  registerLearnerDashboardRoutes(registerRoute, { store, HttpError });
+  registerLearnerSessionRoutes(registerRoute, { store });
+  registerTutorRoutes(registerRoute, { store, HttpError });
 
   registerRoute('GET', '/api/items', {
     auth: 'authenticated',
@@ -317,47 +225,7 @@ export function createRouter({ store, webRoot }) {
     },
   });
 
-  for (const pathname of ['/api/plan/today', '/api/projection', '/api/error-dna', '/api/review/recommendations', '/api/dashboard/learner', '/api/sessions/history', '/api/session/active']) {
-    registerRoute('GET', pathname, {
-      auth: 'authenticated',
-      learnerAccess: 'read',
-      responseSchema: pathname === '/api/dashboard/learner' ? 'DashboardLearnerResponse' : null,
-      async handler({ auth, learnerId, url }) {
-        switch (pathname) {
-          case '/api/plan/today':
-            return { body: store.getPlan(learnerId) };
-          case '/api/projection':
-          case '/api/projection/latest':
-            return { body: store.getProjection(learnerId) };
-          case '/api/error-dna':
-            return { body: { errorDna: store.getErrorDna(learnerId) } };
-          case '/api/review/recommendations': {
-            const limit = Number(url.searchParams.get('limit') ?? 3);
-            const review = store.getReviewRecommendations(learnerId);
-            return { body: { ...review, recommendations: review.recommendations.slice(0, limit) } };
-          }
-          case '/api/dashboard/learner':
-            return { body: store.getDashboard(learnerId) };
-          case '/api/sessions/history': {
-            const limit = Number(url.searchParams.get('limit') ?? 5);
-            return { body: { sessions: store.getSessionHistory(learnerId, limit) } };
-          }
-          case '/api/session/active':
-            return { body: store.getActiveSession(learnerId) };
-          default:
-            throw new HttpError(404, 'Not found');
-        }
-      },
-    });
-  }
 
-  registerRoute('GET', '/api/projection/latest', {
-    auth: 'authenticated',
-    learnerAccess: 'read',
-    async handler({ learnerId }) {
-      return { body: store.getProjection(learnerId) };
-    },
-  });
 
   registerRoute('GET', '/api/parent/summary', {
     auth: 'authenticated',
@@ -389,124 +257,6 @@ export function createRouter({ store, webRoot }) {
     },
   });
 
-  registerRoute('POST', '/api/diagnostic/start', {
-    auth: 'authenticated',
-    learnerAccess: 'owner',
-    async handler({ learnerId }) {
-      const result = store.startDiagnostic(learnerId);
-      return { body: result, statusCode: result.conflict ? 409 : 201 };
-    },
-  });
-
-  registerRoute('POST', '/api/quick-win/start', {
-    auth: 'authenticated',
-    learnerAccess: 'owner',
-    async handler({ learnerId }) {
-      return { body: store.startQuickWin(learnerId), statusCode: 201 };
-    },
-  });
-
-  registerRoute('POST', '/api/timed-set/start', {
-    auth: 'authenticated',
-    learnerAccess: 'owner',
-    async handler({ learnerId }) {
-      const result = store.startTimedSet(learnerId);
-      return { body: result, statusCode: result.conflict ? 409 : 201 };
-    },
-  });
-
-  registerRoute('POST', '/api/module/start', {
-    auth: 'authenticated',
-    learnerAccess: 'owner',
-    requestSchema: 'ModuleStartRequest',
-    async handler({ learnerId, body }) {
-      const result = store.startModuleSimulation(learnerId, {
-        section: body?.section,
-        realismProfile: body?.realismProfile,
-      });
-      return { body: result, statusCode: result.conflict ? 409 : 201 };
-    },
-  });
-
-  registerRoute('POST', '/api/review/retry/start', {
-    auth: 'authenticated',
-    learnerAccess: 'owner',
-    requestSchema: 'ReviewRetryStartRequest',
-    async handler({ learnerId, body }) {
-      return { body: store.startReviewRetry(learnerId, { itemId: body?.itemId ?? null }), statusCode: 201 };
-    },
-  });
-
-  registerRoute('POST', '/api/attempt/submit', {
-    auth: 'authenticated',
-    learnerAccess: 'owner',
-    requestSchema: 'AttemptSubmitRequest',
-    responseSchemaByPayload: (payload) => (
-      payload.sessionType === 'timed_set' || payload.sessionType === 'module_simulation'
-        ? 'AttemptExamAckResponse'
-        : null
-    ),
-    async handler({ learnerId, body }) {
-      return { body: store.submitAttempt({ ...body, userId: learnerId }) };
-    },
-  });
-
-  registerRoute('POST', '/api/timed-set/finish', {
-    auth: 'authenticated',
-    learnerAccess: 'owner',
-    requestSchema: 'SessionFinishRequest',
-    async handler({ learnerId, body }) {
-      return { body: store.finishTimedSet({ ...body, userId: learnerId }) };
-    },
-  });
-
-  registerRoute('POST', '/api/module/finish', {
-    auth: 'authenticated',
-    learnerAccess: 'owner',
-    requestSchema: 'SessionFinishRequest',
-    async handler({ learnerId, body }) {
-      return { body: store.finishModuleSimulation({ ...body, userId: learnerId }) };
-    },
-  });
-
-  registerRoute('POST', '/api/tutor/hint', {
-    auth: 'authenticated',
-    learnerAccess: 'read',
-    requestSchema: 'TutorHintRequest',
-    responseSchema: 'TutorHintResponse',
-    async handler({ learnerId, body }) {
-      const payload = { ...body, userId: learnerId };
-      const item = store.getItem(payload.itemId);
-      const rationale = store.getRationale(payload.itemId);
-      const learnerState = store.getProfile(learnerId);
-      if (!item || !rationale) {
-        throw new HttpError(404, 'Item not found');
-      }
-      const enforcedMode = store.isHintBlockedByExamSession(learnerId, payload.itemId, payload.sessionId)
-        ? 'exam'
-        : payload.mode;
-      const hint = createHintResponse({
-        item,
-        rationale,
-        learnerState,
-        errorDna: store.getErrorDna(learnerId),
-        mode: enforcedMode,
-        requestedLevel: payload.requestedLevel,
-        priorHintCount: payload.priorHintCount ?? 0,
-      });
-      return { body: hint };
-    },
-  });
-
-  registerRoute('POST', '/api/reflection/submit', {
-    auth: 'authenticated',
-    learnerAccess: 'owner',
-    requestSchema: 'ReflectionSubmitRequest',
-    async handler({ learnerId, body }) {
-      return { body: store.submitReflection({ ...body, userId: learnerId }) };
-    },
-  });
-
   registerRoute('POST', '/api/teacher/assignments', {
     auth: 'authenticated',
     learnerAccess: 'read',
@@ -514,15 +264,6 @@ export function createRouter({ store, webRoot }) {
     requestSchema: 'TeacherAssignmentRequest',
     async handler({ auth, learnerId, body }) {
       return { body: store.saveTeacherAssignment({ ...body, userId: auth.userId, learnerId }) };
-    },
-  });
-
-  registerRoute('GET', '/api/session/review', {
-    auth: 'authenticated',
-    learnerAccess: 'owner',
-    async handler({ learnerId, url }) {
-      const sessionId = url.searchParams.get('sessionId');
-      return { body: store.getSessionReview(sessionId, learnerId) };
     },
   });
 

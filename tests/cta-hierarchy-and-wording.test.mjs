@@ -5,6 +5,8 @@ import { buildLearnerNarrative, formatSkillLabel, studentActionCopy } from '../a
 import { createStore } from '../services/api/src/store.mjs';
 import { createDemoData } from '../services/api/src/demo-data.mjs';
 
+const appSource = readFileSync('apps/web/public/app.js', 'utf8');
+
 const DEMO_ITEM_MAP = new Map(
   Object.values(createDemoData().items).map((item) => [item.itemId, item]),
 );
@@ -226,7 +228,7 @@ describe('product wording: learner narrative avoids placeholder copy', () => {
       planExplanation: { headline: 'Focus on algebra repair.' },
       projectionEvidence: { signalLabel: 'building', signalExplanation: 'Enough data to steer.' },
       whatChanged: { headline: 'Accuracy up on latest loop.', bullets: ['Pacing improved.'] },
-      weeklyDigest: { next_week_opportunity: 'Move inferences from repair into speed.' },
+      weeklyDigest: { nextWeekOpportunity: 'Move inferences from repair into speed.' },
     });
 
     const allText = [narrative.headline, narrative.summary, narrative.signalLine, narrative.planLine, narrative.thisWeekLine].join(' ');
@@ -476,6 +478,11 @@ describe('CTA hierarchy: dashboard integration coherence', () => {
     const copy = studentActionCopy(action);
     assert.ok(copy, 'action copy should be derivable');
     assert.ok(copy.ctaLabel.length > 0, 'CTA label must not be empty');
+    assert.match(appSource, /data-cta-role/);
+    assert.match(appSource, /nextBestAction/);
+    assert.match(appSource, /launchSessionType/);
+    assert.match(appSource, /launchRealismProfile/);
+    assert.match(appSource, /profileLabel \?\? 'Module'/);
 
     // Study modes when present should have 3 options
     if (dashboard.studyModes) {

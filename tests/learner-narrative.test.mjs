@@ -44,7 +44,7 @@ test('buildLearnerNarrative keeps action, plan, weekly digest, and proof points 
       bullets: ['The latest session tightened pacing.'],
     },
     weeklyDigest: {
-      next_week_opportunity: 'Next week’s biggest opportunity is to move inferences from repair into faster, more durable evidence.',
+      nextWeekOpportunity: 'Next week’s biggest opportunity is to move inferences from repair into faster, more durable evidence.',
     },
   });
 

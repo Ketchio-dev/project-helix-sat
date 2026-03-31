@@ -10,6 +10,16 @@ import { projectScoreBand } from '../../../packages/scoring/src/score-predictor.
 import { updateErrorDna, updateLearnerSkillState } from '../../../packages/assessment/src/learner-state.mjs';
 import { createEvent } from '../../../packages/telemetry/src/events.mjs';
 import { createMemoryStateStorage } from './state-storage.mjs';
+import {
+  applyComebackFraming as applyComebackFramingHelper,
+  buildModuleAction as buildModuleActionHelper,
+  buildQuickWinAction as buildQuickWinActionHelper,
+  buildRetryLoopAction as buildRetryLoopActionHelper,
+  buildTimedSetAction as buildTimedSetActionHelper,
+  findLatestCompletedSession as findLatestCompletedSessionHelper,
+  needsFreshQuickWin as needsFreshQuickWinHelper,
+  toSessionOutcomePayload as toSessionOutcomePayloadHelper,
+} from './store/learner-flow-helpers.mjs';
 
 function createId(prefix) {
   return prefix + '_' + randomUUID().replace(/-/g, '').slice(0, 12);
@@ -38,6 +48,28 @@ function toClientItem(item) {
   return {
     ...safeItem,
     ...(safeItem.responseValidation ? { responseValidation: toClientResponseValidation(item) } : {}),
+  };
+}
+
+function toLessonAssetIds(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (!value || typeof value !== 'object') {
+    return {
+      teachCardId: null,
+      workedExampleIds: [],
+      retrySetId: null,
+      transferSetId: null,
+    };
+  }
+
+  return {
+    teachCardId: value.teachCardId ?? value.teach_card_id ?? null,
+    workedExampleIds: value.workedExampleIds ?? value.worked_example_ids ?? [],
+    retrySetId: value.retrySetId ?? value.retry_set_id ?? null,
+    transferSetId: value.transferSetId ?? value.transfer_set_id ?? null,
   };
 }
 
@@ -831,7 +863,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         skillStates: api.getSkillStates(learnerId),
         errorDna: api.getErrorDna(learnerId),
         curriculumPath: api.getCurriculumPath(learnerId),
-        reviewQueue: api.getReviewRevisitQueue(learnerId, { includeFuture: false }),
+        reviewQueue: api.getReviewRevisitQueue(learnerId, { includeFuture: true }),
         projection: api.getProjection(learnerId),
         sessionHistory: api.getSessionHistory(learnerId, 10),
       });
@@ -1028,20 +1060,22 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           retryAction: {
             kind: 'start_retry_loop',
             itemId: recommendation.itemId,
-            ctaLabel: revisitRecord?.status === 'revisit_due' ? 'Start revisit' : 'Start retry loop',
+            ctaLabel: revisitRecord?.status === 'revisit_due' ? 'Retry the anchor once' : 'Start retry loop',
           },
           transferItem: lessonBundle.transferCard,
           transferAction: lessonBundle.transferCard
             ? {
                 kind: 'start_retry_loop',
                 itemId: lessonBundle.transferCard.itemId,
-                ctaLabel: 'Try near-transfer',
+                ctaLabel: revisitRecord?.status === 'revisit_due' && (revisitRecord?.lastAccuracy ?? 0) >= 0.67
+                  ? 'Start near-transfer'
+                  : 'Try near-transfer',
               }
             : null,
           revisitPlan: lessonBundle.revisitPlan,
           lessonArc: lessonBundle.lessonArc,
           coachLanguage: lessonBundle.coachLanguage,
-          lessonAssetIds: lessonBundle.lessonAssetIds,
+          lessonAssetIds: toLessonAssetIds(lessonBundle.lessonAssetIds),
           confidenceBefore: matchingAttempt?.confidence_level ?? null,
           confidenceAfter: matchingAttempt?.confidence_level !== undefined
             ? Math.min(4, matchingAttempt.confidence_level + 1)
@@ -1050,10 +1084,12 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           revisitStatus: revisitRecord
             ? {
                 status: revisitRecord.status,
-                dueAt: revisitRecord.dueAt,
-                lastAccuracy: revisitRecord.lastAccuracy ?? null,
-                attemptCount: revisitRecord.attemptCount ?? 0,
-              }
+              dueAt: revisitRecord.dueAt,
+              lastAccuracy: revisitRecord.lastAccuracy ?? null,
+              attemptCount: revisitRecord.attemptCount ?? 0,
+              lastRemediationType: revisitRecord.lastRemediationType ?? null,
+              lastRemediationAt: revisitRecord.lastRemediationAt ?? null,
+            }
             : null,
         };
       });
@@ -1123,11 +1159,11 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
           ? `Score signal: ${projectionEvidence.signalLabel}. ${projectionEvidence.signalExplanation ?? ''}`.trim()
           : 'Score signal is still forming.',
         planLine: planExplanation?.headline ?? 'Helix is keeping one clear focus on top.',
-        thisWeekLine: weeklyDigest?.next_week_opportunity
-          ?? weeklyDigest?.recommended_focus?.[0]
+        thisWeekLine: weeklyDigest?.nextWeekOpportunity
+          ?? weeklyDigest?.recommendedFocus?.[0]
           ?? weeklyDigest?.strengths?.[0]
           ?? 'Keep the next action streak alive and Helix will tighten the plan further.',
-        comebackLine: weeklyDigest?.next_week_opportunity ?? null,
+        comebackLine: weeklyDigest?.nextWeekOpportunity ?? null,
         proofPoints: [
           whatChanged?.headline,
           Array.isArray(whatChanged?.bullets) ? whatChanged.bullets[0] : null,
@@ -1228,16 +1264,16 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
             : 'declining';
 
       return {
-        period_start: periodStart,
-        period_end: periodEnd,
+        periodStart,
+        periodEnd,
         strengths,
         risks,
-        recommended_focus: recommendedFocus.slice(0, 3),
-        projected_momentum: projectedMomentum,
-        completion_streak: completionStreak,
-        next_week_opportunity: nextWeekOpportunity,
-        parent_summary: `${profile.name} is ${completedSessions.length ? 'building' : 'starting'} a weekly rhythm. The clearest next gain comes from ${retryLead?.skill ? formatSkillLabel(retryLead.skill) : (weakestLabel ?? 'the next focused practice block')}.`,
-        teacher_brief: topTrap
+        recommendedFocus: recommendedFocus.slice(0, 3),
+        projectedMomentum: projectedMomentum,
+        completionStreak: completionStreak,
+        nextWeekOpportunity: nextWeekOpportunity,
+        parentSummary: `${profile.name} is ${completedSessions.length ? 'building' : 'starting'} a weekly rhythm. The clearest next gain comes from ${retryLead?.skill ? formatSkillLabel(retryLead.skill) : (weakestLabel ?? 'the next focused practice block')}.`,
+        teacherBrief: topTrap
           ? `Cluster support around ${topTrap.label.toLowerCase()} and monitor whether the next retry loop sticks.`
           : `Collect one more completed session before narrowing the weekly intervention focus.`,
       };
@@ -1903,18 +1939,27 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       }
 
       if (!preferSessionStart && review.recommendations?.length) {
+        const leadCard = review.remediationCards?.[0] ?? null;
         const lead = review.recommendations[0];
+        const shouldStartNearTransfer = Boolean(
+          leadCard?.transferAction?.itemId
+          && leadCard?.revisitStatus?.status === 'revisit_due'
+          && (leadCard?.revisitStatus?.lastAccuracy ?? 0) >= 0.67,
+        );
+        const primaryItemId = shouldStartNearTransfer
+          ? leadCard.transferAction.itemId
+          : (leadCard?.retryAction?.itemId ?? lead.itemId);
         return applyComebackFraming({
           kind: 'start_retry_loop',
           title: 'Fix your most expensive recent trap',
           reason: lead.errorTag
             ? `${formatErrorInsight(lead.errorTag, 1).label} keeps resurfacing. Correct it before you pile on more timed work.`
             : 'Your recent misses are clustered tightly enough that review will move the next session more than new volume.',
-          ctaLabel: 'Start retry loop',
+          ctaLabel: shouldStartNearTransfer ? 'Start near-transfer' : 'Start retry loop',
           estimatedMinutes: 8,
           sessionType: 'review',
           section: lead.section ?? null,
-          itemId: lead.itemId,
+          itemId: primaryItemId,
           focusSkill: lead.skill ?? null,
         }, api.getComebackState(userId));
       }
@@ -2441,6 +2486,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         });
 
       const companionItems = rankedItems.slice(0, 2);
+      const remediationType = itemId && itemId !== lead.itemId ? 'near_transfer' : 'retry';
 
       const reviewItems = [anchorItem, ...companionItems];
       const session = {
@@ -2450,6 +2496,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         section: anchorItem.section,
         focus_skill: lead.skill,
         review_anchor_item_id: anchorItem.itemId,
+        review_mode: remediationType,
         started_at: new Date().toISOString(),
       };
       state.sessions[session.id] = session;
@@ -2469,6 +2516,8 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
         dueAt: addDays(new Date(), 1).toISOString().slice(0, 10),
         createdAt: new Date().toISOString(),
         retrySessionId: session.id,
+        lastRemediationType: remediationType,
+        lastRemediationAt: new Date().toISOString(),
       });
 
       persistState();
@@ -2889,6 +2938,8 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
             dueAt,
             lastAccuracy: accuracy,
             lastCompletedAt: new Date().toISOString(),
+            lastRemediationType: session.review_mode === 'near_transfer' ? 'near_transfer' : 'retry',
+            lastRemediationAt: new Date().toISOString(),
             attemptCount: (getReviewRevisitBucket(state, userId).find((entry) => entry.itemId === anchorItemId)?.attemptCount ?? 0) + 1,
             retrySessionId: sessionId,
           });
@@ -3195,29 +3246,15 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
   };
 
   function findLatestCompletedSession(userId, predicate) {
-    return Object.values(state.sessions)
-      .filter((session) => session.user_id === userId && session.ended_at && predicate(session))
-      .sort((left, right) => new Date(right.ended_at) - new Date(left.ended_at))[0] ?? null;
+    return findLatestCompletedSessionHelper(state.sessions, userId, predicate);
   }
 
   function needsFreshQuickWin(latestDiagnosticSession, latestQuickWinSummary) {
-    if (!latestDiagnosticSession) return false;
-    if (!latestQuickWinSummary?.startedAt) return true;
-    return new Date(latestQuickWinSummary.startedAt) < new Date(latestDiagnosticSession.ended_at);
+    return needsFreshQuickWinHelper(latestDiagnosticSession, latestQuickWinSummary);
   }
 
   function buildQuickWinAction({ focusSkill = null, section = null } = {}) {
-    const focusLabel = focusSkill ? formatSkillLabel(focusSkill) : 'your next skill';
-    return {
-      kind: 'start_quick_win',
-      title: `Bank a quick win in ${focusLabel}`,
-      reason: `${focusLabel} is close enough to your current level that one short success loop should give you a real confidence bump before heavier work.`,
-      ctaLabel: `Practice ${focusLabel}`,
-      estimatedMinutes: 2,
-      sessionType: 'quick_win',
-      section,
-      focusSkill,
-    };
+    return buildQuickWinActionHelper({ focusSkill, section, formatSkillLabel });
   }
 
   function isMeaningfulStreakSession(session) {
@@ -3318,17 +3355,15 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
     estimatedMinutes = 8,
     ctaLabel = 'Start repair loop',
   } = {}) {
-    return {
-      kind: 'start_retry_loop',
-      title,
-      reason,
-      ctaLabel,
-      estimatedMinutes,
-      sessionType: 'review',
-      section,
+    return buildRetryLoopActionHelper({
       itemId,
       focusSkill,
-    };
+      section,
+      title,
+      reason,
+      estimatedMinutes,
+      ctaLabel,
+    });
   }
 
   function buildTimedSetAction({
@@ -3337,16 +3372,7 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
     focusSkill = null,
     estimatedMinutes = 12,
   } = {}) {
-    return {
-      kind: 'start_timed_set',
-      title,
-      reason,
-      ctaLabel: 'Start timed practice',
-      estimatedMinutes,
-      sessionType: 'timed_set',
-      section: null,
-      focusSkill,
-    };
+    return buildTimedSetActionHelper({ title, reason, focusSkill, estimatedMinutes });
   }
 
   function buildModuleAction({
@@ -3358,154 +3384,27 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
     ctaLabel = 'Start practice block',
     realismProfile = 'standard',
   } = {}) {
-    const resolvedSection = section ?? 'math';
-    const shape = getModuleActionMetadata(resolvedSection, realismProfile);
-    return {
-      kind: 'start_module',
+    return buildModuleActionHelper({
       title,
       reason,
-      ctaLabel,
-      estimatedMinutes: Math.max(estimatedMinutes, Math.ceil(shape.timeLimitSec / 60)),
-      sessionType: 'module_simulation',
-      section: resolvedSection,
       focusSkill,
+      section,
+      estimatedMinutes,
+      ctaLabel,
       realismProfile,
-      itemCount: shape.itemCount,
-      structureBreakpoints: shape.structureBreakpoints,
-      timeLimitSec: shape.timeLimitSec,
-      recommendedPaceSec: shape.recommendedPaceSec,
-      studentResponseTarget: shape.studentResponseTarget,
-      profileLabel: shape.profileLabel,
-      profileStory: shape.profileStory,
-    };
+      getModuleActionMetadata,
+    });
   }
 
   function applyComebackFraming(action, comebackState) {
-    if (!action || !comebackState?.isReturning) return action;
-    const daysAway = comebackState.daysAway ?? 0;
-    const prefix = daysAway >= 5 ? 'Restart gently' : 'Get back in';
-
-    if (action.kind === 'start_retry_loop') {
-      return {
-        ...action,
-        title: `${prefix} with one repair loop`,
-        reason: `${daysAway} day${daysAway === 1 ? '' : 's'} away is long enough for a miss to come back. Helix saved the shortest high-yield fix first.`,
-        ctaLabel: 'Take the easy return block',
-        estimatedMinutes: Math.min(action.estimatedMinutes ?? 8, 10),
-      };
-    }
-
-    if (action.kind === 'start_quick_win') {
-      return {
-        ...action,
-        title: `${prefix} with a quick win`,
-        reason: `${daysAway} day${daysAway === 1 ? '' : 's'} away is easier to recover from with one small success before heavier work.`,
-        ctaLabel: 'Bank the quick comeback',
-        estimatedMinutes: Math.min(action.estimatedMinutes ?? 2, 5),
-      };
-    }
-
-    return {
-      ...action,
-      title: `${prefix} with one short block`,
-      reason: `${daysAway} day${daysAway === 1 ? '' : 's'} away is enough to justify a lighter re-entry. ${action.reason}`,
-      ctaLabel: 'Start the return block',
-      estimatedMinutes: Math.min(action.estimatedMinutes ?? 15, 15),
-    };
+    return applyComebackFramingHelper(action, comebackState);
   }
 
   function toSessionOutcomePayload({ summary, nextBestAction = null }) {
-    if (!summary?.sessionType) return null;
-
-    if (summary.sessionType === 'quick_win') {
-      const focusLabel = summary.focusSkill ? formatSkillLabel(summary.focusSkill) : 'your focus skill';
-      const evidenceBullets = [
-        `${summary.correct ?? 0}/${summary.total ?? 0} correct in a short confidence-building loop.`,
-        summary.accuracy !== null ? `${Math.round((summary.accuracy ?? 0) * 100)}% accuracy on ${focusLabel.toLowerCase()}.` : null,
-        summary.comebackPrompt ?? null,
-      ].filter(Boolean);
-      return {
-        sessionId: summary.sessionId,
-        sessionType: summary.sessionType,
-        completedAt: summary.endedAt ?? null,
-        headline: summary.headline ?? `Quick win completed on ${focusLabel}`,
-        subheadline: `${focusLabel} now has one fresh successful rep.`,
-        statusPill: 'Quick win banked',
-        metrics: [
-          ['Accuracy', summary.accuracy === null ? '—' : `${Math.round((summary.accuracy ?? 0) * 100)}%`],
-          ['Answered', `${summary.answered ?? 0}/${summary.total ?? 0}`],
-        ],
-        evidenceBullets,
-        nextStep: summary.nextAction ?? null,
-        primaryAction: nextBestAction,
-      };
-    }
-
-    if (summary.sessionType === 'timed_set') {
-      const paceLabel = humanizeIdentifier(summary.paceStatus ?? 'on_pace').toLowerCase();
-      const evidenceBullets = [
-        `${summary.correct ?? 0}/${summary.total ?? 0} correct under timed conditions.`,
-        summary.averageResponseTimeMs ? `Average pace was ${Math.round(summary.averageResponseTimeMs / 1000)} seconds per item (${paceLabel}).` : `Pace signal is ${paceLabel}.`,
-        summary.expired ? 'This set hit the time limit, so Helix is weighting pacing more heavily.' : null,
-      ].filter(Boolean);
-      return {
-        sessionId: summary.sessionId,
-        sessionType: summary.sessionType,
-        completedAt: summary.endedAt ?? null,
-        headline: summary.expired
-          ? 'Timed evidence says pacing still leaks points'
-          : (summary.accuracy ?? 0) >= 0.67
-            ? 'Timed evidence looks usable'
-            : 'Timed evidence says repair still beats more speed',
-        subheadline: 'Helix is translating this timed set into the next repair or pace decision.',
-        statusPill: summary.expired ? 'Timed pressure caught up' : 'Timed signal updated',
-        metrics: [
-          ['Accuracy', summary.accuracy === null ? '—' : `${Math.round((summary.accuracy ?? 0) * 100)}%`],
-          ['Average time', summary.averageResponseTimeMs ? `${Math.round(summary.averageResponseTimeMs / 1000)}s/item` : '—'],
-          ['Pace', humanizeIdentifier(summary.paceStatus ?? 'on_pace')],
-        ],
-        evidenceBullets,
-        nextStep: summary.nextAction ?? null,
-        primaryAction: nextBestAction,
-      };
-    }
-
-    const blockLabel = moduleProfileHeadline(summary.section ?? 'math', summary.realismProfile ?? 'standard');
-    const focusDomain = summary.focusDomain ? humanizeIdentifier(summary.focusDomain) : null;
-    const evidenceBullets = [
-      `${summary.correct ?? 0}/${summary.total ?? 0} correct across the latest ${blockLabel.toLowerCase()}.`,
-      summary.averageResponseTimeMs ? `Average pace was ${Math.round(summary.averageResponseTimeMs / 1000)} seconds per item.` : null,
-      focusDomain ? `${focusDomain} carried the strongest domain signal in this block.` : null,
-      summary.profileStory ?? null,
-    ].filter(Boolean);
-    return {
-      sessionId: summary.sessionId,
-      sessionType: summary.sessionType,
-      completedAt: summary.endedAt ?? null,
-      headline: summary.readinessSignal === 'ready_to_extend'
-        ? `${blockLabel} says you can extend`
-        : summary.readinessSignal === 'repair_before_next_module'
-          ? `${blockLabel} says repair comes before more volume`
-          : `${blockLabel} refreshed your evidence`,
-      subheadline: summary.realismProfile === 'exam'
-        ? 'Helix is treating this as a real test-day rep and deciding whether your pacing, stamina, and misses justify another full section.'
-        : summary.realismProfile === 'extended'
-          ? 'Helix is using this longer practice block to decide whether you should extend further or repair before full exam pressure.'
-          : 'Helix is using this standard section to decide whether to extend, stabilize, or repair first.',
-      statusPill: summary.realismProfile === 'exam'
-        ? 'Exam-profile signal updated'
-        : summary.realismProfile === 'extended'
-          ? 'Extended-block signal updated'
-          : 'Module signal updated',
-      metrics: [
-        ['Accuracy', summary.accuracy === null ? '—' : `${Math.round((summary.accuracy ?? 0) * 100)}%`],
-        ['Average time', summary.averageResponseTimeMs ? `${Math.round(summary.averageResponseTimeMs / 1000)}s/item` : '—'],
-        ['Readiness', humanizeIdentifier(summary.readinessSignal ?? 'needs_evidence')],
-      ],
-      evidenceBullets,
-      nextStep: summary.nextAction ?? null,
-      primaryAction: nextBestAction,
-    };
+    return toSessionOutcomePayloadHelper(
+      { summary, nextBestAction },
+      { formatSkillLabel, humanizeIdentifier, moduleProfileHeadline },
+    );
   }
 
   function selectQuickWinItems({ items, recentItemIds = [], exposureCounts = {}, focusSkill = null, section = null }) {

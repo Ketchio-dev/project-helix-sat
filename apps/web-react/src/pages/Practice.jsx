@@ -74,16 +74,16 @@ function CurrentAttemptPane({
 
       {showFeedback && (
         <div className={`mb-6 border rounded-lg px-4 py-3 ${
-          lastAttemptResult.correct || lastAttemptResult.isCorrect || lastAttemptResult.is_correct
+          lastAttemptResult.isCorrect
             ? 'border-green-200 bg-green-50'
             : 'border-red-200 bg-red-50'
         }`}>
           <p className={`text-sm font-medium mb-1 ${
-            lastAttemptResult.correct || lastAttemptResult.isCorrect || lastAttemptResult.is_correct
+            lastAttemptResult.isCorrect
               ? 'text-green-800'
               : 'text-red-800'
           }`}>
-            {lastAttemptResult.correct || lastAttemptResult.isCorrect || lastAttemptResult.is_correct
+            {lastAttemptResult.isCorrect
               ? 'Correct'
               : `Incorrect \u2014 the answer is ${correctAnswer}`}
           </p>
@@ -138,6 +138,7 @@ export default function Practice() {
   const sessionComplete = useStore((s) => s.sessionComplete)
   const sessionSummary = useStore((s) => s.sessionSummary)
   const loadDashboard = useStore((s) => s.loadDashboard)
+  const loadActiveSession = useStore((s) => s.loadActiveSession)
   const navigate = useNavigate()
   const isExamMode = currentSessionType === 'exam' || currentSessionType === 'timed-set' || currentSessionType === 'diagnostic'
   const showFeedback = lastAttemptResult && !isExamMode
@@ -160,24 +161,16 @@ export default function Practice() {
   }, [lastAttemptResult, isExamMode, sessionComplete, clearLastAttempt])
 
   // Try to load active session if we don't have one
-  const resumeSession = useStore((s) => s.resumeSession)
   const [loading, setLoading] = useState(() => !currentItem && !sessionComplete)
   const attemptedResume = useRef(false)
 
   useEffect(() => {
     if (!currentItem && !sessionComplete && !attemptedResume.current) {
       attemptedResume.current = true
-      fetch('/api/session/active', { credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } })
-        .then(r => r.json())
-        .then(data => {
-          if (data?.activeSession) {
-            resumeSession(data.activeSession)
-          }
-          setLoading(false)
-        })
-        .catch(() => setLoading(false))
+      loadActiveSession()
+        .finally(() => setLoading(false))
     }
-  }, [currentItem, resumeSession, sessionComplete])
+  }, [currentItem, loadActiveSession, sessionComplete])
 
   if (loading && !currentItem) {
     return (
@@ -205,9 +198,9 @@ export default function Practice() {
   // Session complete
   if (sessionComplete) {
     const summary = sessionSummary || {}
-    const correct = summary.correct || summary.correctCount || summary.correct_count || 0
-    const total = summary.total || summary.totalCount || summary.total_count || summary.attempted || 0
-    const score = summary.score || (total > 0 ? Math.round((correct / total) * 100) : 0)
+    const correct = summary.correctCount || 0
+    const total = summary.totalCount || 0
+    const score = summary.score || 0
 
     return (
       <main className="max-w-lg mx-auto px-6 py-16">
@@ -247,11 +240,11 @@ export default function Practice() {
   }
 
   // Active question
-  const itemKey = currentItem.itemId || currentItem.id || currentItem.item_id || 'current-item'
+  const itemKey = currentItem.itemId || 'current-item'
   const progressCurrent = sessionProgress?.current || sessionProgress?.completed || 0
   const progressTotal = sessionProgress?.total || 0
-  const correctAnswer = showFeedback ? (lastAttemptResult.correctAnswer || lastAttemptResult.correct_answer) : null
-  const explanation = showFeedback ? (lastAttemptResult.explanation || lastAttemptResult.rationale) : null
+  const correctAnswer = showFeedback ? lastAttemptResult.correctAnswer : null
+  const explanation = showFeedback ? lastAttemptResult.explanation : null
 
   return (
     <main className="max-w-2xl mx-auto px-6 py-8">

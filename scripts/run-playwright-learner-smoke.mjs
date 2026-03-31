@@ -58,6 +58,15 @@ async function hasRecoverableActiveSession(page) {
   });
 }
 
+async function readActiveSession(page) {
+  return page.evaluate(async () => {
+    const response = await fetch('/api/session/active', { credentials: 'same-origin' }).catch(() => null);
+    if (!response || !response.ok) return null;
+    const payload = await response.json().catch(() => null);
+    return payload?.activeSession ?? null;
+  });
+}
+
 async function clickSectionButtonByText(page, sectionSelector, patternSource, patternFlags = 'i') {
   return page.evaluate(({ sectionSelector, patternSource, patternFlags }) => {
     const section = document.querySelector(sectionSelector);
@@ -133,6 +142,9 @@ async function main() {
         });
       }
       await nextMoveHeading.waitFor();
+      const primaryNextBestAction = page.locator('#nextBestActionSection button[data-next-best-action="true"]');
+      await primaryNextBestAction.waitFor({ state: 'visible' });
+      assert.equal(await primaryNextBestAction.count(), 1, 'Learner home should show exactly one primary next-best-action');
     });
 
     await checkpoint('diagnostic_preflight_start', async () => {
@@ -149,13 +161,29 @@ async function main() {
       await expectHidden(page, '#supportViewSection');
       await expectHidden(page, '#teacherAssignmentsSection');
 
-      await page.locator('#nextBestActionSection button').first().click();
+      const primaryNextBestAction = page.locator('#nextBestActionSection button[data-next-best-action="true"]');
+      const launchMeta = await primaryNextBestAction.evaluate((button) => ({
+        label: button.textContent?.trim() ?? '',
+        role: button.dataset.ctaRole ?? '',
+        sessionType: button.dataset.launchSessionType ?? '',
+        section: button.dataset.launchSection ?? '',
+        realismProfile: button.dataset.launchRealismProfile ?? '',
+        profileLabel: button.dataset.launchProfileLabel ?? '',
+      }));
+      assert.equal(launchMeta.role, 'primary', 'home CTA should be marked as the primary next-best-action');
+      assert.equal(launchMeta.sessionType, 'diagnostic', 'goal completion should launch the diagnostic next move');
+
+      await primaryNextBestAction.click();
       const preflightHeading = page.getByRole('heading', { name: 'Your 12-minute starting point' });
       await preflightHeading.waitFor({ timeout: 3000 });
       await page.locator('#startDiagnosticFromPreflight').click();
+      const activeSession = await readActiveSession(page);
+      assert.equal(activeSession?.session?.type ?? activeSession?.sessionType ?? null, launchMeta.sessionType);
     });
 
     await checkpoint('diagnostic_reveal_cta', async () => {
+      let progressTexts = new Set();
+
       for (let index = 0; index < 15; index += 1) {
         const resumeButton = page.locator('#nextBestActionSection').getByRole('button', { name: /Resume/i }).first();
         if (await page.locator('#diagnosticRevealSection').isVisible().catch(() => false)) {
@@ -173,16 +201,34 @@ async function main() {
         if (await page.locator('#diagnosticRevealSection').isVisible().catch(() => false)) {
           break;
         }
+
+        const statusText = await page.locator('#diagnosticStatus').textContent().catch(() => '');
+        if (statusText && statusText.includes('Diagnostic progress:')) {
+          progressTexts.add(statusText.split('answered.')[1]?.trim() || statusText);
+        }
+
         await page.locator('#attemptForm').waitFor({ state: 'visible' });
         await answerCurrentItem(page);
         await page.waitForTimeout(30);
       }
 
+      const progressArray = Array.from(progressTexts);
+      assert.ok(progressArray.length >= 2, 'Progress text should meaningfully evolve during diagnostic');
+      assert.ok(progressArray.some(t => t.includes('Helix is')), 'Progress should contain meaningful narrative');
+
       await page.locator('#diagnosticRevealSection').waitFor({ state: 'visible' });
       await page.locator('#diagnosticReveal').getByText('Score range', { exact: false }).waitFor();
       await page.locator('#diagnosticReveal').getByText('Start here').waitFor();
       await page.locator('#diagnosticReveal').getByText('Why Helix believes this').waitFor();
-      await clickSectionButtonByText(page, '#diagnosticReveal', '^Practice ');
+
+      const ctaButton = page.locator('#diagnosticReveal').locator('button').first();
+      const ctaLabel = await ctaButton.textContent();
+      
+      await clickSectionButtonByText(page, '#diagnosticReveal', '^Practice |^Repair |^Start ');
+      
+      await page.locator('#attemptForm').waitFor({ state: 'visible', timeout: 5000 });
+      const newStatusText = await page.locator('#diagnosticStatus').textContent();
+      assert.ok(newStatusText, 'Follow-up session should start immediately');
     });
 
     await checkpoint('quick_win_completion_summary', async () => {
@@ -236,7 +282,7 @@ async function main() {
       const reviewRecommendations = page.locator('#reviewRecommendations');
       const firstLessonPack = reviewRecommendations.locator('details').first();
       await firstLessonPack.getByText('Learn the rule', { exact: false }).waitFor();
-      await reviewRecommendations.getByRole('button', { name: 'Try this again' }).first().waitFor();
+      await reviewRecommendations.getByRole('button', { name: /Start retry loop|Start near-transfer/i }).first().waitFor();
       await reviewRecommendations.getByRole('button', { name: 'Try a close variant' }).first().waitFor();
       await firstLessonPack.locator('summary').click();
       const lessonPackText = await firstLessonPack.textContent();
@@ -315,8 +361,14 @@ async function main() {
       });
       await page.locator('#moduleSection').selectOption('math');
       await page.locator('#moduleRealismProfile').selectOption('exam');
+      const selectedSection = await page.locator('#moduleSection').inputValue();
+      const selectedProfile = await page.locator('#moduleRealismProfile').inputValue();
       await page.locator('#startModule').click();
       await page.locator('#diagnosticStatus').getByText('Module Simulation (Math) progress: 0/22 answered', { exact: false }).waitFor();
+      const activeSession = await readActiveSession(page);
+      assert.equal(activeSession?.session?.type ?? activeSession?.sessionType ?? null, 'module_simulation');
+      assert.equal(activeSession?.session?.section ?? null, selectedSection);
+      assert.equal(activeSession?.session?.realism_profile ?? null, selectedProfile);
     });
 
   } finally {

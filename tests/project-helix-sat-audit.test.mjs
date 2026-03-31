@@ -5,7 +5,6 @@ import { buildProjectHelixSatAudit, formatProjectHelixSatAudit } from '../packag
 
 const ontology = JSON.parse(fs.readFileSync(new URL('../docs/ontology/skill-ontology.v1.json', import.meta.url), 'utf8'));
 const packageJson = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-const routerSource = fs.readFileSync(new URL('../services/api/src/router.mjs', import.meta.url), 'utf8');
 const indexSource = fs.readFileSync(new URL('../apps/web/public/index.html', import.meta.url), 'utf8');
 const appSource = fs.readFileSync(new URL('../apps/web/public/app.js', import.meta.url), 'utf8');
 const learnerNarrativeSource = fs.readFileSync(new URL('../apps/web/public/learner-narrative.js', import.meta.url), 'utf8');
@@ -14,11 +13,20 @@ const webReadmeSource = fs.readFileSync(new URL('../apps/web/README.md', import.
 const readmeSource = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
 const contentReadmeSource = fs.readFileSync(new URL('../content/README.md', import.meta.url), 'utf8');
 const milestonesSource = fs.readFileSync(new URL('../docs/product-completion-milestones.md', import.meta.url), 'utf8');
-const apiTestSource = fs.readFileSync(new URL('../tests/api.test.mjs', import.meta.url), 'utf8');
+const apiTestSource = [
+  '../tests/api-auth-and-safety.test.mjs',
+  '../tests/api-review-and-remediation.test.mjs',
+  '../tests/api-learner-planning.test.mjs',
+  '../tests/api-session-and-exam.test.mjs',
+  '../tests/api-module-shapes.test.mjs',
+  '../tests/api-teacher-and-family.test.mjs',
+  '../tests/api-persistence.test.mjs',
+].map((path) => fs.readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n');
 const smokeRunnerSource = fs.readFileSync(new URL('../scripts/run-playwright-learner-smoke.mjs', import.meta.url), 'utf8');
 const generatedAuditSnapshot = fs.readFileSync(new URL('../docs/audits/project-helix-sat-coverage.md', import.meta.url), 'utf8');
 const validationSource = fs.readFileSync(new URL('../services/api/src/validation.mjs', import.meta.url), 'utf8');
 const foundationValidationSource = fs.readFileSync(new URL('../scripts/validate-foundation.mjs', import.meta.url), 'utf8');
+const routerSource = fs.readFileSync(new URL('../services/api/src/router.mjs', import.meta.url), 'utf8') + '\n' + apiTestSource;
 
 function duplicateIds(source) {
   const counts = new Map();
@@ -133,7 +141,7 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(reviewLessonPackSource, /arcText/);
   assert.match(reviewLessonPackSource, /Open lesson pack/);
   assert.match(appSource, /More ways to work/);
-  assert.match(appSource, /Try this again/);
+  assert.match(appSource, /Start retry loop/);
   assert.match(appSource, /Try a close variant/);
   assert.match(appSource, /syncDashboardDetails/);
   assert.equal(duplicateIds(indexSource).length, 0);
@@ -160,7 +168,7 @@ test('repo ships release-bar gating and a no-dependency playwright learner smoke
   assert.match(smokeRunnerSource, /Show full study dashboard/);
   assert.match(smokeRunnerSource, /Your 12-minute starting point/);
   assert.match(smokeRunnerSource, /Next block/);
-  assert.match(smokeRunnerSource, /clickSectionButtonByText\(page, '#diagnosticReveal', '\^Practice '\)/);
+  assert.match(smokeRunnerSource, /clickSectionButtonByText\(page, '#diagnosticReveal', '\^Practice \|\^Repair \|\^Start '\)/);
   assert.match(smokeRunnerSource, /#quickWinSection/);
   assert.match(smokeRunnerSource, /#learnerNarrative/);
   assert.match(smokeRunnerSource, /Find your starting point/);
@@ -203,10 +211,10 @@ test('docs stay aligned with cookie auth and current audit claims', () => {
   assert.match(milestonesSource, /Deepen authored lesson-pack and narrative cohesion/i);
   assert.match(milestonesSource, /Expand Playwright\/browser QA and guardrails/i);
   assert.match(milestonesSource, /checkpoint:diagnostic_reveal_cta/i);
-  assert.match(milestonesSource, /legacy learner shell as the current verified beta path/i);
+  assert.match(milestonesSource, /The legacy learner shell is the single supported private-beta surface/i);
   assert.match(milestonesSource, /manual signoff/i);
   assert.match(readmeSource, /legacy learner shell/i);
-  assert.match(readmeSource, /React app remains a secondary development surface/i);
+  assert.match(readmeSource, /React app is a secondary development surface/i);
   assert.match(webReadmeSource, /currently verified.*private-beta browser path/i);
   assert.match(webReadmeSource, /goal_setup_completion_resume/i);
   assert.match(webReadmeSource, /manual browser signoff/i);
