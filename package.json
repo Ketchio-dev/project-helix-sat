@@ -14,6 +14,10 @@
     "dev": "node services/api/server.mjs",
     "dev:react": "npm run dev --workspace apps/web-react",
     "verify": "node scripts/verify.mjs",
+    "generate:contracts": "node scripts/generate-contract-artifacts.mjs",
+    "check:contracts": "node scripts/check-contract-artifacts.mjs",
+    "check:web-react": "npm run lint --workspace apps/web-react && npm run build --workspace apps/web-react && node --test tests/web-react-api-client.test.mjs tests/api-contract-drift.test.mjs",
+    "check:ci-local": "npm run check && npm run check:contracts && npm run check:web-react && npm run smoke:learner",
     "audit:helix:bars": "node scripts/check-content-release-bars.mjs",
     "build": "npm run verify",
     "check": "node scripts/validate-foundation.mjs && npm run verify && node --test",
@@ -25,5 +29,9 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "dependencies": {
+    "ioredis": "^5.10.1",
+    "pg": "^8.20.0"
   }
 }
