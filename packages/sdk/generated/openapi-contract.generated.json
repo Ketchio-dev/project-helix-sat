@@ -1,0 +1,153 @@
+{
+  "contractVersion": 1,
+  "source": {
+    "openapi": "services/api/openapi.yaml",
+    "schemasRoot": "packages/schemas"
+  },
+  "openapi": {
+    "sha256": "0bdca91547f09c8bde1d2f71fafc3ec12ca99df9c11e3cbc5acc36c6facb2484",
+    "pathCount": 34,
+    "paths": [
+      "/api/attempt/submit",
+      "/api/curriculum/path",
+      "/api/dashboard/learner",
+      "/api/diagnostic/reveal",
+      "/api/diagnostic/start",
+      "/api/error-dna",
+      "/api/goal-profile",
+      "/api/items",
+      "/api/learner/narrative",
+      "/api/me",
+      "/api/module/finish",
+      "/api/module/start",
+      "/api/next-best-action",
+      "/api/parent/summary",
+      "/api/plan/explanation",
+      "/api/plan/today",
+      "/api/program/path",
+      "/api/progress/what-changed",
+      "/api/projection",
+      "/api/projection/evidence",
+      "/api/projection/latest",
+      "/api/quick-win/start",
+      "/api/reflection/submit",
+      "/api/reports/weekly",
+      "/api/review/recommendations",
+      "/api/session/active",
+      "/api/session/review",
+      "/api/sessions/history",
+      "/api/teacher/assignments",
+      "/api/teacher/brief",
+      "/api/timed-set/finish",
+      "/api/timed-set/start",
+      "/api/tutor/hint",
+      "/health"
+    ],
+    "schemaRefCount": 29,
+    "schemaRefs": [
+      "AttemptSubmitRequest",
+      "CurriculumPath",
+      "DailyPlan",
+      "DashboardLearnerResponse",
+      "DiagnosticRevealResponse",
+      "EmptyRequest",
+      "ErrorDnaMap",
+      "ErrorDnaResponse",
+      "EventEnvelope",
+      "GoalProfileResponse",
+      "GoalProfileUpdateRequest",
+      "LearnerNarrative",
+      "ModuleStartRequest",
+      "NextBestActionResponse",
+      "PlanExplanation",
+      "ProgramPath",
+      "ProjectionEvidence",
+      "ReflectionSubmitRequest",
+      "ReviewRecommendationsResponse",
+      "ReviewRemediationCard",
+      "ScorePrediction",
+      "SessionIdRequest",
+      "SessionOutcome",
+      "SessionReviewResponse",
+      "TeacherAssignmentRequest",
+      "TutorHintRequest",
+      "TutorHintResponse",
+      "WeeklyReport",
+      "WhatChanged"
+    ]
+  },
+  "schemas": {
+    "count": 17,
+    "files": [
+      {
+        "file": "packages/schemas/events/event-envelope.schema.json",
+        "sha256": "a4f71f112b7ec121d51c74093f6da5981abf3c85f1cc6064890bb7fc6fc3e85f"
+      },
+      {
+        "file": "packages/schemas/learner/diagnostic-reveal.schema.json",
+        "sha256": "d099916a4367b941254f7a9560828674e1dd4c0a5ed384e02c723cdf69960380"
+      },
+      {
+        "file": "packages/schemas/learner/goal-profile.schema.json",
+        "sha256": "0f4126648a66c1a63722e7f960987b377d4c242a3611e22978ab25278104426d"
+      },
+      {
+        "file": "packages/schemas/learner/next-best-action.schema.json",
+        "sha256": "76e068d3f47928954fa2342504eaa458ccbfd9ffc9f54f1b755ade887e6a9fbe"
+      },
+      {
+        "file": "packages/schemas/learner/review-remediation-card.schema.json",
+        "sha256": "0349e2a111401c508dd7545d4b10aacdf23882ca9755dd5690f8a54ff7530ebb"
+      },
+      {
+        "file": "packages/schemas/learner/session-outcome.schema.json",
+        "sha256": "6c4a537e6ba55472b23b4cc019734a95d80271f00fb0a8a11ceca4daead95fc7"
+      },
+      {
+        "file": "packages/schemas/planning/curriculum-path.schema.json",
+        "sha256": "67f2ce084f47b8fb4ad721dfce90053e65f38954f40ec724160af613bfc84f6b"
+      },
+      {
+        "file": "packages/schemas/planning/daily-plan.schema.json",
+        "sha256": "003e84058a1ec2473af0a2e320db0b1f928c6623739ebed4ad43caf7b7fce3e6"
+      },
+      {
+        "file": "packages/schemas/planning/plan-explanation.schema.json",
+        "sha256": "b883acde769ce7b03fa07e22d812fadd4d9b69527557362dfd4fdb3537663010"
+      },
+      {
+        "file": "packages/schemas/planning/program-path.schema.json",
+        "sha256": "d1619723fcef69e0e7ab9100b617fc0421e00d513b7ef1293f0402837c724c18"
+      },
+      {
+        "file": "packages/schemas/reporting/learner-narrative.schema.json",
+        "sha256": "e3cfd702bec3c24f796f9b9eea7c34a6d031e9d81ffea19353cde56ffdf13cad"
+      },
+      {
+        "file": "packages/schemas/reporting/weekly-report.schema.json",
+        "sha256": "12e04248c894ea1ea3691d72b42de68946d4cbd75cd9e0ac39566e69c10ac751"
+      },
+      {
+        "file": "packages/schemas/reporting/what-changed.schema.json",
+        "sha256": "84b9244be8c2102d8bb08bb6dbf44f3651fb3d96dde3bf154523c6f7ecbd0b71"
+      },
+      {
+        "file": "packages/schemas/scoring/projection-evidence.schema.json",
+        "sha256": "3425074307ce3ac90b6546128218f94ea30045f24eaf276995fac752e23641f0"
+      },
+      {
+        "file": "packages/schemas/scoring/score-prediction.schema.json",
+        "sha256": "4da8f05fe2d4e545a890033a4849cebe28283debb42ee3badf6d82b21e2b5dd0"
+      },
+      {
+        "file": "packages/schemas/tutor/error-diagnosis.schema.json",
+        "sha256": "e5610c15ce58ab104bc6affdd8a3d9e9d0135cf4924ef16ab7d5da7592ac7ac6"
+      },
+      {
+        "file": "packages/schemas/tutor/hint-response.schema.json",
+        "sha256": "0ab1907076df7e40e44d8653c2291a0b6ae866cc418dc5133322564c8efe22c3"
+      }
+    ],
+    "combinedSha256": "cef10dbad59df4ecbdfbf0624f8bbf087c0e8d6005dc7bedffe40fa59ada7432"
+  }
+}
