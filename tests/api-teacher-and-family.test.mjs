@@ -8,6 +8,8 @@ test('api returns a parent-facing learner summary', async () => {
     assert.equal(response.status, 200);
     const summary = await response.json();
     assert.equal(typeof summary.learnerName, 'string');
+    assert.equal(typeof summary.recommendedParentAction, 'string');
+    assert.ok(Array.isArray(summary.topStrengths));
   });
 });
 
@@ -17,6 +19,8 @@ test('api returns a teacher-facing learner brief', async () => {
     assert.equal(response.status, 200);
     const brief = await response.json();
     assert.equal(typeof brief.teacherActionNote, 'string');
+    assert.ok(Array.isArray(brief.topStrengths));
+    assert.ok('recommendedWarmup' in brief);
   });
 });
 
@@ -27,6 +31,7 @@ test('api returns teacher assignment recommendations', async () => {
     const assignments = await response.json();
     assert.ok(Array.isArray(assignments.recommended));
     assert.ok(Array.isArray(assignments.saved));
+    assert.equal(typeof assignments.generatedAt, 'string');
   });
 });
 

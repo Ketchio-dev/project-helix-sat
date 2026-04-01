@@ -65,6 +65,11 @@ test('api starts a retry loop from review recommendations and schedules a revisi
     const retrySession = await fetch(`${baseUrl}/api/review/retry/start`, { method: 'POST', headers: sessions.student.headers, body: JSON.stringify({ itemId: reviewBefore.remediationCards[0].itemId }) }).then((res) => res.json());
     assert.equal(retrySession.session.type, 'review');
 
+    const retryActive = await fetch(`${baseUrl}/api/session/active`, { headers: sessions.student.headers }).then((res) => res.json());
+    assert.equal(retryActive.hasActiveSession, true);
+    assert.equal(retryActive.resumeReason, 'unfinished_session');
+    assert.equal(retryActive.activeSession.session.id, retrySession.session.id);
+
     let activeItem = retrySession.currentItem;
     let lastAttempt = null;
     while (activeItem) {
@@ -76,6 +81,10 @@ test('api starts a retry loop from review recommendations and schedules a revisi
     }
 
     assert.equal(lastAttempt.sessionType, 'review');
+
+    const clearedActive = await fetch(`${baseUrl}/api/session/active`, { headers: sessions.student.headers }).then((res) => res.json());
+    assert.equal(clearedActive.hasActiveSession, false);
+
     const reviewAfter = await fetch(`${baseUrl}/api/review/recommendations`, { headers: sessions.student.headers }).then((res) => res.json());
     assert.ok(reviewAfter.revisitQueue.some((entry) => entry.itemId === reviewBefore.remediationCards[0].itemId));
   });

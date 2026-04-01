@@ -24,6 +24,37 @@ test('api exposes goal profile setup and updates next-best-action after completi
   });
 });
 
+test('api keeps planning surfaces aligned for cold-start learners after goal profile completion', async () => {
+  await withServer(async (baseUrl) => {
+    const registered = await registerSession(baseUrl, { name: 'Planning Cold Start Student', email: nextUniqueEmail('planning-cold-start-student'), password: 'pass1234' });
+
+    const nextBefore = await fetch(`${baseUrl}/api/next-best-action`, { headers: registered.headers }).then((res) => res.json());
+    assert.equal(nextBefore.kind, 'complete_goal_setup');
+
+    const dashboardBefore = await fetch(`${baseUrl}/api/dashboard/learner`, { headers: registered.headers }).then((res) => res.json());
+    assert.deepEqual(dashboardBefore.studyModes, []);
+
+    const goalProfile = await fetch(`${baseUrl}/api/goal-profile`, {
+      method: 'POST',
+      headers: registered.headers,
+      body: JSON.stringify({ targetScore: 1460, targetTestDate: '2026-10-17', dailyMinutes: 35, selfReportedWeakArea: 'transitions' }),
+    }).then((res) => res.json());
+    assert.equal(goalProfile.isComplete, true);
+
+    const [nextAfter, planAfter, dashboardAfter] = await Promise.all([
+      fetch(`${baseUrl}/api/next-best-action`, { headers: registered.headers }).then((res) => res.json()),
+      fetch(`${baseUrl}/api/plan/today`, { headers: registered.headers }).then((res) => res.json()),
+      fetch(`${baseUrl}/api/dashboard/learner`, { headers: registered.headers }).then((res) => res.json()),
+    ]);
+
+    assert.equal(nextAfter.kind, 'start_diagnostic');
+    assert.equal(planAfter.status, 'needs_diagnostic');
+    assert.equal(dashboardAfter.studyModes.length, 1);
+    assert.equal(dashboardAfter.studyModes[0].key, 'starting_point');
+    assert.equal(dashboardAfter.studyModes[0].action.kind, 'start_diagnostic');
+  });
+});
+
 test('api keeps learner contract payloads on canonical camelCase shape', async () => {
   await withServer(async (baseUrl) => {
     const registered = await registerSession(baseUrl, { name: 'Contract Shape Student', email: nextUniqueEmail('contract-shape-student'), password: 'pass1234' });
