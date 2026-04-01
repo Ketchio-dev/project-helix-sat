@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
-const MUTABLE_STATE_KEYS = [
+export const MUTABLE_STATE_KEYS = [
   'users',
   'learnerProfiles',
   'teacherStudentLinks',
@@ -16,6 +16,7 @@ const MUTABLE_STATE_KEYS = [
   'events',
   'reflections',
   'teacherAssignments',
+  'authSessions',
 ];
 
 const STATE_SHAPE_VALIDATORS = {
@@ -33,6 +34,7 @@ const STATE_SHAPE_VALIDATORS = {
   events: Array.isArray,
   reflections: isRecord,
   teacherAssignments: isRecord,
+  authSessions: isRecord,
 };
 
 function clone(value) {
@@ -62,7 +64,7 @@ function pickMutableState(state) {
   );
 }
 
-function mergeSeedWithSnapshot(seed, snapshot = {}) {
+export function mergeSeedWithSnapshot(seed, snapshot = {}) {
   const base = clone(seed);
   for (const key of MUTABLE_STATE_KEYS) {
     if (snapshot[key] !== undefined) {
@@ -78,24 +80,43 @@ function mergeSeedWithSnapshot(seed, snapshot = {}) {
   base.parentStudentLinks ??= {};
   base.reviewRevisits ??= {};
   base.events ??= [];
+  base.authSessions ??= {};
   return base;
 }
 
+export function toMutableStateSnapshot(state) {
+  return pickMutableState(state);
+}
+
 export function createMemoryStateStorage({ seed }) {
+  const metadata = { lane: 'durable_state', mode: 'memory', backend: 'memory', durable: false };
+  const load = () => mergeSeedWithSnapshot(seed);
+  const save = () => {};
   return {
     mode: 'memory',
     describe() {
-      return { mode: 'memory', durable: false };
+      return metadata;
     },
-    load() {
-      return mergeSeedWithSnapshot(seed);
+    load,
+    loadStateSnapshot() {
+      return load();
     },
-    save() {},
+    save,
+    saveStateSnapshot(state) {
+      return save(state);
+    },
   };
 }
 
 export function createFileStateStorage({ seed, filePath }) {
   const resolvedFilePath = resolve(filePath);
+  const metadata = {
+    lane: 'durable_state',
+    mode: 'file',
+    backend: 'file',
+    durable: true,
+    filePath: resolvedFilePath,
+  };
 
   function backupCorruptFile() {
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -104,39 +125,49 @@ export function createFileStateStorage({ seed, filePath }) {
     return backupPath;
   }
 
+  function load() {
+    try {
+      const raw = readFileSync(resolvedFilePath, 'utf8');
+      const parsed = JSON.parse(raw);
+      return mergeSeedWithSnapshot(seed, normalizeSnapshot(parsed));
+    } catch (error) {
+      if (error?.code === 'ENOENT') {
+        return mergeSeedWithSnapshot(seed);
+      }
+      if (
+        error instanceof SyntaxError
+        || error?.message === 'Persistence snapshot must be an object'
+        || error?.message?.startsWith('Persistence snapshot has invalid shape for ')
+      ) {
+        backupCorruptFile();
+        return mergeSeedWithSnapshot(seed);
+      }
+      throw error;
+    }
+  }
+
+  function save(state) {
+    mkdirSync(dirname(resolvedFilePath), { recursive: true });
+    const tempFilePath = `${resolvedFilePath}.tmp`;
+    writeFileSync(tempFilePath, JSON.stringify({
+      savedAt: new Date().toISOString(),
+      mutableState: pickMutableState(state),
+    }, null, 2));
+    renameSync(tempFilePath, resolvedFilePath);
+  }
+
   return {
     mode: 'file',
     describe() {
-      return { mode: 'file', durable: true, filePath: resolvedFilePath };
+      return metadata;
     },
-    load() {
-      try {
-        const raw = readFileSync(resolvedFilePath, 'utf8');
-        const parsed = JSON.parse(raw);
-        return mergeSeedWithSnapshot(seed, normalizeSnapshot(parsed));
-      } catch (error) {
-        if (error?.code === 'ENOENT') {
-          return mergeSeedWithSnapshot(seed);
-        }
-        if (
-          error instanceof SyntaxError
-          || error?.message === 'Persistence snapshot must be an object'
-          || error?.message?.startsWith('Persistence snapshot has invalid shape for ')
-        ) {
-          backupCorruptFile();
-          return mergeSeedWithSnapshot(seed);
-        }
-        throw error;
-      }
+    load,
+    loadStateSnapshot() {
+      return load();
     },
-    save(state) {
-      mkdirSync(dirname(resolvedFilePath), { recursive: true });
-      const tempFilePath = `${resolvedFilePath}.tmp`;
-      writeFileSync(tempFilePath, JSON.stringify({
-        savedAt: new Date().toISOString(),
-        mutableState: pickMutableState(state),
-      }, null, 2));
-      renameSync(tempFilePath, resolvedFilePath);
+    save,
+    saveStateSnapshot(state) {
+      return save(state);
     },
   };
 }
