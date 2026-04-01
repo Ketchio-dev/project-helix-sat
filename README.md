@@ -16,9 +16,11 @@ Adaptive SAT Intelligence Platform — an AI-powered SAT prep app with adaptive 
 - **Test suite** — automated regression coverage via `npm test` and `npm run check`
 - **Learner shell** — goal setup, 13-item baseline diagnostic, quick win, review remediation, and Playwright smoke coverage on the legacy learner shell (`apps/web/public/*`)
 
-## Quick Start
+## Supported Beta Surface (Wave 1)
 
-For the private-beta, the legacy learner shell is the single supported learner surface. The React app is a secondary development surface and is parity-gated. It will remain secondary until it passes the same Playwright browser QA suite as the legacy shell.
+For the Wave 1 private-beta, **the legacy learner shell (`apps/web/public/*`) is the single supported learner surface.**
+
+The React app is a secondary development surface and is **parity-gated**. Implementation path: `apps/web-react`. It remains an unsupported preview until it passes the full Playwright browser QA suite and meets the promotion criteria defined in `docs/product-completion-milestones.md`.
 
 ```bash
 # Start the legacy API + web shell (Supported Beta Surface)
@@ -26,19 +28,13 @@ node services/api/server.mjs
 
 # Open in browser
 open http://localhost:4321
-
-# Or run the React app (Secondary / Parity-Gated)
-npm run dev:react
-
-# Open in browser
-open http://localhost:5173
-
-# Login with demo credentials
-#   Email:    mina@example.com
-#   Password: demo1234
 ```
 
-For private-beta browser verification, the legacy learner shell is the only automated path. The React app is not supported for beta use until parity browser QA lands.
+The React app is NOT supported for beta use:
+```bash
+# Run the React app (Secondary / Parity-Gated / Unsupported)
+npm run dev:react
+```
 
 ## API Authentication
 
@@ -81,19 +77,22 @@ For the next highest-leverage slice toward private beta, see `docs/product-compl
 ```text
 apps/
   web/          (Primary Learner Beta Shell)
-  mobile/       (Skeleton only)
-  admin/        (Skeleton only)
+  web-react/    (Secondary / Unsupported / Parity-Gated)
+  mobile/       (Skeleton only — Non-functional placeholder)
+  admin/        (Skeleton only — Non-functional placeholder)
 services/
   api/
-  worker/       (Skeleton only)
+  worker/       (Skeleton only — Non-functional placeholder)
   tutor/
-  analytics/    (Skeleton only)
-  content-pipeline/ (Skeleton only)
+  analytics/    (Skeleton only — Non-functional placeholder)
+  content-pipeline/ (Skeleton only — Non-functional placeholder)
 packages/
 ...
 infrastructure/
-  terraform/    (Skeleton only)
+  terraform/    (Skeleton only — Non-functional placeholder)
 ```
+
+**Note on Skeleton Directories:** Directories marked as "Skeleton only" are architectural placeholders for future Wave releases. They contain non-functional scaffolding and are not supported for any use in the Wave 1 private beta.
 
 
 ## Validation
@@ -106,11 +105,14 @@ node --test
 Or via npm:
 ```bash
 npm run check
+npm run check:ci-local
 ```
 
-## Durable local state across restarts
+## Runtime modes
 
-The prototype supports env-gated file-backed state without adding dependencies.
+### Local fallback mode
+
+Local development can still use env-gated file-backed state without external services:
 
 ```bash
 HELIX_STATE_FILE=.data/helix-sat-state.json node services/api/server.mjs
@@ -121,4 +123,31 @@ and preserves the bad file as `*.corrupt-<timestamp>` for inspection.
 
 Limitation: file-backed mode is for a single local server process.
 
-See `docs/beta-ops.md` for managed-beta operating constraints, recovery behavior, and the persistence decision gate.
+### Beta-safe mode
+
+Production-like / beta-safe environments now require:
+
+```bash
+HELIX_RUNTIME_MODE=staging
+HELIX_DATABASE_URL=postgresql://user:pass@host:5432/helix
+HELIX_REDIS_URL=redis://host:6379/0
+HELIX_TOKEN_SECRET=replace-me
+HELIX_LEGACY_PASSWORD_SECRET=replace-me
+node services/api/server.mjs
+```
+
+In beta-safe mode:
+- PostgreSQL is the durable system of record for mutable learner state and auth session records.
+- Redis backs auth rate limiting and revocation lookup.
+- demo auth is blocked.
+- fallback secrets are rejected.
+
+### Release gate
+
+The local release-equivalent command is:
+
+```bash
+HELIX_SMOKE_SCREENSHOT=artifacts/learner-smoke.png npm run check:ci-local
+```
+
+See `docs/beta-ops.md` for operating constraints and `docs/release-checklist.md` for the operator handoff checklist.
