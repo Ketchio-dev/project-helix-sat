@@ -108,7 +108,7 @@ export async function withPersistentStateFile(prefix, run) {
 }
 
 export async function withServer(run, options = {}) {
-  const server = createAppServer(options);
+  const server = await createAppServer(options);
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const address = server.address();

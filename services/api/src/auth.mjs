@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { isProductionLikeEnvironment } from './infrastructure/config-guards.mjs';
 
 const DEFAULT_DEV_TOKEN_SECRET = 'helix-sat-dev-token-secret-change-in-production';
 const DEFAULT_DEV_LEGACY_SECRET = 'helix-sat-dev-secret-change-in-production';
@@ -9,21 +10,56 @@ const DEFAULT_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 function resolveTokenSecret() {
   return process.env.HELIX_TOKEN_SECRET
     || process.env.HELIX_AUTH_SECRET
-    || (process.env.NODE_ENV === 'production' ? null : DEFAULT_DEV_TOKEN_SECRET);
+    || (isProductionLikeEnvironment(process.env) ? null : DEFAULT_DEV_TOKEN_SECRET);
 }
 
 function resolveLegacyPasswordSecret() {
   return process.env.HELIX_LEGACY_PASSWORD_SECRET
     || process.env.HELIX_AUTH_SECRET
-    || (process.env.NODE_ENV === 'production' ? null : DEFAULT_DEV_LEGACY_SECRET);
+    || (isProductionLikeEnvironment(process.env) ? null : DEFAULT_DEV_LEGACY_SECRET);
 }
 
-const TOKEN_SECRET = resolveTokenSecret();
-const LEGACY_PASSWORD_SECRET = resolveLegacyPasswordSecret();
 const PASSWORD_PEPPER = process.env.HELIX_PASSWORD_PEPPER ?? '';
 
-if (TOKEN_SECRET === null) {
-  throw new Error('HELIX_TOKEN_SECRET environment variable is required in production');
+function requireTokenSecret() {
+  const tokenSecret = resolveTokenSecret();
+  if (tokenSecret === null) {
+    throw new Error('HELIX_TOKEN_SECRET environment variable is required in production-like environments');
+  }
+  return tokenSecret;
+}
+
+function requireLegacyPasswordSecret() {
+  const legacySecret = resolveLegacyPasswordSecret();
+  if (legacySecret === null) {
+    throw new Error('HELIX_LEGACY_PASSWORD_SECRET environment variable is required in production-like environments');
+  }
+  return legacySecret;
+}
+
+export function assertAuthConfiguration(env = process.env) {
+  if (!isProductionLikeEnvironment(env)) {
+    return {
+      productionLike: false,
+      demoAuthAllowed: env.HELIX_ENABLE_DEMO_AUTH === '1',
+    };
+  }
+
+  if (!(env.HELIX_TOKEN_SECRET || env.HELIX_AUTH_SECRET)) {
+    throw new Error('HELIX_TOKEN_SECRET environment variable is required in production-like environments');
+  }
+  if (!(env.HELIX_LEGACY_PASSWORD_SECRET || env.HELIX_AUTH_SECRET)) {
+    throw new Error('HELIX_LEGACY_PASSWORD_SECRET environment variable is required in production-like environments');
+  }
+
+  return {
+    productionLike: true,
+    demoAuthAllowed: false,
+  };
+}
+
+export function isDemoAuthAllowed(env = process.env) {
+  return env.HELIX_ENABLE_DEMO_AUTH === '1' && !isProductionLikeEnvironment(env);
 }
 
 function toBuffer(value) {
@@ -46,10 +82,7 @@ function fromBase64url(str) {
 }
 
 function hashLegacyPassword(password) {
-  if (!LEGACY_PASSWORD_SECRET) {
-    return null;
-  }
-  return createHmac('sha256', LEGACY_PASSWORD_SECRET).update(password).digest('hex');
+  return createHmac('sha256', requireLegacyPasswordSecret()).update(password).digest('hex');
 }
 
 export function hashPassword(password) {
@@ -78,11 +111,13 @@ export function verifyPassword(password, hash) {
   return legacyHash ? safeEquals(legacyHash, hash) : false;
 }
 
-export function createToken(userId, role, expiresInMs = DEFAULT_TOKEN_TTL_MS) {
+export function createToken(userId, role, options = {}) {
+  const expiresInMs = typeof options === 'number' ? options : (options.expiresInMs ?? DEFAULT_TOKEN_TTL_MS);
+  const sessionId = typeof options === 'object' ? (options.sessionId ?? null) : null;
   const iat = Date.now();
-  const payload = JSON.stringify({ userId, role, iat, exp: iat + expiresInMs });
+  const payload = JSON.stringify({ userId, role, iat, exp: iat + expiresInMs, ...(sessionId ? { sessionId } : {}) });
   const encoded = base64url(payload);
-  const sig = createHmac('sha256', TOKEN_SECRET).update(encoded).digest('base64url');
+  const sig = createHmac('sha256', requireTokenSecret()).update(encoded).digest('base64url');
   return `${encoded}.${sig}`;
 }
 
@@ -91,14 +126,14 @@ export function verifyToken(token) {
   const parts = token.split('.');
   if (parts.length !== 2) return null;
   const [encoded, sig] = parts;
-  const expectedSig = createHmac('sha256', TOKEN_SECRET).update(encoded).digest('base64url');
+  const expectedSig = createHmac('sha256', requireTokenSecret()).update(encoded).digest('base64url');
   if (!safeEquals(sig, expectedSig)) return null;
 
   try {
     const payload = JSON.parse(fromBase64url(encoded));
     if (!payload.userId || !payload.role || typeof payload.exp !== 'number') return null;
     if (Date.now() > payload.exp) return null;
-    return { userId: payload.userId, role: payload.role };
+    return { userId: payload.userId, role: payload.role, sessionId: payload.sessionId ?? null };
   } catch {
     return null;
   }
@@ -136,7 +171,7 @@ function buildCookieAttributes({ maxAgeSec = null } = {}) {
     'SameSite=Lax',
   ];
 
-  if (process.env.NODE_ENV === 'production') {
+  if (isProductionLikeEnvironment(process.env)) {
     attributes.push('Secure');
   }
 
