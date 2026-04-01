@@ -2,6 +2,7 @@ import {
   AUTH_COOKIE_NAME,
   getAuthTokenFromCookies,
   getDefaultTokenTtlMs,
+  isDemoAuthAllowed,
   serializeAuthCookie,
   serializeClearedAuthCookie,
   verifyToken,
@@ -32,11 +33,11 @@ function createRateLimiter() {
   };
 }
 
-function getAuthenticatedUser(request) {
+async function getAuthenticatedUser(request, store) {
   const authHeader = request.headers['authorization'];
   if (authHeader?.startsWith('Bearer ')) {
     const decoded = verifyToken(authHeader.slice(7));
-    if (!decoded) {
+    if (!decoded || !(await store.isAuthSessionValid(decoded))) {
       throw new HttpError(401, 'Invalid or expired token');
     }
     return decoded;
@@ -45,15 +46,18 @@ function getAuthenticatedUser(request) {
   const cookieToken = getAuthTokenFromCookies(request.headers.cookie);
   if (cookieToken) {
     const decoded = verifyToken(cookieToken);
-    if (!decoded) {
+    if (!decoded || !(await store.isAuthSessionValid(decoded))) {
       throw new HttpError(401, 'Invalid or expired token');
     }
     return decoded;
   }
 
   const demoHeader = request.headers['x-demo-user-id'];
-  if (demoHeader && process.env.HELIX_ENABLE_DEMO_AUTH === '1') {
+  if (demoHeader && isDemoAuthAllowed(process.env)) {
     return { userId: demoHeader, role: 'admin' };
+  }
+  if (demoHeader && process.env.HELIX_ENABLE_DEMO_AUTH === '1') {
+    throw new HttpError(403, 'Demo auth is disabled in beta-safe modes');
   }
 
   throw new HttpError(401, 'Authentication required');
@@ -158,7 +162,7 @@ function buildValidationPayload({ requestMethod, requestSchema, body, auth, lear
 }
 
 export function createRouter({ store, webRoot }) {
-  const enforceRateLimit = createRateLimiter();
+  const enforceRateLimitFallback = createRateLimiter();
 
   const routes = new Map();
   const registerRoute = (method, pathname, config) => {
@@ -179,7 +183,7 @@ export function createRouter({ store, webRoot }) {
     responseSchema: 'AuthSessionResponse',
     rateLimit: 'auth:login',
     async handler({ body }) {
-      const authResult = store.loginUser(body);
+      const authResult = await store.loginUser(body);
       return { body: toAuthResponse(authResult), authResult };
     },
   });
@@ -191,7 +195,7 @@ export function createRouter({ store, webRoot }) {
     rateLimit: 'auth:register',
     statusCode: 201,
     async handler({ body }) {
-      const authResult = store.registerUser(body);
+      const authResult = await store.registerUser(body);
       return { body: toAuthResponse(authResult), authResult };
     },
   });
@@ -199,7 +203,8 @@ export function createRouter({ store, webRoot }) {
   registerRoute('POST', '/api/auth/logout', {
     auth: 'authenticated',
     responseSchema: 'LogoutResponse',
-    async handler() {
+    async handler({ auth }) {
+      await store.revokeAuthSession(auth.sessionId, 'logout');
       return { body: { loggedOut: true }, clearCookie: true };
     },
   });
@@ -263,7 +268,7 @@ export function createRouter({ store, webRoot }) {
     requireRole: ['teacher'],
     requestSchema: 'TeacherAssignmentRequest',
     async handler({ auth, learnerId, body }) {
-      return { body: store.saveTeacherAssignment({ ...body, userId: auth.userId, learnerId }) };
+      return { body: await store.saveTeacherAssignment({ ...body, userId: auth.userId, learnerId }) };
     },
   });
 
@@ -281,11 +286,21 @@ export function createRouter({ store, webRoot }) {
       }
 
       if (route.rateLimit) {
-        enforceRateLimit(request, route.rateLimit);
+        if (typeof store.enforceAuthRateLimit === 'function') {
+          const state = await store.enforceAuthRateLimit(request, route.rateLimit, {
+            windowMs: AUTH_RATE_LIMIT_WINDOW_MS,
+            max: AUTH_RATE_LIMIT_MAX,
+          });
+          if (state?.exceeded) {
+            throw new HttpError(429, 'Too many authentication attempts. Please try again later.');
+          }
+        } else {
+          enforceRateLimitFallback(request, route.rateLimit);
+        }
       }
 
       const body = request.method === 'POST' ? await readJsonBody(request) : {};
-      const auth = route.auth === 'public' ? null : getAuthenticatedUser(request);
+      const auth = route.auth === 'public' ? null : await getAuthenticatedUser(request, store);
       if (route.requireRole) {
         requireRole(auth, ...route.requireRole);
       }

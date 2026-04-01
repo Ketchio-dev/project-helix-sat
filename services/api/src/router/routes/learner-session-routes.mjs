@@ -3,7 +3,7 @@ export function registerLearnerSessionRoutes(registerRoute, { store }) {
     auth: 'authenticated',
     learnerAccess: 'owner',
     async handler({ learnerId }) {
-      const result = store.startDiagnostic(learnerId);
+      const result = await store.startDiagnostic(learnerId);
       return { body: result, statusCode: result.conflict ? 409 : 201 };
     },
   });
@@ -12,7 +12,7 @@ export function registerLearnerSessionRoutes(registerRoute, { store }) {
     auth: 'authenticated',
     learnerAccess: 'owner',
     async handler({ learnerId }) {
-      return { body: store.startQuickWin(learnerId), statusCode: 201 };
+      return { body: await store.startQuickWin(learnerId), statusCode: 201 };
     },
   });
 
@@ -20,7 +20,7 @@ export function registerLearnerSessionRoutes(registerRoute, { store }) {
     auth: 'authenticated',
     learnerAccess: 'owner',
     async handler({ learnerId }) {
-      const result = store.startTimedSet(learnerId);
+      const result = await store.startTimedSet(learnerId);
       return { body: result, statusCode: result.conflict ? 409 : 201 };
     },
   });
@@ -30,7 +30,7 @@ export function registerLearnerSessionRoutes(registerRoute, { store }) {
     learnerAccess: 'owner',
     requestSchema: 'ModuleStartRequest',
     async handler({ learnerId, body }) {
-      const result = store.startModuleSimulation(learnerId, {
+      const result = await store.startModuleSimulation(learnerId, {
         section: body?.section,
         realismProfile: body?.realismProfile,
       });
@@ -43,7 +43,7 @@ export function registerLearnerSessionRoutes(registerRoute, { store }) {
     learnerAccess: 'owner',
     requestSchema: 'ReviewRetryStartRequest',
     async handler({ learnerId, body }) {
-      return { body: store.startReviewRetry(learnerId, { itemId: body?.itemId ?? null }), statusCode: 201 };
+      return { body: await store.startReviewRetry(learnerId, { itemId: body?.itemId ?? null }), statusCode: 201 };
     },
   });
 
@@ -57,7 +57,7 @@ export function registerLearnerSessionRoutes(registerRoute, { store }) {
         : null
     ),
     async handler({ learnerId, body }) {
-      return { body: store.submitAttempt({ ...body, userId: learnerId }) };
+      return { body: await store.submitAttempt({ ...body, userId: learnerId }) };
     },
   });
 
@@ -66,7 +66,7 @@ export function registerLearnerSessionRoutes(registerRoute, { store }) {
     learnerAccess: 'owner',
     requestSchema: 'SessionFinishRequest',
     async handler({ learnerId, body }) {
-      return { body: store.finishTimedSet({ ...body, userId: learnerId }) };
+      return { body: await store.finishTimedSet({ ...body, userId: learnerId }) };
     },
   });
 
@@ -75,7 +75,7 @@ export function registerLearnerSessionRoutes(registerRoute, { store }) {
     learnerAccess: 'owner',
     requestSchema: 'SessionFinishRequest',
     async handler({ learnerId, body }) {
-      return { body: store.finishModuleSimulation({ ...body, userId: learnerId }) };
+      return { body: await store.finishModuleSimulation({ ...body, userId: learnerId }) };
     },
   });
 
@@ -84,7 +84,7 @@ export function registerLearnerSessionRoutes(registerRoute, { store }) {
     learnerAccess: 'owner',
     requestSchema: 'ReflectionSubmitRequest',
     async handler({ learnerId, body }) {
-      return { body: store.submitReflection({ ...body, userId: learnerId }) };
+      return { body: await store.submitReflection({ ...body, userId: learnerId }) };
     },
   });
 

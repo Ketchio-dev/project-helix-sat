@@ -14,7 +14,7 @@ export function registerLearnerOnboardingRoutes(registerRoute, { store }) {
     requestSchema: 'GoalProfileUpdateRequest',
     responseSchema: 'GoalProfileResponse',
     async handler({ learnerId, body }) {
-      return { body: store.updateGoalProfile(learnerId, body) };
+      return { body: await store.updateGoalProfile(learnerId, body) };
     },
   });
 
