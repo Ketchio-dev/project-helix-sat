@@ -1,15 +1,11 @@
 import { create } from 'zustand';
 import { api } from './api';
 
-function pickFirstDefined(...values) {
-  return values.find((value) => value !== undefined);
-}
-
 function normalizeItemShape(item = null) {
   if (!item) return null;
   return {
     ...item,
-    itemId: pickFirstDefined(item.itemId, item.id, item.item_id) ?? null,
+    itemId: item.itemId ?? null,
   };
 }
 
@@ -17,8 +13,8 @@ function normalizeSessionProgressShape(progress = null) {
   if (!progress) return null;
   return {
     ...progress,
-    current: pickFirstDefined(progress.current, progress.completed, progress.answered) ?? 0,
-    total: pickFirstDefined(progress.total, progress.itemCount) ?? 0,
+    current: progress.current ?? 0,
+    total: progress.total ?? 0,
   };
 }
 
@@ -26,13 +22,13 @@ function normalizeActionShape(action = null) {
   if (!action) return null;
   return {
     ...action,
-    kind: pickFirstDefined(action.kind, action.actionType, action.type) ?? null,
-    title: pickFirstDefined(action.title, action.label) ?? null,
-    reason: pickFirstDefined(action.reason, action.description, action.subtitle) ?? '',
-    ctaLabel: pickFirstDefined(action.ctaLabel, action.cta_label) ?? 'Begin',
-    estimatedMinutes: pickFirstDefined(action.estimatedMinutes, action.estimated_minutes) ?? null,
-    sessionType: pickFirstDefined(action.sessionType, action.session_type) ?? null,
-    itemId: pickFirstDefined(action.itemId, action.item_id) ?? null,
+    kind: action.kind ?? null,
+    title: action.title ?? null,
+    reason: action.reason ?? '',
+    ctaLabel: action.ctaLabel ?? 'Begin',
+    estimatedMinutes: action.estimatedMinutes ?? null,
+    sessionType: action.sessionType ?? null,
+    itemId: action.itemId ?? null,
     section: action.section ?? null,
     realismProfile: action.realismProfile ?? null,
     profileLabel: action.profileLabel ?? null,
@@ -43,42 +39,42 @@ function normalizeGoalProfileShape(profile = null) {
   if (!profile) return null;
   return {
     ...profile,
-    targetScore: pickFirstDefined(profile.targetScore, profile.target_score) ?? null,
-    targetTestDate: pickFirstDefined(profile.targetTestDate, profile.target_test_date) ?? '',
-    dailyMinutes: pickFirstDefined(profile.dailyMinutes, profile.daily_minutes) ?? null,
-    selfReportedWeakArea: pickFirstDefined(profile.selfReportedWeakArea, profile.self_reported_weak_area) ?? '',
-    isComplete: pickFirstDefined(profile.isComplete, profile.is_complete, Boolean(pickFirstDefined(profile.completedAt, profile.completed_at))) ?? false,
-    completedAt: pickFirstDefined(profile.completedAt, profile.completed_at) ?? null,
+    targetScore: profile.targetScore ?? null,
+    targetTestDate: profile.targetTestDate ?? '',
+    dailyMinutes: profile.dailyMinutes ?? null,
+    selfReportedWeakArea: profile.selfReportedWeakArea ?? '',
+    isComplete: profile.isComplete ?? Boolean(profile.completedAt),
+    completedAt: profile.completedAt ?? null,
   };
 }
 
 function normalizeSessionSummaryShape(summary = null) {
   if (!summary) return null;
-  const correctCount = pickFirstDefined(summary.correctCount, summary.correct, summary.correct_count) ?? 0;
-  const totalCount = pickFirstDefined(summary.totalCount, summary.total, summary.total_count, summary.attempted) ?? 0;
+  const correctCount = summary.correctCount ?? summary.correct ?? 0;
+  const totalCount = summary.totalCount ?? summary.total ?? 0;
   return {
     ...summary,
     correctCount,
     totalCount,
-    score: pickFirstDefined(summary.score, totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0) ?? 0,
+    score: summary.score ?? (totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0),
   };
 }
 
 function normalizeDashboardContractShape(dashboard = {}) {
   return {
-    nextBestAction: normalizeActionShape(pickFirstDefined(dashboard.nextBestAction, dashboard.next_best_action) ?? null),
-    learnerNarrative: pickFirstDefined(dashboard.learnerNarrative, dashboard.narrative) ?? null,
-    diagnosticReveal: pickFirstDefined(dashboard.diagnosticReveal, dashboard.diagnostic_reveal) ?? null,
-    latestSessionOutcome: pickFirstDefined(dashboard.latestSessionOutcome, dashboard.latest_session_outcome) ?? null,
+    nextBestAction: normalizeActionShape(dashboard.nextBestAction ?? null),
+    learnerNarrative: dashboard.learnerNarrative ?? null,
+    diagnosticReveal: dashboard.diagnosticReveal ?? null,
+    latestSessionOutcome: dashboard.latestSessionOutcome ?? null,
   };
 }
 
 function normalizeStartedSessionShape(payload = {}, fallbackType = null) {
   return {
-    sessionId: pickFirstDefined(payload.sessionId, payload.session_id, payload.session?.id) ?? null,
-    sessionType: pickFirstDefined(payload.sessionType, payload.session_type, payload.session?.type, payload.mode, fallbackType) ?? null,
-    currentItem: normalizeItemShape(pickFirstDefined(payload.currentItem, payload.current_item, payload.item, payload.firstItem, payload.first_item) ?? null),
-    sessionProgress: normalizeSessionProgressShape(pickFirstDefined(payload.sessionProgress, payload.progress) ?? null),
+    sessionId: payload.sessionId ?? payload.session?.id ?? null,
+    sessionType: payload.sessionType ?? payload.session?.type ?? fallbackType,
+    currentItem: normalizeItemShape(payload.currentItem ?? null),
+    sessionProgress: normalizeSessionProgressShape(payload.sessionProgress ?? null),
   };
 }
 
@@ -86,31 +82,35 @@ function normalizeSessionEnvelopeShape(payload = {}) {
   const session = payload.session
     ? {
         ...payload.session,
-        id: pickFirstDefined(payload.session.id, payload.sessionId, payload.session_id) ?? null,
-        type: pickFirstDefined(payload.session.type, payload.sessionType, payload.session_type, payload.mode) ?? null,
+        id: payload.session.id ?? payload.sessionId ?? null,
+        type: payload.session.type ?? payload.sessionType ?? null,
       }
     : null;
 
   return {
     ...payload,
     session,
-    sessionId: pickFirstDefined(session?.id, payload.sessionId, payload.session_id) ?? null,
-    sessionType: pickFirstDefined(payload.sessionType, session?.type, payload.session_type, payload.mode) ?? null,
-    currentItem: normalizeItemShape(pickFirstDefined(payload.currentItem, payload.current_item, payload.item) ?? null),
-    sessionProgress: normalizeSessionProgressShape(pickFirstDefined(payload.sessionProgress, payload.progress) ?? null),
+    sessionId: session?.id ?? payload.sessionId ?? null,
+    sessionType: payload.sessionType ?? session?.type ?? null,
+    currentItem: normalizeItemShape(payload.currentItem ?? null),
+    sessionProgress: normalizeSessionProgressShape(payload.sessionProgress ?? null),
   };
 }
 
 function normalizeAttemptResultShape(payload = {}) {
+  const summary = payload.quickWinSummary ?? payload.timedSummary ?? payload.moduleSummary ?? payload.summary ?? null;
+  const sessionProgress = normalizeSessionProgressShape(payload.sessionProgress ?? null);
+  const sessionComplete = payload.sessionComplete ?? sessionProgress?.isComplete ?? false;
+
   return {
     ...payload,
-    isCorrect: pickFirstDefined(payload.isCorrect, payload.correct, payload.is_correct) ?? false,
-    correctAnswer: pickFirstDefined(payload.correctAnswer, payload.correct_answer) ?? null,
-    explanation: pickFirstDefined(payload.explanation, payload.rationale) ?? null,
-    sessionComplete: pickFirstDefined(payload.sessionComplete, payload.session_complete) ?? false,
-    nextItem: normalizeItemShape(pickFirstDefined(payload.nextItem, payload.next_item, payload.item) ?? null),
-    sessionProgress: normalizeSessionProgressShape(pickFirstDefined(payload.sessionProgress, payload.progress) ?? null),
-    summary: normalizeSessionSummaryShape(payload.summary ?? payload),
+    isCorrect: payload.attempt?.is_correct ?? payload.isCorrect ?? false,
+    correctAnswer: payload.correctAnswer ?? null,
+    explanation: payload.explanation ?? null,
+    sessionComplete,
+    nextItem: normalizeItemShape(payload.nextItem ?? null),
+    sessionProgress,
+    summary: normalizeSessionSummaryShape(summary),
   };
 }
 
@@ -348,7 +348,7 @@ export const useStore = create((set, get) => ({
     const itemId = currentItem.itemId;
     try {
       const data = await api.post('/tutor/hint', { itemId, sessionId: currentSessionId });
-      set({ hintText: data.hint || data.text || data.message || '' });
+      set({ hintText: data.student_facing_message || '' });
     } catch {
       // ignore
     }

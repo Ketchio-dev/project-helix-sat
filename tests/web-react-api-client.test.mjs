@@ -28,3 +28,18 @@ test('react learner app uses the shared api client for /api calls', () => {
 
   assert.deepEqual(offenders, [], `direct /api fetch bypasses remain in: ${offenders.join(', ')}`);
 });
+
+test('shared web-react api helper enforces generated contract path allowlist', () => {
+  const apiSource = readFileSync('apps/web-react/src/api.js', 'utf8');
+
+  assert.match(
+    apiSource,
+    /openapi-contract\.generated\.json/,
+    'api helper must consume generated contract artifact',
+  );
+  assert.match(
+    apiSource,
+    /CONTRACT_PATHS\.has\(contractPath\)/,
+    'api helper must enforce generated contract endpoint allowlist',
+  );
+});
