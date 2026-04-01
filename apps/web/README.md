@@ -34,13 +34,18 @@ as static files — no framework, no build step, no design dependency chain.
 4. Avoid remote font/CDN dependencies in the learner shell. The app should feel
    polished while remaining fully local and exam-safe.
 
-## Private-beta browser QA path
+## Supported Beta Surface Policy (Wave 1)
 
-- The **currently verified** private-beta browser path is the legacy learner shell
-  in `apps/web/public/*`.
-- The React shell is still a secondary development surface until it has parity
-  browser coverage.
-- `npm run smoke:learner` should report these explicit checkpoints:
+This legacy learner shell is the **currently verified private-beta browser path**.
+
+The **only supported private-beta learner path** is this legacy learner shell in `apps/web/public/*`. 
+
+The React shell (`apps/web-react`) is currently a secondary development surface and is **unsupported** for beta learners. Promotion to co-primary status is gated by:
+1. **Full Playwright Parity**: Passing the same `npm run smoke:learner` suite as this shell.
+2. **Visual/UX Consistency**: Meeting the design intent described above.
+3. **Session Integrity**: Verified parity in scoring, timing, and state persistence.
+
+`npm run smoke:learner` must report these explicit checkpoints:
   1. `signup_landing`
   2. `goal_setup_completion_resume`
   3. `diagnostic_preflight_start`

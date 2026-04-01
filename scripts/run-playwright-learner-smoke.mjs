@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { createAppServer } from '../services/api/server.mjs';
 
 function runCommand(command, args, { cwd, env } = {}) {
@@ -398,8 +398,11 @@ await main();
 `;
 
 async function main() {
-  const server = createAppServer();
+  const server = await createAppServer();
   const tempDir = await mkdtemp(join(tmpdir(), 'helix-playwright-'));
+  const screenshotPath = process.env.HELIX_SMOKE_SCREENSHOT
+    ? resolve(process.cwd(), process.env.HELIX_SMOKE_SCREENSHOT)
+    : null;
 
   try {
     server.listen(0, '127.0.0.1');
@@ -420,7 +423,7 @@ async function main() {
       cwd: tempDir,
       env: {
         HELIX_BASE_URL: baseUrl,
-        ...(process.env.HELIX_SMOKE_SCREENSHOT ? { HELIX_SMOKE_SCREENSHOT: process.env.HELIX_SMOKE_SCREENSHOT } : {}),
+        ...(screenshotPath ? { HELIX_SMOKE_SCREENSHOT: screenshotPath } : {}),
       },
     });
   } finally {
