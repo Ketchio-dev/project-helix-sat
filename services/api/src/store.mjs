@@ -492,6 +492,10 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       return planningDomainService.getGuidedDailyPath(userId);
     },
 
+    getGuidedWeeklyPath(userId = DEMO_USER_ID) {
+      return planningDomainService.getGuidedWeeklyPath(userId);
+    },
+
     getDiagnosticReveal(userId = DEMO_USER_ID, sessionId = null) {
       return planningDomainService.getDiagnosticReveal(userId, sessionId);
     },

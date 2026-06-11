@@ -211,6 +211,63 @@ const guidedDailyPathResponseSchema = {
   },
 };
 
+const guidedWeeklyPathResponseSchema = {
+  type: ['object', 'null'],
+  required: ['headline', 'prompt', 'horizonDays', 'activePhaseTitle', 'weeklyMinutes', 'sessionsPerWeek', 'days', 'checkpoints'],
+  additionalProperties: false,
+  properties: {
+    headline: { type: 'string', minLength: 1 },
+    prompt: { type: 'string', minLength: 1 },
+    horizonDays: { type: 'integer', minimum: 1 },
+    activePhaseTitle: { type: ['string', 'null'], minLength: 1 },
+    weeklyMinutes: { type: 'integer', minimum: 30 },
+    sessionsPerWeek: { type: 'integer', minimum: 1 },
+    days: {
+      type: 'array',
+      minItems: 1,
+      items: {
+        type: 'object',
+        required: ['key', 'dayOffset', 'date', 'label', 'focusType', 'stage', 'objective', 'sessionKind', 'lessonPackTier', 'minutes', 'status', 'action'],
+        additionalProperties: false,
+        properties: {
+          key: { type: 'string', minLength: 1 },
+          dayOffset: { type: 'integer', minimum: 0 },
+          date: { type: 'string', minLength: 1 },
+          label: { type: 'string', minLength: 1 },
+          focusType: { enum: ['anchor', 'support', 'maintenance'] },
+          stage: { type: 'string', minLength: 1 },
+          objective: { type: 'string', minLength: 1 },
+          sessionKind: { type: 'string', minLength: 1 },
+          lessonPackTier: { type: ['string', 'null'] },
+          minutes: { type: 'integer', minimum: 1 },
+          status: { enum: ['ready', 'prepared', 'queued'] },
+          action: {
+            anyOf: [
+              nextBestActionResponseSchema,
+              { type: 'null' },
+            ],
+          },
+        },
+      },
+    },
+    checkpoints: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['key', 'label', 'dueInDays', 'reason', 'durabilitySignal'],
+        additionalProperties: false,
+        properties: {
+          key: { type: 'string', minLength: 1 },
+          label: { type: 'string', minLength: 1 },
+          dueInDays: { type: 'integer', minimum: 0 },
+          reason: { type: 'string', minLength: 1 },
+          durabilitySignal: { type: 'string', minLength: 1 },
+        },
+      },
+    },
+  },
+};
+
 const activeSessionEnvelopeSchema = {
   type: 'object',
   required: ['hasActiveSession', 'resumeAvailable', 'activeSession'],
@@ -268,7 +325,7 @@ const sessionHistoryEntrySchema = {
 
 const dashboardLearnerResponseSchema = {
   type: 'object',
-  required: ['profile', 'projection', 'projectionEvidence', 'programPath', 'curriculumPath', 'weeklyDigest', 'plan', 'planExplanation', 'learnerNarrative', 'errorDna', 'errorDnaSummary', 'whatChanged', 'items', 'review', 'activeSession', 'sessionHistory', 'comebackState', 'completionStreak', 'studyModes', 'tomorrowPreview', 'guidedDailyPath', 'latestSessionOutcome', 'latestQuickWinSummary', 'latestTimedSetSummary', 'latestModuleSummary'],
+  required: ['profile', 'projection', 'projectionEvidence', 'programPath', 'curriculumPath', 'weeklyDigest', 'plan', 'planExplanation', 'learnerNarrative', 'errorDna', 'errorDnaSummary', 'whatChanged', 'items', 'review', 'activeSession', 'sessionHistory', 'comebackState', 'completionStreak', 'studyModes', 'tomorrowPreview', 'guidedDailyPath', 'guidedWeeklyPath', 'latestSessionOutcome', 'latestQuickWinSummary', 'latestTimedSetSummary', 'latestModuleSummary'],
   additionalProperties: false,
   properties: {
     profile: dashboardProfileResponseSchema,
@@ -352,6 +409,7 @@ const dashboardLearnerResponseSchema = {
       },
     },
     guidedDailyPath: guidedDailyPathResponseSchema,
+    guidedWeeklyPath: guidedWeeklyPathResponseSchema,
     latestSessionOutcome: {
       type: ['object', 'null'],
       required: sessionOutcomeResponseSchema.required,

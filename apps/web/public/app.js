@@ -595,7 +595,7 @@ function renderDiagnosticPreflight() {
     && state.goalProfile?.isComplete
     && !state.currentSessionId
     && !state.dismissDiagnosticPreflight
-    && (state.showDiagnosticPreflight || state.nextBestAction?.kind === 'start_diagnostic');
+    && state.showDiagnosticPreflight;
 
   if (!shouldShow) {
     section.style.display = 'none';
@@ -1398,6 +1398,14 @@ function normalizeGuidedPathStep(step, index) {
   };
 }
 
+function formatWeekdayLabel(dateValue, dayOffset = null) {
+  if (dayOffset === 0) return 'Today';
+  if (dayOffset === 1) return 'Tomorrow';
+  const date = new Date(`${dateValue}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return `Day ${Number(dayOffset ?? 0) + 1}`;
+  return date.toLocaleDateString(undefined, { weekday: 'short' });
+}
+
 function buildFallbackGuidedPath(nextAction, studyModes = []) {
   if (!nextAction) return null;
 
@@ -1461,19 +1469,28 @@ function renderGuidedDailyPath(dashboard = {}, nextAction = null, studyModes = [
   }
 
   const nextStep = path.steps.find((step) => step.action && !step.isComplete);
-  section.style.display = 'block';
-  container.append(node('p', { className: 'lead-line', text: path.headline }));
-  if (path.summary) {
-    container.append(node('p', { className: 'muted', text: path.summary }));
+  const nextBestSection = $('#nextBestActionSection');
+  if (nextBestSection) {
+    nextBestSection.style.display = 'none';
   }
+  section.style.display = 'block';
+  const hero = node('div', { className: 'guided-today-hero' });
+  const copy = node('div', { className: 'guided-today-copy' });
+  copy.append(node('p', { className: 'eyebrow compact', text: 'Do this first' }));
+  copy.append(node('h3', { text: nextStep?.title ?? path.headline }));
+  if (nextStep?.summary ?? path.summary) {
+    copy.append(node('p', { text: nextStep?.summary ?? path.summary }));
+  }
+  hero.append(copy);
   if (nextStep?.action) {
     const button = node('button', { text: "Start today's path" });
     button.addEventListener('click', async () => {
       await performNextBestAction(nextStep.action);
       if (state.currentSessionId) renderGuidedDailyPath(null, null, []);
     });
-    container.append(button);
+    hero.append(node('div', { className: 'guided-today-action' }, [button]));
   }
+  container.append(hero);
 
   const list = node('ol', { className: 'guided-path-list' });
   for (const [index, step] of path.steps.entries()) {
@@ -1490,13 +1507,86 @@ function renderGuidedDailyPath(dashboard = {}, nextAction = null, studyModes = [
     if (meta.length) {
       body.append(node('p', { className: 'muted', text: meta.join(' · ') }));
     }
-    if (step.summary) {
+    if (step.summary && (step === nextStep || index <= 1)) {
       body.append(node('p', { text: step.summary }));
     }
     item.append(body);
     list.append(item);
   }
   container.append(list);
+}
+
+function normalizeGuidedWeeklyPath(dashboard = {}) {
+  const raw = dashboard?.guidedWeeklyPath ?? dashboard?.weeklyPath ?? null;
+  if (!raw || typeof raw !== 'object') return null;
+  const days = Array.isArray(raw.days) ? raw.days : [];
+  if (!days.length) return null;
+  return {
+    headline: raw.headline ?? 'This week is queued',
+    prompt: raw.prompt ?? 'Follow the days in order.',
+    activePhaseTitle: raw.activePhaseTitle ?? null,
+    weeklyMinutes: raw.weeklyMinutes ?? null,
+    sessionsPerWeek: raw.sessionsPerWeek ?? null,
+    days,
+    checkpoints: Array.isArray(raw.checkpoints) ? raw.checkpoints : [],
+  };
+}
+
+function renderGuidedWeeklyPath(dashboard = {}) {
+  const section = $('#guidedWeeklyPathSection');
+  const container = $('#guidedWeeklyPath');
+  if (!section || !container) return;
+  clear(container);
+
+  const path = normalizeGuidedWeeklyPath(dashboard);
+  if (!isStudentSurface() || !path || state.currentSessionId) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  const header = node('div', { className: 'guided-week-header' });
+  const copy = node('div');
+  copy.append(node('p', { className: 'lead-line', text: path.headline }));
+  copy.append(node('p', { className: 'muted', text: path.prompt }));
+  header.append(copy);
+  const meta = [
+    path.activePhaseTitle,
+    path.sessionsPerWeek ? `${path.sessionsPerWeek} sessions/week` : null,
+    path.weeklyMinutes ? `${path.weeklyMinutes} min/week` : null,
+  ].filter(Boolean);
+  if (meta.length) {
+    header.append(node('p', { className: 'notice', text: meta.join(' · ') }));
+  }
+  container.append(header);
+
+  const strip = node('div', { className: 'guided-week-strip' });
+  for (const day of path.days.slice(0, 7)) {
+    const className = [
+      'guided-week-day',
+      day.status === 'ready' ? 'is-ready' : '',
+      day.status === 'prepared' ? 'is-prepared' : '',
+    ].filter(Boolean).join(' ');
+    const card = node('article', { className });
+    card.append(node('span', { className: 'guided-week-date', text: formatWeekdayLabel(day.date, day.dayOffset) }));
+    card.append(node('strong', { text: day.label ?? 'Prepared block' }));
+    card.append(node('p', { className: 'muted', text: `${day.minutes ?? '—'} min · ${(day.focusType ?? 'focus').replaceAll('_', ' ')}` }));
+    card.append(node('p', { text: day.objective ?? 'Keep following the current repair story.' }));
+    strip.append(card);
+  }
+  container.append(strip);
+
+  if (path.checkpoints.length) {
+    const checkpoints = node('div', { className: 'guided-week-checkpoints' });
+    checkpoints.append(node('p', { className: 'muted', text: 'Prepared checks' }));
+    for (const checkpoint of path.checkpoints.slice(0, 2)) {
+      checkpoints.append(node('p', {
+        className: 'notice',
+        text: `${checkpoint.label} in ${checkpoint.dueInDays} day${checkpoint.dueInDays === 1 ? '' : 's'} · ${checkpoint.durabilitySignal}`,
+      }));
+    }
+    container.append(checkpoints);
+  }
 }
 
 function renderStudyModes(modes = []) {
@@ -2441,6 +2531,7 @@ async function loadDashboard() {
     renderSessionHistory(sessionHistory);
     renderLatestSessionOutcome(dashboard.latestSessionOutcome ?? null);
     renderGuidedDailyPath(dashboard, nextBestAction, dashboard.studyModes ?? []);
+    renderGuidedWeeklyPath(dashboard);
     renderStudyModes(dashboard.studyModes ?? []);
     renderReturnPath(dashboard.tomorrowPreview ?? null, dashboard.comebackState ?? null, dashboard.completionStreak ?? null);
     renderQuickWinSummary(dashboard.latestQuickWinSummary);

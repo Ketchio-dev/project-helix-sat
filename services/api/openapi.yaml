@@ -514,6 +514,117 @@ components:
                 anyOf:
                   - $ref: '#/components/schemas/NextBestActionResponse'
                   - type: 'null'
+    GuidedWeeklyPathResponse:
+      type:
+        - object
+        - 'null'
+      additionalProperties: false
+      required:
+        - headline
+        - prompt
+        - horizonDays
+        - activePhaseTitle
+        - weeklyMinutes
+        - sessionsPerWeek
+        - days
+        - checkpoints
+      properties:
+        headline:
+          type: string
+        prompt:
+          type: string
+        horizonDays:
+          type: integer
+          minimum: 1
+        activePhaseTitle:
+          type:
+            - string
+            - 'null'
+        weeklyMinutes:
+          type: integer
+          minimum: 30
+        sessionsPerWeek:
+          type: integer
+          minimum: 1
+        days:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - key
+              - dayOffset
+              - date
+              - label
+              - focusType
+              - stage
+              - objective
+              - sessionKind
+              - lessonPackTier
+              - minutes
+              - status
+              - action
+            properties:
+              key:
+                type: string
+              dayOffset:
+                type: integer
+                minimum: 0
+              date:
+                type: string
+              label:
+                type: string
+              focusType:
+                enum:
+                  - anchor
+                  - support
+                  - maintenance
+              stage:
+                type: string
+              objective:
+                type: string
+              sessionKind:
+                type: string
+              lessonPackTier:
+                type:
+                  - string
+                  - 'null'
+              minutes:
+                type: integer
+                minimum: 1
+              status:
+                enum:
+                  - ready
+                  - prepared
+                  - queued
+              action:
+                anyOf:
+                  - $ref: '#/components/schemas/NextBestActionResponse'
+                  - type: 'null'
+        checkpoints:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - key
+              - label
+              - dueInDays
+              - reason
+              - durabilitySignal
+            properties:
+              key:
+                type: string
+              label:
+                type: string
+              dueInDays:
+                type: integer
+                minimum: 0
+              reason:
+                type: string
+              durabilitySignal:
+                type: string
     CurriculumPath:
       $ref: ../../packages/schemas/planning/curriculum-path.schema.json
     ProgramPath:
@@ -551,6 +662,7 @@ components:
         - studyModes
         - tomorrowPreview
         - guidedDailyPath
+        - guidedWeeklyPath
         - latestSessionOutcome
         - latestQuickWinSummary
         - latestTimedSetSummary
@@ -606,6 +718,8 @@ components:
           type: object
         guidedDailyPath:
           $ref: '#/components/schemas/GuidedDailyPathResponse'
+        guidedWeeklyPath:
+          $ref: '#/components/schemas/GuidedWeeklyPathResponse'
         latestSessionOutcome:
           anyOf:
             - $ref: '#/components/schemas/SessionOutcome'

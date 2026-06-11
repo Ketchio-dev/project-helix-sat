@@ -543,6 +543,74 @@ export function createPlanningDomainService({
     };
   }
 
+  function getGuidedWeeklyPath(userId) {
+    api.getUser(userId);
+    const goalProfile = getGoalProfile(userId);
+    if (!goalProfile.isComplete) return null;
+
+    const curriculumPath = getCurriculumPath(userId);
+    if (!curriculumPath?.anchorSkill || !Array.isArray(curriculumPath.dailyFocuses)) return null;
+
+    const programPath = getProgramPath(userId);
+    const activePhase = programPath.phases?.find((phase) => phase.key === programPath.activePhaseKey) ?? null;
+    const nextAction = getNextBestAction(userId);
+    const tomorrowPreview = getTomorrowPreview(userId);
+    const weekFocuses = curriculumPath.dailyFocuses.slice(0, 7);
+    const plannedDays = weekFocuses.map((focus) => {
+      const minutes = focus.focusType === 'anchor'
+        ? 20
+        : focus.focusType === 'support'
+          ? 15
+          : 12;
+      const status = focus.dayOffset === 0
+        ? 'ready'
+        : focus.dayOffset === 1
+          ? 'prepared'
+          : 'queued';
+      return {
+        key: `day_${focus.dayOffset}`,
+        dayOffset: focus.dayOffset,
+        date: focus.date,
+        label: focus.label,
+        focusType: focus.focusType,
+        stage: focus.stage,
+        objective: focus.objective,
+        sessionKind: focus.sessionKind,
+        lessonPackTier: focus.lessonPackTier,
+        minutes,
+        status,
+        action: focus.dayOffset === 0
+          ? nextAction
+          : focus.dayOffset === 1
+            ? tomorrowPreview?.action ?? null
+            : null,
+      };
+    });
+
+    const checkpoints = (curriculumPath.revisitCadence ?? [])
+      .filter((entry) => entry.dueInDays <= 7)
+      .slice(0, 3)
+      .map((entry) => ({
+        key: `revisit_${entry.skillId ?? entry.label}_${entry.dueInDays}`,
+        label: entry.label,
+        dueInDays: entry.dueInDays,
+        reason: entry.reason,
+        durabilitySignal: entry.durabilitySignal,
+      }));
+
+    return {
+      headline: `This week: move ${curriculumPath.anchorSkill.label} without guessing`,
+      prompt: activePhase?.objective
+        ?? 'Follow the week in order. Helix will keep today executable and keep the next few blocks queued.',
+      horizonDays: plannedDays.length,
+      activePhaseTitle: activePhase?.title ?? null,
+      weeklyMinutes: programPath.weeklyMinutes,
+      sessionsPerWeek: programPath.sessionsPerWeek,
+      days: plannedDays,
+      checkpoints,
+    };
+  }
+
   function getDiagnosticReveal(userId, sessionId = null) {
     api.getUser(userId);
     const diagnosticSession = sessionId
@@ -643,6 +711,7 @@ export function createPlanningDomainService({
     getStudyModes,
     getTomorrowPreview,
     getGuidedDailyPath,
+    getGuidedWeeklyPath,
     getDiagnosticReveal,
   };
 }

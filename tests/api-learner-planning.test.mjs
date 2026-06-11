@@ -62,6 +62,11 @@ test('api keeps planning surfaces aligned for cold-start learners after goal pro
     assert.ok(dashboardAfter.guidedDailyPath.steps.slice(1, 3).every((step) => step.status === 'locked' && step.action === null));
     assert.equal(dashboardAfter.guidedDailyPath.steps[3].status, 'prepared');
     assert.equal(typeof dashboardAfter.guidedDailyPath.steps[3].action.kind, 'string');
+    assert.equal(dashboardAfter.guidedWeeklyPath.days.length, 7);
+    assert.equal(dashboardAfter.guidedWeeklyPath.days[0].status, 'ready');
+    assert.equal(dashboardAfter.guidedWeeklyPath.days[0].action.kind, 'start_diagnostic');
+    assert.equal(dashboardAfter.guidedWeeklyPath.days[1].status, 'prepared');
+    assert.ok(dashboardAfter.guidedWeeklyPath.days.slice(2).every((day) => day.status === 'queued' && day.action === null));
   });
 });
 
@@ -107,6 +112,10 @@ test('api keeps learner contract payloads on canonical camelCase shape', async (
     assert.ok(tomorrowStep);
     assert.equal(tomorrowStep.status, 'prepared');
     assert.equal(typeof tomorrowStep.action.kind, 'string');
+    assert.equal(dashboard.guidedWeeklyPath.days.length, 7);
+    assert.equal(dashboard.guidedWeeklyPath.days.filter((day) => day.status === 'ready' && day.action).length, 1);
+    assert.equal(dashboard.guidedWeeklyPath.days[1].status, 'prepared');
+    assert.ok(dashboard.guidedWeeklyPath.checkpoints.every((checkpoint) => checkpoint.dueInDays <= 7));
 
     const snakeHits = [
       ...collectSnakeCasePaths(goalProfile, 'goalProfile'),
@@ -116,6 +125,7 @@ test('api keeps learner contract payloads on canonical camelCase shape', async (
       ...collectSnakeCasePaths(projectionEvidence, 'projectionEvidence'),
       ...collectSnakeCasePaths(review.remediationCards[0], 'reviewRemediationCard'),
       ...collectSnakeCasePaths(dashboard.guidedDailyPath, 'guidedDailyPath'),
+      ...collectSnakeCasePaths(dashboard.guidedWeeklyPath, 'guidedWeeklyPath'),
       ...collectSnakeCasePaths(dashboard.latestSessionOutcome, 'sessionOutcome'),
       ...collectSnakeCasePaths(weeklyDigest, 'weeklyDigest'),
     ];

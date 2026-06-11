@@ -494,6 +494,15 @@ describe('CTA hierarchy: dashboard integration coherence', () => {
       dashboard.guidedDailyPath.steps.some((step) => step.key === 'tomorrow_preview' && step.status === 'prepared'),
       'guided daily path should pre-queue the next session',
     );
+    assert.ok(dashboard.guidedWeeklyPath, 'dashboard should expose a guided weekly path');
+    assert.equal(dashboard.guidedWeeklyPath.days.length, 7, 'guided weekly path should keep the immediate week visible');
+    assert.equal(
+      dashboard.guidedWeeklyPath.days.filter((day) => day.status === 'ready' && day.action).length,
+      1,
+      'weekly path should keep only today executable',
+    );
+    assert.ok(appSource.includes('renderGuidedWeeklyPath'), 'learner shell should render the weekly path surface');
+    assert.ok(appSource.includes('guidedWeeklyPath'), 'learner shell should consume the guided weekly path contract');
     const copy = studentActionCopy(action);
     assert.ok(copy, 'action copy should be derivable');
     assert.ok(copy.ctaLabel.length > 0, 'CTA label must not be empty');

@@ -120,16 +120,17 @@ async function main() {
 
       const goalSetupSection = page.locator('#goalSetupSection');
       const nextMoveHeading = page.getByRole('heading', { name: 'Next block' });
+      const todayPathHeading = page.getByRole('heading', { name: 'Today’s path' });
       const postRegisterSurface = await Promise.race([
         goalSetupSection.waitFor({ state: 'visible', timeout: 10000 }).then(() => 'goal').catch(() => null),
         nextMoveHeading.waitFor({ state: 'visible', timeout: 10000 }).then(() => 'dashboard').catch(() => null),
+        todayPathHeading.waitFor({ state: 'visible', timeout: 10000 }).then(() => 'dashboard').catch(() => null),
       ]);
       assert.ok(postRegisterSurface, 'register should land on goal setup or the learner home shell');
     });
 
     await checkpoint('goal_setup_completion_resume', async () => {
       const goalSetupSection = page.locator('#goalSetupSection');
-      const nextMoveHeading = page.getByRole('heading', { name: 'Next block' });
       if (await goalSetupSection.isVisible().catch(() => false)) {
         await page.locator('#goalTargetScore').fill('1450');
         await page.locator('#goalTargetDate').fill('2026-12-05');
@@ -137,24 +138,26 @@ async function main() {
         await page.locator('#goalWeakArea').fill('inference');
         await page.locator('#goalSetupForm button[type="submit"]').click();
         await page.waitForFunction(() => {
-          const text = document.querySelector('#nextBestActionSection')?.textContent ?? '';
-          return text.includes('Start your 12-minute check') || text.includes('Resume');
+          const text = document.querySelector('#guidedDailyPath')?.textContent ?? '';
+          return text.includes("Start today's path") || text.includes('Resume');
         });
       }
-      await nextMoveHeading.waitFor();
-      const primaryNextBestAction = page.locator('#nextBestActionSection button[data-next-best-action="true"]');
-      await primaryNextBestAction.waitFor({ state: 'visible' });
-      assert.equal(await primaryNextBestAction.count(), 1, 'Learner home should show exactly one primary next-best-action');
       await page.locator('#guidedDailyPathSection').waitFor({ state: 'visible' });
-      await page.locator('#guidedDailyPath').getByText('Today:', { exact: false }).waitFor();
-      await page.locator('#guidedDailyPath').getByRole('button', { name: "Start today's path" }).waitFor();
+      const primaryTodayAction = page.locator('#guidedDailyPath').getByRole('button', { name: "Start today's path" });
+      await primaryTodayAction.waitFor({ state: 'visible' });
+      assert.equal(await primaryTodayAction.count(), 1, 'Learner home should show exactly one primary guided action');
+      await expectHidden(page, '#nextBestActionSection');
+      await page.locator('#guidedDailyPath .guided-path-step').first().waitFor({ state: 'visible' });
       const guidedSteps = await page.locator('#guidedDailyPath .guided-path-step').count();
-      assert.ok(guidedSteps >= 2, 'Guided daily path should show a followable sequence');
+      assert.ok(guidedSteps >= 1, 'Guided daily path should show the current step');
+      await page.locator('#guidedWeeklyPathSection').waitFor({ state: 'visible' });
+      const weeklyDays = await page.locator('#guidedWeeklyPath .guided-week-day').count();
+      assert.equal(weeklyDays, 7, 'Guided weekly path should show the immediate week');
+      await page.locator('#guidedWeeklyPath').getByText('Today', { exact: false }).waitFor();
+      await page.locator('#guidedWeeklyPath').getByText('Tomorrow', { exact: false }).waitFor();
     });
 
     await checkpoint('diagnostic_preflight_start', async () => {
-      const nextMoveHeading = page.getByRole('heading', { name: 'Next block' });
-      await nextMoveHeading.waitFor();
       await page.getByRole('button', { name: 'Show full study dashboard' }).waitFor();
       await page.locator('#learnerNarrative').getByText('Find your starting point', { exact: false }).waitFor();
       await page.locator('#learnerNarrative').getByText('Score signal:', { exact: false }).waitFor();
@@ -166,19 +169,13 @@ async function main() {
       await expectHidden(page, '#supportViewSection');
       await expectHidden(page, '#teacherAssignmentsSection');
 
-      const primaryNextBestAction = page.locator('#nextBestActionSection button[data-next-best-action="true"]');
-      const launchMeta = await primaryNextBestAction.evaluate((button) => ({
-        label: button.textContent?.trim() ?? '',
-        role: button.dataset.ctaRole ?? '',
-        sessionType: button.dataset.launchSessionType ?? '',
-        section: button.dataset.launchSection ?? '',
-        realismProfile: button.dataset.launchRealismProfile ?? '',
-        profileLabel: button.dataset.launchProfileLabel ?? '',
-      }));
-      assert.equal(launchMeta.role, 'primary', 'home CTA should be marked as the primary next-best-action');
+      const launchMeta = await page.evaluate(async () => {
+        const response = await fetch('/api/next-best-action', { credentials: 'same-origin' });
+        return response.ok ? response.json() : null;
+      });
       assert.equal(launchMeta.sessionType, 'diagnostic', 'goal completion should launch the diagnostic next move');
 
-      await primaryNextBestAction.click();
+      await page.locator('#guidedDailyPath').getByRole('button', { name: "Start today's path" }).click();
       const preflightHeading = page.getByRole('heading', { name: 'Your 12-minute starting point' });
       await preflightHeading.waitFor({ timeout: 3000 });
       await page.locator('#startDiagnosticFromPreflight').click();
