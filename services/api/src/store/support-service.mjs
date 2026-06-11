@@ -28,6 +28,42 @@ export function createSupportDomainService({
   toLessonAssetIds,
   HttpError,
 }) {
+  function skillStrengthScore(skillState) {
+    return (skillState.mastery ?? 0) + (skillState.timed_mastery ?? 0);
+  }
+
+  function skillAttentionScore(skillState) {
+    return skillStrengthScore(skillState) + (skillState.retention_risk ?? 0);
+  }
+
+  function takeRanked(items = [], count = 1, scoreFn, direction = 'desc') {
+    const ranked = [];
+    for (const item of items) {
+      const score = scoreFn(item);
+      let insertAt = ranked.length;
+      for (let index = 0; index < ranked.length; index += 1) {
+        const isBetter = direction === 'asc'
+          ? score < ranked[index].score
+          : score > ranked[index].score;
+        if (isBetter) {
+          insertAt = index;
+          break;
+        }
+      }
+      if (insertAt < count) {
+        ranked.splice(insertAt, 0, { item, score });
+        if (ranked.length > count) ranked.pop();
+      } else if (ranked.length < count) {
+        ranked.push({ item, score });
+      }
+    }
+    return ranked.map((entry) => entry.item);
+  }
+
+  function getDominantErrorTag(errorDna = {}) {
+    return takeRanked(Object.entries(errorDna), 1, ([, score]) => score)[0]?.[0] ?? null;
+  }
+
   function submitReflection({ userId, sessionId = null, prompt, response }) {
     api.getUser(userId);
     const trimmedResponse = `${response ?? ''}`.trim();
@@ -157,10 +193,8 @@ export function createSupportDomainService({
       return startedAt && startedAt.slice(0, 10) >= periodStart;
     });
     const completedSessions = weeklySessions.filter((session) => session.status === 'complete');
-    const strongestSkill = [...skillStates]
-      .sort((left, right) => (right.mastery + right.timed_mastery) - (left.mastery + left.timed_mastery))[0] ?? null;
-    const weakestSkill = [...skillStates]
-      .sort((left, right) => (left.mastery + left.timed_mastery + left.retention_risk) - (right.mastery + right.timed_mastery + right.retention_risk))[0] ?? null;
+    const strongestSkill = takeRanked(skillStates, 1, skillStrengthScore)[0] ?? null;
+    const weakestSkill = takeRanked(skillStates, 1, skillAttentionScore, 'asc')[0] ?? null;
     const topTrap = api.getErrorDnaSummary(userId, 1)[0] ?? null;
     const strongestLabel = strongestSkill ? formatSkillLabel(strongestSkill.skill_id) : null;
     const weakestLabel = weakestSkill ? formatSkillLabel(weakestSkill.skill_id) : null;
@@ -248,15 +282,9 @@ export function createSupportDomainService({
     const sessionHistory = api.getSessionHistory(learnerId, 5);
     const attempts = api.getAttempts(learnerId);
     const totalStudyMinutes = Math.round(attempts.reduce((sum, attempt) => sum + attempt.response_time_ms, 0) / 60000);
-    const strongestSkills = [...skillStates]
-      .sort((left, right) => (right.mastery + right.timed_mastery) - (left.mastery + left.timed_mastery))
-      .slice(0, 2)
-      .map((skillState) => skillState.skill_id);
-    const attentionSkills = [...skillStates]
-      .sort((left, right) => (left.mastery + left.timed_mastery + left.retention_risk) - (right.mastery + right.timed_mastery + right.retention_risk))
-      .slice(0, 2)
-      .map((skillState) => skillState.skill_id);
-    const topErrorPattern = Object.entries(api.getErrorDna(learnerId)).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    const strongestSkills = takeRanked(skillStates, 2, skillStrengthScore).map((skillState) => skillState.skill_id);
+    const attentionSkills = takeRanked(skillStates, 2, skillAttentionScore, 'asc').map((skillState) => skillState.skill_id);
+    const topErrorPattern = getDominantErrorTag(api.getErrorDna(learnerId));
     const latestReflection = api.getReflections(learnerId).at(-1) ?? null;
     const completedSessions = sessionHistory.filter((session) => session.status === 'complete').length;
 
@@ -330,10 +358,7 @@ export function createSupportDomainService({
     const review = api.getReviewRecommendations(learnerId);
     const assignments = getTeacherAssignments(teacherId, learnerId);
     const skillStates = [...api.getSkillStates(learnerId)];
-    const topStrengths = skillStates
-      .sort((left, right) => (right.mastery + right.timed_mastery) - (left.mastery + left.timed_mastery))
-      .slice(0, 2)
-      .map((skillState) => skillState.skill_id);
+    const topStrengths = takeRanked(skillStates, 2, skillStrengthScore).map((skillState) => skillState.skill_id);
     const interventionPriorities = review.recommendations.slice(0, 3).map((recommendation) => recommendation.skill);
 
     return {
@@ -377,10 +402,8 @@ export function createSupportDomainService({
   function getProjectionEvidence(learnerId) {
     const projection = api.getProjection(learnerId);
     const skillStates = [...api.getSkillStates(learnerId)];
-    const weakestSkill = [...skillStates]
-      .sort((left, right) => (left.mastery + left.timed_mastery) - (right.mastery + right.timed_mastery))[0] ?? null;
-    const strongestSkill = [...skillStates]
-      .sort((left, right) => (right.mastery + right.timed_mastery) - (left.mastery + left.timed_mastery))[0] ?? null;
+    const weakestSkill = takeRanked(skillStates, 1, skillStrengthScore, 'asc')[0] ?? null;
+    const strongestSkill = takeRanked(skillStates, 1, skillStrengthScore)[0] ?? null;
     const latestSessions = api.getSessionHistory(learnerId, 2).filter((session) => session.status === 'complete');
     const lastAccuracy = latestSessions[0]?.accuracy ?? null;
     const previousAccuracy = latestSessions[1]?.accuracy ?? null;
@@ -569,7 +592,7 @@ export function createSupportDomainService({
     });
     return {
       generatedAt: new Date().toISOString(),
-      dominantError: Object.entries(api.getErrorDna(learnerId)).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
+      dominantError: getDominantErrorTag(api.getErrorDna(learnerId)),
       reflectionPrompt,
       recommendations,
       remediationCards,
@@ -707,9 +730,7 @@ export function createSupportDomainService({
   }
 
   function getErrorDnaSummary(userId, limit = 3) {
-    return Object.entries(api.getErrorDna(userId))
-      .sort((left, right) => right[1] - left[1])
-      .slice(0, limit)
+    return takeRanked(Object.entries(api.getErrorDna(userId)), limit, ([, score]) => score)
       .map(([tag, score]) => formatErrorInsight(tag, score));
   }
 

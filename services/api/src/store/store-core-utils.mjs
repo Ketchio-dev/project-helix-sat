@@ -361,7 +361,14 @@ export function toExamAckSummary(session, sessionProgress) {
 }
 
 export function getReflectionPrompt(errorDna = {}) {
-  const dominantError = Object.entries(errorDna).sort((a, b) => b[1] - a[1])[0]?.[0];
+  let dominantError = null;
+  let dominantScore = Number.NEGATIVE_INFINITY;
+  for (const [tag, score] of Object.entries(errorDna)) {
+    if (score > dominantScore) {
+      dominantError = tag;
+      dominantScore = score;
+    }
+  }
   if (!dominantError) return 'What is one rule you want to remember on the next SAT block, and when will you use it?';
   return `Your biggest recent pattern is ${dominantError}. What cue will you use to catch it earlier next time?`;
 }

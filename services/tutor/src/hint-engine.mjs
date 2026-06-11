@@ -2,6 +2,18 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function getDominantError(errorDna = {}) {
+  let dominantError = null;
+  let dominantScore = Number.NEGATIVE_INFINITY;
+  for (const [tag, score] of Object.entries(errorDna)) {
+    if (score > dominantScore) {
+      dominantError = tag;
+      dominantScore = score;
+    }
+  }
+  return dominantError;
+}
+
 export function createHintResponse({ item, rationale, learnerState, errorDna, mode = 'learn', requestedLevel = 0, priorHintCount = 0 }) {
   if (mode === 'exam') {
     return {
@@ -19,7 +31,7 @@ export function createHintResponse({ item, rationale, learnerState, errorDna, mo
     };
   }
 
-  const dominantError = Object.entries(errorDna ?? {}).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const dominantError = getDominantError(errorDna);
   const hintLevel = clamp(Math.max(requestedLevel, priorHintCount), 0, 4);
   const ladder = rationale.hint_ladder_json;
   const message = ladder[hintLevel] ?? ladder[ladder.length - 1] ?? rationale.canonical_correct_rationale;

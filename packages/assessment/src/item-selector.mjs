@@ -488,9 +488,13 @@ function selectDiagnosticItems(items, count, skillOrder, exposureCounts = {}) {
   const used = new Set();
 
   for (const skill of skills) {
-    const candidate = items
-      .filter((item) => item.skill === skill && !used.has(item.itemId))
-      .sort((left, right) => compareDiagnostic(left, right, skillOrder, exposureCounts))[0];
+    let candidate = null;
+    for (const item of items) {
+      if (item.skill !== skill || used.has(item.itemId)) continue;
+      if (!candidate || compareDiagnostic(item, candidate, skillOrder, exposureCounts) < 0) {
+        candidate = item;
+      }
+    }
 
     if (!candidate) continue;
 

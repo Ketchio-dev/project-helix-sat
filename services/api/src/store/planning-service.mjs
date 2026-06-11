@@ -428,9 +428,7 @@ export function createPlanningDomainService({
     api.getUser(userId);
     const diagnosticSession = sessionId
       ? api.getSession(sessionId)
-      : Object.values(state.sessions)
-        .filter((session) => session.user_id === userId && session.type === 'diagnostic' && session.ended_at)
-        .sort((left, right) => new Date(right.ended_at) - new Date(left.ended_at))[0] ?? null;
+      : findLatestCompletedSession(state.sessions, userId, (session) => session.type === 'diagnostic');
 
     if (!diagnosticSession || diagnosticSession.user_id !== userId || diagnosticSession.type !== 'diagnostic' || !diagnosticSession.ended_at) {
       throw new HttpError(404, 'No completed diagnostic reveal is available');

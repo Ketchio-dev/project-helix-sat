@@ -147,6 +147,33 @@ function scoreSupportCandidate(anchorNode, candidate, { isPrereq = false } = {})
   return sameSectionBoost + prereqBoost + stageWeight + weaknessWeight + sharedDomainBoost;
 }
 
+function pickHighest(items = [], scoreFn) {
+  let best = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const item of items) {
+    const score = scoreFn(item);
+    if (score > bestScore) {
+      best = item;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+function pickEarliestByDate(items = [], dateSelector) {
+  let best = null;
+  let bestTime = Number.POSITIVE_INFINITY;
+  for (const item of items) {
+    const timestamp = new Date(dateSelector(item) ?? 0).getTime();
+    const safeTimestamp = Number.isFinite(timestamp) ? timestamp : Number.POSITIVE_INFINITY;
+    if (safeTimestamp < bestTime) {
+      best = item;
+      bestTime = safeTimestamp;
+    }
+  }
+  return best;
+}
+
 function pickSupport(anchorNode, nodeMap, stateMap) {
   if (!anchorNode) return null;
 
@@ -158,14 +185,18 @@ function pickSupport(anchorNode, nodeMap, stateMap) {
     })
     .filter(Boolean);
 
-  const rankedPrereq = [...prereqCandidates]
-    .sort((left, right) => scoreSupportCandidate(anchorNode, right, { isPrereq: true }) - scoreSupportCandidate(anchorNode, left, { isPrereq: true }))[0] ?? null;
+  const rankedPrereq = pickHighest(
+    prereqCandidates,
+    (candidate) => scoreSupportCandidate(anchorNode, candidate, { isPrereq: true }),
+  );
 
-  const fallbackCandidate = [...nodeMap.values()]
-    .filter((candidate) => candidate.skillId !== anchorNode.skillId)
-    .filter((candidate) => candidate.section === anchorNode.section)
-    .filter((candidate) => candidate.stage !== 'mastered')
-    .sort((left, right) => scoreSupportCandidate(anchorNode, right) - scoreSupportCandidate(anchorNode, left))[0] ?? null;
+  const fallbackCandidate = pickHighest(
+    [...nodeMap.values()]
+      .filter((candidate) => candidate.skillId !== anchorNode.skillId)
+      .filter((candidate) => candidate.section === anchorNode.section)
+      .filter((candidate) => candidate.stage !== 'mastered'),
+    (candidate) => scoreSupportCandidate(anchorNode, candidate),
+  );
 
   if (!rankedPrereq) return fallbackCandidate;
   if (!fallbackCandidate) return rankedPrereq;
@@ -177,9 +208,10 @@ function pickSupport(anchorNode, nodeMap, stateMap) {
 
 function pickMaintenance(anchorNode, supportNode, nodes) {
   const excluded = new Set([anchorNode?.skillId, supportNode?.skillId].filter(Boolean));
-  return [...nodes]
-    .filter((node) => !excluded.has(node.skillId))
-    .sort((left, right) => (right.mastery + right.timedMastery) - (left.mastery + left.timedMastery))[0] ?? null;
+  return pickHighest(
+    nodes.filter((node) => !excluded.has(node.skillId)),
+    (node) => node.mastery + node.timedMastery,
+  );
 }
 
 function pickNextUnlock(anchorNode, nodeMap) {
@@ -227,9 +259,10 @@ function buildQueueRevisitReason(entry, label, fallbackReason) {
 }
 
 function pickReviewLead(reviewQueue = []) {
-  return [...reviewQueue]
-    .filter((entry) => !entry?.completedAt)
-    .sort((left, right) => new Date(left?.dueAt ?? left?.createdAt ?? 0) - new Date(right?.dueAt ?? right?.createdAt ?? 0))[0] ?? null;
+  return pickEarliestByDate(
+    reviewQueue.filter((entry) => !entry?.completedAt),
+    (entry) => entry?.dueAt ?? entry?.createdAt ?? 0,
+  );
 }
 
 function buildRevisits(anchorNode, supportNode, reviewQueue = [], today = new Date()) {
@@ -367,7 +400,7 @@ export function generateCurriculumPath({ profile = {}, skillStates = [], reviewQ
   const nodeMap = new Map(nodes.map((node) => [node.skillId, node]));
   const selfReportedWeakArea = profile?.self_reported_weak_area ?? profile?.selfReportedWeakArea ?? '';
 
-  const anchorNode = [...nodes].sort((left, right) => scoreAnchor(right, selfReportedWeakArea) - scoreAnchor(left, selfReportedWeakArea))[0] ?? null;
+  const anchorNode = pickHighest(nodes, (node) => scoreAnchor(node, selfReportedWeakArea));
   const supportNode = pickSupport(anchorNode, nodeMap, stateMap);
   const maintenanceNode = pickMaintenance(anchorNode, supportNode, nodes);
   const nextUnlock = pickNextUnlock(anchorNode, nodeMap);

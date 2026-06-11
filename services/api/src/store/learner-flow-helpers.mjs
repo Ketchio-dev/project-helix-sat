@@ -1,7 +1,16 @@
 export function findLatestCompletedSession(sessions = {}, userId, predicate) {
-  return Object.values(sessions)
-    .filter((session) => session.user_id === userId && session.ended_at && predicate(session))
-    .sort((left, right) => new Date(right.ended_at) - new Date(left.ended_at))[0] ?? null;
+  let latest = null;
+  let latestEndedAt = Number.NEGATIVE_INFINITY;
+  for (const session of Object.values(sessions)) {
+    if (session.user_id !== userId || !session.ended_at || !predicate(session)) continue;
+    const endedAt = new Date(session.ended_at).getTime();
+    const safeEndedAt = Number.isFinite(endedAt) ? endedAt : Number.NEGATIVE_INFINITY;
+    if (safeEndedAt > latestEndedAt) {
+      latest = session;
+      latestEndedAt = safeEndedAt;
+    }
+  }
+  return latest;
 }
 
 export function needsFreshQuickWin(latestDiagnosticSession, latestQuickWinSummary) {

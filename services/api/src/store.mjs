@@ -695,7 +695,6 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
     getExamTiming,
     summarizeSessionProgress,
     emitCompletionStreakEvent,
-    average,
     roundRatio,
     toBreakdownRows,
     sectionLabel,

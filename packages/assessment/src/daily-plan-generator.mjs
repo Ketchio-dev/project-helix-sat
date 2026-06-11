@@ -47,13 +47,29 @@ function buildDiagnosticPlan({ profile, date }) {
   };
 }
 
+function pickHighest(items = [], scoreFn) {
+  let best = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const item of items) {
+    const score = scoreFn(item);
+    if (score > bestScore) {
+      best = item;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
 function pickFallbackSkill(skillStates = []) {
-  return [...skillStates]
-    .sort((left, right) => {
-      const leftNeed = (1 - (left.mastery ?? 0)) + (1 - (left.timed_mastery ?? 0)) + (left.retention_risk ?? 0);
-      const rightNeed = (1 - (right.mastery ?? 0)) + (1 - (right.timed_mastery ?? 0)) + (right.retention_risk ?? 0);
-      return rightNeed - leftNeed;
-    })[0] ?? null;
+  return pickHighest(skillStates, (state) => (
+    (1 - (state.mastery ?? 0))
+    + (1 - (state.timed_mastery ?? 0))
+    + (state.retention_risk ?? 0)
+  ));
+}
+
+function pickDominantError(errorDna = {}) {
+  return pickHighest(Object.entries(errorDna), ([, score]) => score)?.[0] ?? null;
 }
 
 function fitBlocksToTime(blocks, totalMinutes) {
@@ -134,14 +150,14 @@ export function generateDailyPlan({
   const examSoon = daysToTest !== null && daysToTest <= 21;
   const latestCompletedSession = sessionHistory.find((session) => session?.status === 'complete') ?? null;
   const reviewDue = reviewQueue.find((entry) => !entry.completedAt) ?? null;
-  const dominantError = Object.entries(errorDna ?? {}).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const dominantError = pickDominantError(errorDna);
 
   const anchorSkill = curriculumPath?.anchorSkill ?? pickFallbackSkill(skillStates);
   const supportSkill = curriculumPath?.supportSkill
     ?? skillStates.find((state) => state.skill_id !== anchorSkill?.skillId && state.section === anchorSkill?.section)
     ?? anchorSkill;
   const maintenanceSkill = curriculumPath?.maintenanceSkill
-    ?? [...skillStates].sort((left, right) => ((right.mastery ?? 0) + (right.timed_mastery ?? 0)) - ((left.mastery ?? 0) + (left.timed_mastery ?? 0)))[0]
+    ?? pickHighest(skillStates, (state) => (state.mastery ?? 0) + (state.timed_mastery ?? 0))
     ?? supportSkill
     ?? anchorSkill;
 

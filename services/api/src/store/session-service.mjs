@@ -13,7 +13,6 @@ export function createSessionDomainService({
   getExamTiming,
   summarizeSessionProgress,
   emitCompletionStreakEvent,
-  average,
   roundRatio,
   toBreakdownRows,
   sectionLabel,
@@ -37,6 +36,43 @@ export function createSessionDomainService({
   normalizeStudentResponse,
   toExamAckSummary,
 }) {
+  const OUTCOME_SESSION_TYPES = new Set(['quick_win', 'timed_set', 'module_simulation']);
+
+  function toTimestamp(value) {
+    const timestamp = new Date(value ?? 0).getTime();
+    return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
+  }
+
+  function compareTimestampDesc(leftValue, rightValue) {
+    const left = toTimestamp(leftValue);
+    const right = toTimestamp(rightValue);
+    if (left === right) return 0;
+    return left > right ? -1 : 1;
+  }
+
+  function compareActiveSessions(left, right) {
+    const examPriority = Number(isExamSession(right)) - Number(isExamSession(left));
+    if (examPriority !== 0) return examPriority;
+    return compareTimestampDesc(left.started_at, right.started_at);
+  }
+
+  function findBestSession(userId, predicate, compare) {
+    let best = null;
+    for (const session of Object.values(state.sessions)) {
+      if (session.user_id !== userId || !predicate(session)) continue;
+      if (!best || compare(session, best) < 0) best = session;
+    }
+    return best;
+  }
+
+  function findLatestSession(userId, predicate, timestampField = 'started_at') {
+    return findBestSession(
+      userId,
+      predicate,
+      (left, right) => compareTimestampDesc(left[timestampField], right[timestampField]),
+    );
+  }
+
   function getSession(sessionId) {
     return state.sessions[sessionId] ?? null;
   }
@@ -49,19 +85,34 @@ export function createSessionDomainService({
     return getSessionItems(sessionId).find((entry) => !entry.answered_at) ?? null;
   }
 
+  function getActiveSessionItemIds(userId) {
+    const itemIds = [];
+    for (const session of Object.values(state.sessions)) {
+      if (session.user_id !== userId || session.ended_at) continue;
+      for (const entry of getSessionItems(session.id)) {
+        itemIds.push(entry.item_id);
+      }
+    }
+    return itemIds;
+  }
+
+  function getRecentAndActiveItemIds(userId, attemptLimit) {
+    return [...new Set([
+      ...api.getAttempts(userId).slice(-attemptLimit).map((attempt) => attempt.item_id),
+      ...getActiveSessionItemIds(userId),
+    ])];
+  }
+
   function getActiveSessions(userId) {
     api.getUser(userId);
     return Object.values(state.sessions)
       .filter((session) => session.user_id === userId && !session.ended_at)
-      .sort((left, right) => {
-        const examPriority = Number(isExamSession(right)) - Number(isExamSession(left));
-        if (examPriority !== 0) return examPriority;
-        return new Date(right.started_at) - new Date(left.started_at);
-      });
+      .sort(compareActiveSessions);
   }
 
   function getActiveExamSession(userId) {
-    return getActiveSessions(userId).find((session) => isExamSession(session)) ?? null;
+    api.getUser(userId);
+    return findBestSession(userId, (session) => !session.ended_at && isExamSession(session), compareActiveSessions);
   }
 
   function buildSessionPayload(sessionOrId, extra = {}) {
@@ -100,7 +151,7 @@ export function createSessionDomainService({
 
   function getActiveSession(userId) {
     api.getUser(userId);
-    const activeSession = getActiveSessions(userId)[0] ?? null;
+    const activeSession = findBestSession(userId, (session) => !session.ended_at, compareActiveSessions);
     if (!activeSession) {
       return {
         hasActiveSession: false,
@@ -153,7 +204,11 @@ export function createSessionDomainService({
   }
 
   function createDiagnosticSessionConflict(userId) {
-    const activeDiagnosticSession = getActiveSessions(userId).find((session) => session.type === 'diagnostic') ?? null;
+    const activeDiagnosticSession = findBestSession(
+      userId,
+      (session) => !session.ended_at && session.type === 'diagnostic',
+      compareActiveSessions,
+    );
     if (!activeDiagnosticSession) return null;
 
     state.events.push(createEvent({
@@ -299,16 +354,33 @@ export function createSessionDomainService({
       throw new HttpError(404, 'Unknown learner');
     }
     const reflections = api.getReflections(learnerId);
+    const attemptsBySessionId = new Map();
+    for (const attempt of state.attempts) {
+      const bucket = attemptsBySessionId.get(attempt.session_id) ?? [];
+      bucket.push(attempt);
+      attemptsBySessionId.set(attempt.session_id, bucket);
+    }
+    const latestReflectionBySessionId = new Map();
+    for (const reflection of reflections) {
+      if (!reflection.session_id) continue;
+      latestReflectionBySessionId.set(reflection.session_id, reflection);
+    }
+
     return Object.values(state.sessions)
       .filter((session) => session.user_id === learnerId)
-      .sort((left, right) => new Date(right.started_at) - new Date(left.started_at))
+      .sort((left, right) => compareTimestampDesc(left.started_at, right.started_at))
       .slice(0, limit)
       .map((session) => {
         const sessionItems = api.getSessionItems(session.id);
         const progress = summarizeSessionProgress(sessionItems);
-        const attempts = state.attempts.filter((attempt) => attempt.session_id === session.id);
-        const correctCount = attempts.filter((attempt) => attempt.is_correct).length;
-        const latestReflection = reflections.filter((reflection) => reflection.session_id === session.id).at(-1) ?? null;
+        const attempts = attemptsBySessionId.get(session.id) ?? [];
+        let correctCount = 0;
+        let totalResponseTimeMs = 0;
+        for (const attempt of attempts) {
+          if (attempt.is_correct) correctCount += 1;
+          totalResponseTimeMs += attempt.response_time_ms;
+        }
+        const latestReflection = latestReflectionBySessionId.get(session.id) ?? null;
         const timedSummary = isTimedSession(session) ? getTimedSetSummary(session.id) : null;
         const moduleSummary = isModuleSession(session) ? getModuleSummary(session.id) : null;
 
@@ -329,7 +401,7 @@ export function createSessionDomainService({
           correctCount,
           accuracy: attempts.length ? Number((correctCount / attempts.length).toFixed(2)) : null,
           accuracyRate: attempts.length ? Number((correctCount / attempts.length).toFixed(2)) : null,
-          averageResponseTimeMs: attempts.length ? Math.round(average(attempts.map((attempt) => attempt.response_time_ms))) : null,
+          averageResponseTimeMs: attempts.length ? Math.round(totalResponseTimeMs / attempts.length) : null,
           lastReflection: latestReflection?.response ?? null,
           latestReflection: latestReflection?.response ?? null,
           timedSummary,
@@ -404,9 +476,7 @@ export function createSessionDomainService({
 
   function getLatestTimedSetSummary(userId) {
     api.getUser(userId);
-    const latestTimedSet = Object.values(state.sessions)
-      .filter((session) => session.user_id === userId && session.type === 'timed_set')
-      .sort((left, right) => new Date(right.started_at) - new Date(left.started_at))[0] ?? null;
+    const latestTimedSet = findLatestSession(userId, (session) => session.type === 'timed_set');
 
     return latestTimedSet ? getTimedSetSummary(latestTimedSet.id) : null;
   }
@@ -520,9 +590,7 @@ export function createSessionDomainService({
 
   function getLatestModuleSummary(userId) {
     api.getUser(userId);
-    const latestModule = Object.values(state.sessions)
-      .filter((session) => session.user_id === userId && isModuleSession(session))
-      .sort((left, right) => new Date(right.started_at) - new Date(left.started_at))[0] ?? null;
+    const latestModule = findLatestSession(userId, (session) => isModuleSession(session));
 
     return latestModule ? getModuleSummary(latestModule.id) : null;
   }
@@ -584,18 +652,18 @@ export function createSessionDomainService({
 
   function getLatestQuickWinSummary(userId) {
     api.getUser(userId);
-    const latestQuickWin = Object.values(state.sessions)
-      .filter((session) => session.user_id === userId && session.type === 'quick_win')
-      .sort((left, right) => new Date(right.started_at) - new Date(left.started_at))[0] ?? null;
+    const latestQuickWin = findLatestSession(userId, (session) => session.type === 'quick_win');
 
     return latestQuickWin ? getQuickWinSummary(latestQuickWin.id) : null;
   }
 
   function getLatestSessionOutcome(userId) {
     api.getUser(userId);
-    const latestCompleted = Object.values(state.sessions)
-      .filter((session) => session.user_id === userId && session.ended_at && ['quick_win', 'timed_set', 'module_simulation'].includes(session.type))
-      .sort((left, right) => new Date(right.ended_at) - new Date(left.ended_at))[0] ?? null;
+    const latestCompleted = findLatestSession(
+      userId,
+      (session) => session.ended_at && OUTCOME_SESSION_TYPES.has(session.type),
+      'ended_at',
+    );
 
     if (!latestCompleted) return null;
 
@@ -640,10 +708,7 @@ export function createSessionDomainService({
       throw new HttpError(404, 'Retry item not found');
     }
 
-    const recentItemIds = new Set([
-      ...api.getAttempts(userId).slice(-8).map((attempt) => attempt.item_id),
-      ...getActiveSessions(userId).flatMap((session) => getSessionItems(session.id).map((entry) => entry.item_id)),
-    ]);
+    const recentItemIds = new Set(getRecentAndActiveItemIds(userId, 8));
     recentItemIds.delete(anchorItem.itemId);
 
     const rankedItems = Object.values(state.items)
@@ -713,10 +778,7 @@ export function createSessionDomainService({
     api.getUser(userId);
     const conflict = createExamSessionConflict(userId, 'timed_set');
     if (conflict) return conflict;
-    const recentItemIds = [...new Set([
-      ...api.getAttempts(userId).slice(-8).map((attempt) => attempt.item_id),
-      ...getActiveSessions(userId).flatMap((session) => getSessionItems(session.id).map((entry) => entry.item_id)),
-    ])];
+    const recentItemIds = getRecentAndActiveItemIds(userId, 8);
     const timedSetItems = selectSessionItems(
       Object.values(state.items),
       api.getSkillStates(userId),
@@ -762,10 +824,7 @@ export function createSessionDomainService({
     const section = ['reading_writing', 'math'].includes(options?.section)
       ? options.section
       : chooseModuleSection(Object.values(state.items), api.getSkillStates(userId));
-    const recentItemIds = [...new Set([
-      ...api.getAttempts(userId).slice(-8).map((attempt) => attempt.item_id),
-      ...getActiveSessions(userId).flatMap((session) => getSessionItems(session.id).map((entry) => entry.item_id)),
-    ])];
+    const recentItemIds = getRecentAndActiveItemIds(userId, 8);
     const { itemCount: moduleItemCount, recommendedPaceSec, timeLimitSec, structureBreakpoints } = getModuleSessionShape(section, options);
     const realismProfile = options?.realismProfile === 'exam'
       ? 'exam'
@@ -826,10 +885,7 @@ export function createSessionDomainService({
       started_at: new Date().toISOString(),
     };
     state.sessions[session.id] = session;
-    const recentItemIds = [...new Set([
-      ...api.getAttempts(userId).slice(-8).map((attempt) => attempt.item_id),
-      ...getActiveSessions(userId).flatMap((activeSession) => getSessionItems(activeSession.id).map((entry) => entry.item_id)),
-    ])];
+    const recentItemIds = getRecentAndActiveItemIds(userId, 8);
     const diagnosticItems = selectSessionItems(
       Object.values(state.items),
       api.getSkillStates(userId),
@@ -880,10 +936,7 @@ export function createSessionDomainService({
     const focusSkill = review.recommendations?.[0]?.skill ?? firstBlock?.target_skills?.[0] ?? null;
     const section = review.recommendations?.[0]?.section
       ?? (focusSkill?.startsWith('math_') ? 'math' : focusSkill ? 'reading_writing' : null);
-    const recentItemIds = [...new Set([
-      ...api.getAttempts(userId).slice(-10).map((attempt) => attempt.item_id),
-      ...getActiveSessions(userId).flatMap((session) => getSessionItems(session.id).map((entry) => entry.item_id)),
-    ])];
+    const recentItemIds = getRecentAndActiveItemIds(userId, 10);
     const quickWinItems = selectQuickWinItems({
       items: Object.values(state.items),
       recentItemIds,
