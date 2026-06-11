@@ -282,16 +282,17 @@ async function main() {
       await page.locator('#returnPath').getByText('Completion streak:', { exact: false }).waitFor();
       await page.locator('#weeklyDigest').getByText('Next week opportunity', { exact: false }).waitFor();
       const reviewRecommendations = page.locator('#reviewRecommendations');
-      const firstLessonPack = reviewRecommendations.locator('details').first();
-      await firstLessonPack.getByText('Learn the rule', { exact: false }).waitFor();
+      await reviewRecommendations.locator('.review-focus-card').first().waitFor();
+      await reviewRecommendations.getByText('Do this first', { exact: false }).first().waitFor();
       await reviewRecommendations.getByRole('button', { name: /Start retry loop|Start near-transfer/i }).first().waitFor();
-      await reviewRecommendations.getByRole('button', { name: 'Try a close variant' }).first().waitFor();
-      await firstLessonPack.locator('summary').click();
+      const queuedRepairs = reviewRecommendations.locator('details').filter({ hasText: 'Queued repairs' }).first();
+      await queuedRepairs.waitFor();
+      await queuedRepairs.locator(':scope > summary').click();
+      const firstLessonPack = queuedRepairs.locator('details').first();
+      await firstLessonPack.waitFor();
+      await firstLessonPack.locator(':scope > summary').click();
       const lessonPackText = await firstLessonPack.textContent();
-      assert.match(lessonPackText ?? '', /Learn the rule/);
-      assert.match(lessonPackText ?? '', /See it modeled/);
-      assert.match(lessonPackText ?? '', /Practice the fix/);
-      assert.match(lessonPackText ?? '', /Stretch to a close variant/);
+      assert.match(lessonPackText ?? '', /Repair details/);
       assert.match(lessonPackText ?? '', /Teach card/);
       assert.match(lessonPackText ?? '', /Worked example/);
       assert.match(lessonPackText ?? '', /Retry pair/);
@@ -348,6 +349,11 @@ async function main() {
       assert.notEqual(buttonStyles.transitionDuration, '0s', 'Buttons should have CSS transitions');
 
       if (screenshotPath) {
+        await page.evaluate(() => {
+          for (const details of document.querySelectorAll('#reviewRecommendations details[open]')) {
+            details.open = false;
+          }
+        });
         await mkdir(new URL('.', \`file://\${screenshotPath}\`).pathname, { recursive: true }).catch(() => null);
         await page.screenshot({ path: screenshotPath });
       }

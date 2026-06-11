@@ -178,8 +178,9 @@ test('repo ships release-bar gating and a no-dependency playwright learner smoke
   assert.match(smokeRunnerSource, /Completion streak:/);
   assert.match(smokeRunnerSource, /Next week opportunity/);
   assert.match(smokeRunnerSource, /#reviewRecommendations/);
+  assert.match(smokeRunnerSource, /Do this first/);
+  assert.match(smokeRunnerSource, /Queued repairs/);
   assert.match(smokeRunnerSource, /Teach card/);
-  assert.match(smokeRunnerSource, /Try a close variant/);
   assert.match(smokeRunnerSource, /Duplicate ids found/);
   assert.match(smokeRunnerSource, /selectOption\('exam'\)/);
   assert.match(smokeRunnerSource, /0\/22 answered/);

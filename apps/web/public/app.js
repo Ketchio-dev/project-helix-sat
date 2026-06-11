@@ -2000,7 +2000,7 @@ function renderReview(review) {
   }
 
   meta.textContent = review.dominantError
-    ? `Top mistake pattern: ${review.dominantError}`
+    ? `Main pattern: ${formatSkillLabel(review.dominantError) || review.dominantError.replaceAll('_', ' ')}`
     : 'Review recommendations are ready.';
 
   state.reflectionPrompt = review.reflectionPrompt ?? '';
@@ -2021,20 +2021,21 @@ function renderReview(review) {
   if (remediationCards.length) {
     const firstCard = remediationCards[0];
     const primaryAction = getRemediationPrimaryAction(firstCard);
-    const focusCard = node('article', { className: 'review-item' });
-    focusCard.append(node('strong', { text: 'Do this first' }));
-    focusCard.append(node('p', { text: `Misconception: ${firstCard.misconception}` }));
-    focusCard.append(node('p', { className: 'muted', text: `Decisive clue: ${firstCard.decisiveClue}` }));
-    focusCard.append(node('p', { className: 'muted', text: `Correction rule: ${firstCard.correctionRule}` }));
-    focusCard.append(node('p', { className: 'notice', text: confidenceCopy(firstCard) }));
-    focusCard.append(node('p', { className: 'muted', text: `Revisit next: ${firstCard.nextScheduledRevisit ?? 'scheduled after this loop'}` }));
+    const focusCard = node('article', { className: 'review-item review-focus-card' });
+    focusCard.append(node('p', { className: 'eyebrow compact', text: 'Do this first' }));
+    focusCard.append(node('strong', { text: formatSkillLabel(firstCard.skill) || firstCard.skill }));
+    focusCard.append(node('p', { text: firstCard.correctionRule }));
     if (firstCard.coachLanguage?.coachLine) {
       focusCard.append(node('p', { className: 'notice', text: firstCard.coachLanguage.coachLine }));
     }
-    focusCard.append(node('p', {
-      className: 'muted',
-      text: `Lesson pack: ${firstCard.packDepth === 'full' ? 'Full pack' : 'Middle pack'}${firstCard.retryCue ? ` · Retry cue: ${firstCard.retryCue}` : ''}` ,
-    }));
+    const focusMeta = [
+      firstCard.retryCue ? `Cue: ${firstCard.retryCue}` : null,
+      firstCard.nextScheduledRevisit ? `Revisit ${firstCard.nextScheduledRevisit}` : null,
+      firstCard.packDepth === 'full' ? 'Full repair' : 'Short repair',
+    ].filter(Boolean);
+    if (focusMeta.length) {
+      focusCard.append(node('p', { className: 'muted', text: focusMeta.join(' · ') }));
+    }
     const primaryRetryButton = node('button', {
       text: primaryAction?.emphasis === 'near_transfer' ? 'Start near-transfer' : 'Start retry loop',
     });
@@ -2045,44 +2046,34 @@ function renderReview(review) {
       transferButton.addEventListener('click', async () => startRetryLoop(firstCard.transferAction.itemId));
       focusCard.append(transferButton);
     }
+    focusCard.append(detailsBlock('Why this repair', [
+      node('p', { text: `Pattern: ${firstCard.misconception}` }),
+      node('p', { className: 'muted', text: `What to notice: ${firstCard.decisiveClue}` }),
+      node('p', { className: 'notice', text: confidenceCopy(firstCard) }),
+    ]));
     list.append(focusCard);
   }
 
-  for (const cardData of remediationCards) {
+  const queuedCards = [];
+  for (const cardData of remediationCards.slice(1)) {
     const card = node('article', { className: 'review-item' });
     const lessonPack = describeReviewLessonPack(cardData);
     const primaryAction = getRemediationPrimaryAction(cardData);
-    card.append(node('strong', { text: `${formatSectionName(cardData.section)} · ${cardData.skill}` }));
-    card.append(node('p', { text: `Misconception: ${cardData.misconception}` }));
-    card.append(node('p', { className: 'muted', text: `Decisive clue: ${cardData.decisiveClue}` }));
-    card.append(node('p', { className: 'muted', text: `Correction rule: ${cardData.correctionRule}` }));
-    if (cardData.coachLanguage?.coachLine) {
-      card.append(node('p', { className: 'notice', text: cardData.coachLanguage.coachLine }));
-    }
-    card.append(node('p', {
-      className: 'notice',
-      text: confidenceCopy(cardData),
-    }));
-    if (cardData.confidenceSignal?.evidence) {
-      card.append(node('p', { className: 'muted', text: cardData.confidenceSignal.evidence }));
-    }
-    card.append(node('p', { className: 'muted', text: `Revisit ${cardData.nextScheduledRevisit ?? 'soon'}` }));
-    card.append(node('p', {
-      className: 'muted',
-      text: `Lesson pack: ${cardData.packDepth === 'full' ? 'Full pack' : 'Middle pack'}${cardData.retryCue ? ` · Retry cue: ${cardData.retryCue}` : ''}`,
-    }));
+    card.append(node('strong', { text: `${formatSectionName(cardData.section)} · ${formatSkillLabel(cardData.skill) || cardData.skill}` }));
+    card.append(node('p', { text: cardData.correctionRule }));
+    card.append(node('p', { className: 'muted', text: `Cue: ${cardData.retryCue ?? cardData.decisiveClue}` }));
     if (cardData.revisitStatus?.status) {
       card.append(node('p', {
         className: 'notice',
         text: `Loop status: ${cardData.revisitStatus.status.replaceAll('_', ' ')}${cardData.revisitStatus.dueAt ? ` · due ${cardData.revisitStatus.dueAt}` : ''}`,
       }));
     }
+    const detailChildren = [node('p', { className: 'muted', text: `What to notice: ${cardData.decisiveClue}` })];
     const retryButton = node('button', {
       text: primaryAction?.emphasis === 'near_transfer' ? 'Start near-transfer' : 'Start retry loop',
     });
     retryButton.addEventListener('click', async () => startRetryLoop(primaryAction?.itemId ?? cardData.retryAction?.itemId ?? cardData.itemId));
-    card.append(retryButton);
-    const detailChildren = [node('p', { className: 'muted', text: `What to notice: ${cardData.decisiveClue}` })];
+    detailChildren.push(retryButton);
     if (cardData.revisitPlan?.prompt) {
       detailChildren.push(node('p', { className: 'muted', text: `Revisit prompt: ${cardData.revisitPlan.prompt}` }));
     }
@@ -2117,8 +2108,12 @@ function renderReview(review) {
       transferButton.addEventListener('click', async () => startRetryLoop(cardData.transferAction.itemId));
       detailChildren.push(transferButton);
     }
-    card.append(detailsBlock(lessonPack.arcText ?? lessonPack.summaryText, detailChildren));
-    list.append(card);
+    card.append(detailsBlock('Repair details', detailChildren));
+    queuedCards.push(card);
+  }
+
+  if (queuedCards.length) {
+    list.append(detailsBlock(`Queued repairs (${queuedCards.length})`, queuedCards, false));
   }
 
   if (!remediationCards.length) {

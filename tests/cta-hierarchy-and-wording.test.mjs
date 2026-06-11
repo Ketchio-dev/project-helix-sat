@@ -359,7 +359,7 @@ describe('product wording: HTML section headings are student-facing', () => {
     'This week\u2019s progress',
     'Recent sessions',
     'Fix this now',
-    'Reflection',
+    'Rule for next time',
     'Practice Item',
   ];
 

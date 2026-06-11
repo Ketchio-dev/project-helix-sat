@@ -216,18 +216,18 @@
 
       <!-- ZONE D: Feedback Zone -->
       <div class="zone-feedback">
-        <section class="grid two">
-          <article class="card">
+        <section class="grid two feedback-grid">
+          <article class="card" id="reviewPanel">
             <h2>Fix this now</h2>
             <div id="reviewMeta" class="notice">No review data yet.</div>
             <div id="reviewRecommendations"></div>
           </article>
-          <article class="card">
-            <h2>Reflection</h2>
+          <article class="card reflection-panel" id="reflectionPanel">
+            <h2>Rule for next time</h2>
             <p id="reflectionPrompt" class="notice">Complete a diagnostic or load the dashboard to get a reflection prompt.</p>
             <form id="reflectionForm" class="reflection-form">
-              <label for="reflectionResponse">Your rule for next time</label>
-              <textarea id="reflectionResponse" rows="6" placeholder="Write the mistake pattern you want to catch next time."></textarea>
+              <label for="reflectionResponse">One cue you will use</label>
+              <textarea id="reflectionResponse" rows="3" placeholder="Example: Check the exact job before choosing a nice-sounding answer."></textarea>
               <div class="row gap">
                 <button type="submit">Save Reflection</button>
               </div>
