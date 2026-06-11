@@ -476,6 +476,24 @@ describe('CTA hierarchy: dashboard integration coherence', () => {
     // Next-best-action is available via learnerNarrative.primaryAction or getNextBestAction
     const action = dashboard.learnerNarrative?.primaryAction ?? store.getNextBestAction(userId);
     assert.ok(action, 'dashboard should have a derivable next action');
+    assert.equal(dashboard.guidedDailyPath.primaryAction.kind, store.getNextBestAction(userId).kind);
+    assert.ok(dashboard.guidedDailyPath.steps.length >= 2, 'guided daily path should give the learner a sequence');
+    assert.equal(
+      dashboard.guidedDailyPath.steps.filter((step) => step.status === 'ready' && step.action).length,
+      1,
+      'guided daily path should expose exactly one ready executable step',
+    );
+    assert.equal(
+      dashboard.guidedDailyPath.totalMinutes,
+      dashboard.guidedDailyPath.steps
+        .filter((step) => step.key !== 'tomorrow_preview')
+        .reduce((sum, step) => sum + (step.minutes ?? 0), 0),
+      'today minutes should exclude the prepared tomorrow preview',
+    );
+    assert.ok(
+      dashboard.guidedDailyPath.steps.some((step) => step.key === 'tomorrow_preview' && step.status === 'prepared'),
+      'guided daily path should pre-queue the next session',
+    );
     const copy = studentActionCopy(action);
     assert.ok(copy, 'action copy should be derivable');
     assert.ok(copy.ctaLabel.length > 0, 'CTA label must not be empty');

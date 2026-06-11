@@ -838,6 +838,7 @@ export function createSupportDomainService({
       completionStreak: getCompletionStreak(userId),
       studyModes: api.getStudyModes(userId),
       tomorrowPreview: api.getTomorrowPreview(userId),
+      guidedDailyPath: api.getGuidedDailyPath(userId),
       latestSessionOutcome: api.getLatestSessionOutcome(userId),
       latestQuickWinSummary: api.getLatestQuickWinSummary(userId),
       latestTimedSetSummary: api.getLatestTimedSetSummary(userId),

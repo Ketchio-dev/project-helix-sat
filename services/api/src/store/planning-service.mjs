@@ -424,6 +424,125 @@ export function createPlanningDomainService({
     };
   }
 
+  function getGuidedDailyPath(userId) {
+    api.getUser(userId);
+    const goalProfile = getGoalProfile(userId);
+    if (!goalProfile.isComplete) return null;
+
+    const nextAction = getNextBestAction(userId);
+    const studyModes = getStudyModes(userId);
+    const tomorrowPreview = getTomorrowPreview(userId);
+    const review = api.getReviewRecommendations(userId);
+    const plan = getPlan(userId);
+    const reflectionPrompt = review.reflectionPrompt
+      ?? 'Write one rule you will reuse on the next block.';
+    const standardMode = studyModes.find((mode) => mode.key === 'standard') ?? null;
+    const deepMode = studyModes.find((mode) => mode.key === 'deep') ?? null;
+    const followupMode = deepMode ?? standardMode;
+
+    const steps = [{
+      key: 'next_action',
+      label: nextAction.kind === 'start_diagnostic'
+        ? 'Find the starting point'
+        : nextAction.kind === 'resume_active_session'
+          ? 'Finish the open block'
+          : nextAction.kind === 'start_retry_loop'
+            ? 'Repair the leak'
+            : 'Start the score-moving block',
+      minutes: nextAction.estimatedMinutes ?? 10,
+      summary: nextAction.reason,
+      status: 'ready',
+      action: nextAction,
+    }];
+
+    if (nextAction.kind === 'start_diagnostic') {
+      steps.push(
+        {
+          key: 'diagnostic_reveal',
+          label: 'Read the signal',
+          minutes: 2,
+          summary: 'Use the reveal to see the score band, top leaks, and the first recommended repair.',
+          status: 'locked',
+          action: null,
+        },
+        {
+          key: 'first_repair',
+          label: 'Take the first repair',
+          minutes: 8,
+          summary: 'After the reveal, Helix will open the smallest useful block instead of asking you to choose.',
+          status: 'locked',
+          action: null,
+        },
+      );
+    } else if (nextAction.kind === 'resume_active_session') {
+      steps.push({
+        key: 'review_results',
+        label: 'Review the result',
+        minutes: 4,
+        summary: 'Once the active block is complete, Helix will use the misses to pick the next repair.',
+        status: 'locked',
+        action: null,
+      });
+    } else {
+      if (followupMode?.action && followupMode.action.kind !== nextAction.kind) {
+        steps.push({
+          key: 'followup_block',
+          label: followupMode.key === 'deep' ? 'Prove it under pressure' : 'Take the standard rep',
+          minutes: followupMode.minutes ?? followupMode.action.estimatedMinutes ?? 15,
+          summary: followupMode.summary,
+          status: 'next',
+          action: followupMode.action,
+        });
+      } else {
+        const firstPlanBlock = plan.blocks?.find((block) => block.block_type !== 'reflection') ?? null;
+        steps.push({
+          key: 'focused_practice',
+          label: 'Do the close practice',
+          minutes: firstPlanBlock?.minutes ?? 12,
+          summary: firstPlanBlock?.objective ?? 'Stay on the same repair story long enough for Helix to see whether it sticks.',
+          status: 'next',
+          action: null,
+        });
+      }
+
+      steps.push({
+        key: 'reflection',
+        label: 'Save the rule',
+        minutes: 3,
+        summary: reflectionPrompt,
+        status: 'wrap_up',
+        action: null,
+      });
+    }
+
+    if (tomorrowPreview) {
+      steps.push({
+        key: 'tomorrow_preview',
+        label: 'Tomorrow is already queued',
+        minutes: tomorrowPreview.plannedMinutes ?? null,
+        summary: tomorrowPreview.reason,
+        status: 'prepared',
+        action: tomorrowPreview.action,
+      });
+    }
+
+    const todayMinutes = steps
+      .filter((step) => step.key !== 'tomorrow_preview')
+      .reduce((sum, step) => sum + (step.minutes ?? 0), 0);
+
+    return {
+      headline: nextAction.kind === 'start_diagnostic'
+        ? 'Today: build the baseline, then follow the first repair'
+        : nextAction.kind === 'resume_active_session'
+          ? 'Today: finish the open block first'
+          : 'Today: follow the repair path in order',
+      prompt: 'Do these in order. Helix will keep the choices narrow and move the next step forward as evidence changes.',
+      totalMinutes: todayMinutes || null,
+      primaryAction: nextAction,
+      steps,
+    };
+  }
+
   function getDiagnosticReveal(userId, sessionId = null) {
     api.getUser(userId);
     const diagnosticSession = sessionId
@@ -523,6 +642,7 @@ export function createPlanningDomainService({
     getNextBestAction,
     getStudyModes,
     getTomorrowPreview,
+    getGuidedDailyPath,
     getDiagnosticReveal,
   };
 }

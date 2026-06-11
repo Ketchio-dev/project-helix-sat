@@ -1367,6 +1367,138 @@ function renderLatestSessionOutcome(outcome) {
   container.append(card);
 }
 
+function getGuidedPathSteps(rawPath) {
+  if (Array.isArray(rawPath)) return rawPath;
+  if (!rawPath || typeof rawPath !== 'object') return [];
+  return rawPath.steps
+    ?? rawPath.blocks
+    ?? rawPath.items
+    ?? rawPath.path
+    ?? rawPath.dailyPath
+    ?? [];
+}
+
+function normalizeGuidedPathStep(step, index) {
+  const raw = step && typeof step === 'object' ? step : { title: String(step ?? '') };
+  const action = raw.action ?? raw.primaryAction ?? raw.nextAction ?? null;
+  const copy = studentActionCopy(action);
+  const title = raw.title ?? raw.label ?? raw.name ?? copy?.title ?? `Step ${index + 1}`;
+  const summary = raw.summary ?? raw.description ?? raw.reason ?? copy?.reason ?? null;
+  const minutes = raw.minutes ?? raw.estimatedMinutes ?? raw.estimated_minutes ?? action?.estimatedMinutes ?? null;
+  const status = raw.status ?? raw.state ?? null;
+  const isComplete = ['complete', 'completed', 'done'].includes(`${status ?? ''}`.toLowerCase());
+  return {
+    title,
+    summary,
+    action,
+    minutes,
+    status,
+    isComplete,
+    meta: buildActionMeta(action, { fallbackMinutes: minutes }),
+  };
+}
+
+function buildFallbackGuidedPath(nextAction, studyModes = []) {
+  if (!nextAction) return null;
+
+  const copy = studentActionCopy(nextAction);
+  const steps = [{
+    title: copy?.title ?? 'Start the recommended block',
+    summary: copy?.reason ?? 'Begin with the block Helix picked for today.',
+    action: nextAction,
+    minutes: nextAction.estimatedMinutes ?? null,
+  }];
+
+  for (const mode of studyModes.slice(0, 2)) {
+    if (!mode?.action && !mode?.label && !mode?.summary) continue;
+    steps.push({
+      title: mode.label ?? studentActionCopy(mode.action)?.title ?? 'Optional follow-up',
+      summary: mode.summary ?? studentActionCopy(mode.action)?.reason ?? 'Use this if you want another prepared block.',
+      action: mode.action ?? null,
+      minutes: mode.minutes ?? mode.action?.estimatedMinutes ?? null,
+    });
+  }
+
+  return {
+    headline: "Start today's path",
+    summary: 'Follow the steps in order. The first button starts the right block for now.',
+    steps,
+  };
+}
+
+function normalizeGuidedDailyPath(dashboard = {}, nextAction = null, studyModes = []) {
+  const source = dashboard ?? {};
+  const rawPath = source.guidedDailyPath
+    ?? source.dailyStudyPath
+    ?? source.todayPath
+    ?? source.studyPath
+    ?? source.guidedPath
+    ?? null;
+  const resolvedPath = rawPath ?? buildFallbackGuidedPath(nextAction, studyModes);
+  if (!resolvedPath) return null;
+
+  const rawSteps = getGuidedPathSteps(resolvedPath);
+  const steps = rawSteps.map(normalizeGuidedPathStep).filter((step) => step.title || step.summary || step.action);
+  if (!steps.length) return null;
+
+  return {
+    headline: resolvedPath.headline ?? resolvedPath.title ?? "Start today's path",
+    summary: resolvedPath.summary ?? resolvedPath.description ?? 'Follow these in order and let Helix handle the sequence.',
+    steps,
+  };
+}
+
+function renderGuidedDailyPath(dashboard = {}, nextAction = null, studyModes = []) {
+  const section = $('#guidedDailyPathSection');
+  const container = $('#guidedDailyPath');
+  if (!section || !container) return;
+  clear(container);
+
+  const path = normalizeGuidedDailyPath(dashboard, nextAction, studyModes);
+  if (!isStudentSurface() || !path || state.currentSessionId) {
+    section.style.display = 'none';
+    return;
+  }
+
+  const nextStep = path.steps.find((step) => step.action && !step.isComplete);
+  section.style.display = 'block';
+  container.append(node('p', { className: 'lead-line', text: path.headline }));
+  if (path.summary) {
+    container.append(node('p', { className: 'muted', text: path.summary }));
+  }
+  if (nextStep?.action) {
+    const button = node('button', { text: "Start today's path" });
+    button.addEventListener('click', async () => {
+      await performNextBestAction(nextStep.action);
+      if (state.currentSessionId) renderGuidedDailyPath(null, null, []);
+    });
+    container.append(button);
+  }
+
+  const list = node('ol', { className: 'guided-path-list' });
+  for (const [index, step] of path.steps.entries()) {
+    const className = [
+      'guided-path-step',
+      step.isComplete ? 'is-complete' : '',
+      step === nextStep ? 'is-current' : '',
+    ].filter(Boolean).join(' ');
+    const item = node('li', { className });
+    item.append(node('span', { className: 'guided-path-index', text: step.isComplete ? 'OK' : String(index + 1) }));
+    const body = node('div', { className: 'guided-path-body' });
+    body.append(node('strong', { text: step.title }));
+    const meta = step.meta.length ? step.meta : (step.minutes ? [`~${step.minutes} min`] : []);
+    if (meta.length) {
+      body.append(node('p', { className: 'muted', text: meta.join(' · ') }));
+    }
+    if (step.summary) {
+      body.append(node('p', { text: step.summary }));
+    }
+    item.append(body);
+    list.append(item);
+  }
+  container.append(list);
+}
+
 function renderStudyModes(modes = []) {
   const section = $('#studyModesSection');
   const container = $('#studyModes');
@@ -2308,6 +2440,7 @@ async function loadDashboard() {
     renderReview(dashboard.review);
     renderSessionHistory(sessionHistory);
     renderLatestSessionOutcome(dashboard.latestSessionOutcome ?? null);
+    renderGuidedDailyPath(dashboard, nextBestAction, dashboard.studyModes ?? []);
     renderStudyModes(dashboard.studyModes ?? []);
     renderReturnPath(dashboard.tomorrowPreview ?? null, dashboard.comebackState ?? null, dashboard.completionStreak ?? null);
     renderQuickWinSummary(dashboard.latestQuickWinSummary);

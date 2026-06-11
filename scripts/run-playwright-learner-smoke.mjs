@@ -145,6 +145,11 @@ async function main() {
       const primaryNextBestAction = page.locator('#nextBestActionSection button[data-next-best-action="true"]');
       await primaryNextBestAction.waitFor({ state: 'visible' });
       assert.equal(await primaryNextBestAction.count(), 1, 'Learner home should show exactly one primary next-best-action');
+      await page.locator('#guidedDailyPathSection').waitFor({ state: 'visible' });
+      await page.locator('#guidedDailyPath').getByText('Today:', { exact: false }).waitFor();
+      await page.locator('#guidedDailyPath').getByRole('button', { name: "Start today's path" }).waitFor();
+      const guidedSteps = await page.locator('#guidedDailyPath .guided-path-step').count();
+      assert.ok(guidedSteps >= 2, 'Guided daily path should show a followable sequence');
     });
 
     await checkpoint('diagnostic_preflight_start', async () => {

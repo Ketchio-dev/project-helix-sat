@@ -913,6 +913,7 @@ pre {
 }
 
 #dashboardToggleSection,
+#guidedDailyPathSection,
 #studyModesSection,
 #returnPathSection {
   background: var(--surface-tint);
@@ -1154,10 +1155,60 @@ details > :not(summary) { padding: 12px; }
 #quickWinSummary, #timedSetSummary, #moduleSummary,
 #sessionReviewDetail,
 #nextBestAction, #nextBestActionAlternatives,
+#guidedDailyPath,
 #goalSetupResult, #reflectionResult,
 #attemptResult, #hintResult {
   display: grid;
   gap: 10px;
+}
+
+.guided-path-list {
+  display: grid;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guided-path-step {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: #fff;
+}
+
+.guided-path-step.is-current {
+  border-color: var(--border-strong);
+  box-shadow: inset 3px 0 0 var(--text);
+}
+
+.guided-path-step.is-complete {
+  color: var(--text-muted);
+}
+
+.guided-path-index {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--surface-tint);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.guided-path-body {
+  display: grid;
+  gap: 4px;
+}
+
+.guided-path-body p {
+  margin: 0;
 }
 
 #goalSetupResult,
@@ -1177,6 +1228,7 @@ details > :not(summary) { padding: 12px; }
 #diagnosticRevealSection,
 #learnerNarrativeSection,
 #sessionOutcomeSection,
+#guidedDailyPathSection,
 #studyModesSection,
 #returnPathSection,
 #dashboardToggleSection,
@@ -1197,6 +1249,7 @@ details > :not(summary) { padding: 12px; }
 #diagnosticRevealSection h2,
 #learnerNarrativeSection h2,
 #sessionOutcomeSection h2,
+#guidedDailyPathSection h2,
 #studyModesSection h2,
 #returnPathSection h2,
 #teacherAssignmentsSection h2,

@@ -175,6 +175,42 @@ const reviewRecommendationsResponseSchema = {
   },
 };
 
+const guidedDailyPathResponseSchema = {
+  type: ['object', 'null'],
+  required: ['headline', 'prompt', 'totalMinutes', 'primaryAction', 'steps'],
+  additionalProperties: false,
+  properties: {
+    headline: { type: 'string', minLength: 1 },
+    prompt: { type: 'string', minLength: 1 },
+    totalMinutes: { type: ['integer', 'null'], minimum: 1 },
+    primaryAction: nextBestActionResponseSchema,
+    steps: {
+      type: 'array',
+      minItems: 1,
+      items: {
+        type: 'object',
+        required: ['key', 'label', 'minutes', 'summary', 'status', 'action'],
+        additionalProperties: false,
+        properties: {
+          key: { type: 'string', minLength: 1 },
+          label: { type: 'string', minLength: 1 },
+          minutes: { type: ['integer', 'null'], minimum: 1 },
+          summary: { type: 'string', minLength: 1 },
+          status: {
+            enum: ['ready', 'next', 'wrap_up', 'prepared', 'locked'],
+          },
+          action: {
+            anyOf: [
+              nextBestActionResponseSchema,
+              { type: 'null' },
+            ],
+          },
+        },
+      },
+    },
+  },
+};
+
 const activeSessionEnvelopeSchema = {
   type: 'object',
   required: ['hasActiveSession', 'resumeAvailable', 'activeSession'],
@@ -232,7 +268,7 @@ const sessionHistoryEntrySchema = {
 
 const dashboardLearnerResponseSchema = {
   type: 'object',
-  required: ['profile', 'projection', 'projectionEvidence', 'programPath', 'curriculumPath', 'weeklyDigest', 'plan', 'planExplanation', 'learnerNarrative', 'errorDna', 'errorDnaSummary', 'whatChanged', 'items', 'review', 'activeSession', 'sessionHistory', 'comebackState', 'completionStreak', 'studyModes', 'tomorrowPreview', 'latestSessionOutcome', 'latestQuickWinSummary', 'latestTimedSetSummary', 'latestModuleSummary'],
+  required: ['profile', 'projection', 'projectionEvidence', 'programPath', 'curriculumPath', 'weeklyDigest', 'plan', 'planExplanation', 'learnerNarrative', 'errorDna', 'errorDnaSummary', 'whatChanged', 'items', 'review', 'activeSession', 'sessionHistory', 'comebackState', 'completionStreak', 'studyModes', 'tomorrowPreview', 'guidedDailyPath', 'latestSessionOutcome', 'latestQuickWinSummary', 'latestTimedSetSummary', 'latestModuleSummary'],
   additionalProperties: false,
   properties: {
     profile: dashboardProfileResponseSchema,
@@ -315,6 +351,7 @@ const dashboardLearnerResponseSchema = {
         action: nextBestActionResponseSchema,
       },
     },
+    guidedDailyPath: guidedDailyPathResponseSchema,
     latestSessionOutcome: {
       type: ['object', 'null'],
       required: sessionOutcomeResponseSchema.required,
@@ -578,6 +615,14 @@ function validateFormat(schema, value, path) {
 function validateValue(schema, value, path = 'body') {
   const errors = [];
   if (!schema) {
+    return errors;
+  }
+
+  if (schema.anyOf) {
+    const matches = schema.anyOf.some((candidate) => validateValue(candidate, value, path).length === 0);
+    if (!matches) {
+      errors.push(`${path} must match one of the allowed shapes`);
+    }
     return errors;
   }
 

@@ -455,6 +455,65 @@ components:
           type:
             - object
             - 'null'
+    GuidedDailyPathResponse:
+      type:
+        - object
+        - 'null'
+      additionalProperties: false
+      required:
+        - headline
+        - prompt
+        - totalMinutes
+        - primaryAction
+        - steps
+      properties:
+        headline:
+          type: string
+        prompt:
+          type: string
+        totalMinutes:
+          type:
+            - integer
+            - 'null'
+          minimum: 1
+        primaryAction:
+          $ref: '#/components/schemas/NextBestActionResponse'
+        steps:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - key
+              - label
+              - minutes
+              - summary
+              - status
+              - action
+            properties:
+              key:
+                type: string
+              label:
+                type: string
+              minutes:
+                type:
+                  - integer
+                  - 'null'
+                minimum: 1
+              summary:
+                type: string
+              status:
+                enum:
+                  - ready
+                  - next
+                  - wrap_up
+                  - prepared
+                  - locked
+              action:
+                anyOf:
+                  - $ref: '#/components/schemas/NextBestActionResponse'
+                  - type: 'null'
     CurriculumPath:
       $ref: ../../packages/schemas/planning/curriculum-path.schema.json
     ProgramPath:
@@ -491,6 +550,7 @@ components:
         - completionStreak
         - studyModes
         - tomorrowPreview
+        - guidedDailyPath
         - latestSessionOutcome
         - latestQuickWinSummary
         - latestTimedSetSummary
@@ -544,6 +604,8 @@ components:
             type: object
         tomorrowPreview:
           type: object
+        guidedDailyPath:
+          $ref: '#/components/schemas/GuidedDailyPathResponse'
         latestSessionOutcome:
           anyOf:
             - $ref: '#/components/schemas/SessionOutcome'

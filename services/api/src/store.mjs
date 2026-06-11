@@ -488,6 +488,10 @@ export function createStore({ seed = createDemoData(), storage = createMemorySta
       return planningDomainService.getTomorrowPreview(userId);
     },
 
+    getGuidedDailyPath(userId = DEMO_USER_ID) {
+      return planningDomainService.getGuidedDailyPath(userId);
+    },
+
     getDiagnosticReveal(userId = DEMO_USER_ID, sessionId = null) {
       return planningDomainService.getDiagnosticReveal(userId, sessionId);
     },

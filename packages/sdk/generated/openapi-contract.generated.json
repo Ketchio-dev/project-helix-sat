@@ -5,7 +5,7 @@
     "schemasRoot": "packages/schemas"
   },
   "openapi": {
-    "sha256": "0bdca91547f09c8bde1d2f71fafc3ec12ca99df9c11e3cbc5acc36c6facb2484",
+    "sha256": "7fc8fde3a10033899de4c63451b22a616ff6dafd2a154ba584718291225c4e9c",
     "pathCount": 34,
     "paths": [
       "/api/attempt/submit",
@@ -43,7 +43,7 @@
       "/api/tutor/hint",
       "/health"
     ],
-    "schemaRefCount": 29,
+    "schemaRefCount": 30,
     "schemaRefs": [
       "AttemptSubmitRequest",
       "CurriculumPath",
@@ -56,6 +56,7 @@
       "EventEnvelope",
       "GoalProfileResponse",
       "GoalProfileUpdateRequest",
+      "GuidedDailyPathResponse",
       "LearnerNarrative",
       "ModuleStartRequest",
       "NextBestActionResponse",

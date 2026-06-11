@@ -33,6 +33,7 @@ test('api keeps planning surfaces aligned for cold-start learners after goal pro
 
     const dashboardBefore = await fetch(`${baseUrl}/api/dashboard/learner`, { headers: registered.headers }).then((res) => res.json());
     assert.deepEqual(dashboardBefore.studyModes, []);
+    assert.equal(dashboardBefore.guidedDailyPath, null);
 
     const goalProfile = await fetch(`${baseUrl}/api/goal-profile`, {
       method: 'POST',
@@ -52,6 +53,15 @@ test('api keeps planning surfaces aligned for cold-start learners after goal pro
     assert.equal(dashboardAfter.studyModes.length, 1);
     assert.equal(dashboardAfter.studyModes[0].key, 'starting_point');
     assert.equal(dashboardAfter.studyModes[0].action.kind, 'start_diagnostic');
+    assert.equal(dashboardAfter.guidedDailyPath.primaryAction.kind, 'start_diagnostic');
+    assert.equal(dashboardAfter.guidedDailyPath.steps[0].action.kind, 'start_diagnostic');
+    assert.deepEqual(
+      dashboardAfter.guidedDailyPath.steps.map((step) => step.key),
+      ['next_action', 'diagnostic_reveal', 'first_repair', 'tomorrow_preview'],
+    );
+    assert.ok(dashboardAfter.guidedDailyPath.steps.slice(1, 3).every((step) => step.status === 'locked' && step.action === null));
+    assert.equal(dashboardAfter.guidedDailyPath.steps[3].status, 'prepared');
+    assert.equal(typeof dashboardAfter.guidedDailyPath.steps[3].action.kind, 'string');
   });
 });
 
@@ -91,6 +101,12 @@ test('api keeps learner contract payloads on canonical camelCase shape', async (
     assert.ok(review.remediationCards[0]);
     assert.ok(weeklyDigest.nextWeekOpportunity);
     assert.ok(dashboard.latestSessionOutcome);
+    assert.equal(dashboard.guidedDailyPath.primaryAction.kind, 'start_retry_loop');
+    assert.ok(dashboard.guidedDailyPath.steps.some((step) => step.key === 'reflection'));
+    const tomorrowStep = dashboard.guidedDailyPath.steps.find((step) => step.key === 'tomorrow_preview');
+    assert.ok(tomorrowStep);
+    assert.equal(tomorrowStep.status, 'prepared');
+    assert.equal(typeof tomorrowStep.action.kind, 'string');
 
     const snakeHits = [
       ...collectSnakeCasePaths(goalProfile, 'goalProfile'),
@@ -99,6 +115,7 @@ test('api keeps learner contract payloads on canonical camelCase shape', async (
       ...collectSnakeCasePaths(planExplanation, 'planExplanation'),
       ...collectSnakeCasePaths(projectionEvidence, 'projectionEvidence'),
       ...collectSnakeCasePaths(review.remediationCards[0], 'reviewRemediationCard'),
+      ...collectSnakeCasePaths(dashboard.guidedDailyPath, 'guidedDailyPath'),
       ...collectSnakeCasePaths(dashboard.latestSessionOutcome, 'sessionOutcome'),
       ...collectSnakeCasePaths(weeklyDigest, 'weeklyDigest'),
     ];
