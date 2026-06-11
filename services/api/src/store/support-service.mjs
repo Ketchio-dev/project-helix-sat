@@ -64,6 +64,83 @@ export function createSupportDomainService({
     return takeRanked(Object.entries(errorDna), 1, ([, score]) => score)[0]?.[0] ?? null;
   }
 
+  function findLatestReviewAttempt({ userId, itemId, afterCreatedAt = null }) {
+    const afterTimestamp = afterCreatedAt ? new Date(afterCreatedAt).getTime() : Number.NEGATIVE_INFINITY;
+    for (let index = state.attempts.length - 1; index >= 0; index -= 1) {
+      const attempt = state.attempts[index];
+      if (attempt.user_id !== userId || attempt.item_id !== itemId || attempt.mode !== 'review') continue;
+      const session = state.sessions[attempt.session_id];
+      if (!session || session.type !== 'review') continue;
+      const attemptTimestamp = new Date(attempt.created_at ?? 0).getTime();
+      if (Number.isFinite(afterTimestamp) && Number.isFinite(attemptTimestamp) && attemptTimestamp < afterTimestamp) continue;
+      return attempt;
+    }
+    return null;
+  }
+
+  function buildConfidenceSignal(beforeAttempt, afterAttempt) {
+    const before = beforeAttempt?.confidence_level ?? null;
+    const after = afterAttempt?.confidence_level ?? null;
+    if (!beforeAttempt) {
+      return {
+        before,
+        after,
+        direction: 'needs_baseline',
+        summary: 'Complete a scored attempt first so Helix can compare confidence to accuracy.',
+        evidence: 'No prior attempt is available for this review card yet.',
+        updatedAt: null,
+      };
+    }
+    if (!afterAttempt) {
+      return {
+        before,
+        after,
+        direction: 'awaiting_retry',
+        summary: 'Retry this once to see whether confidence now matches the rule.',
+        evidence: `Original attempt was ${beforeAttempt.is_correct ? 'correct' : 'missed'} at confidence ${before}.`,
+        updatedAt: beforeAttempt.created_at ?? null,
+      };
+    }
+    if (afterAttempt.is_correct && after >= before) {
+      return {
+        before,
+        after,
+        direction: 'calibrated_gain',
+        summary: 'Accuracy and confidence moved together on the retry.',
+        evidence: `Retry was correct at confidence ${after}, compared with ${before} before review.`,
+        updatedAt: afterAttempt.created_at ?? null,
+      };
+    }
+    if (afterAttempt.is_correct) {
+      return {
+        before,
+        after,
+        direction: 'careful_rebuild',
+        summary: 'Accuracy recovered, but confidence is still rebuilding.',
+        evidence: `Retry was correct at confidence ${after}; keep one more close variant scheduled.`,
+        updatedAt: afterAttempt.created_at ?? null,
+      };
+    }
+    if (after >= 3) {
+      return {
+        before,
+        after,
+        direction: 'overconfident_miss',
+        summary: 'Confidence is still running ahead of accuracy.',
+        evidence: `Retry was missed at confidence ${after}; slow the setup before adding timed pressure.`,
+        updatedAt: afterAttempt.created_at ?? null,
+      };
+    }
+    return {
+      before,
+      after,
+      direction: 'still_uncertain',
+      summary: 'The retry still needs another correction pass.',
+      evidence: `Retry was missed at confidence ${after}; use the rule once more before moving on.`,
+      updatedAt: afterAttempt.created_at ?? null,
+    };
+  }
+
   function submitReflection({ userId, sessionId = null, prompt, response }) {
     api.getUser(userId);
     const trimmedResponse = `${response ?? ''}`.trim();
@@ -498,7 +575,13 @@ export function createSupportDomainService({
     const remediationCards = recommendations.map((recommendation) => {
       const matchingAttempt = [...attempts]
         .reverse()
-        .find((attempt) => attempt.item_id === recommendation.itemId) ?? null;
+        .find((attempt) => attempt.item_id === recommendation.itemId && !attempt.is_correct) ?? null;
+      const reviewAttempt = findLatestReviewAttempt({
+        userId: learnerId,
+        itemId: recommendation.itemId,
+        afterCreatedAt: matchingAttempt?.created_at ?? null,
+      });
+      const confidenceSignal = buildConfidenceSignal(matchingAttempt, reviewAttempt);
       const anchorItem = api.getItem(recommendation.itemId);
       const misconception = recommendation.errorTag
         ? formatErrorInsight(recommendation.errorTag, api.getErrorDna(learnerId)[recommendation.errorTag] ?? 1)
@@ -574,9 +657,8 @@ export function createSupportDomainService({
         coachLanguage: lessonBundle.coachLanguage,
         lessonAssetIds: toLessonAssetIds(lessonBundle.lessonAssetIds),
         confidenceBefore: matchingAttempt?.confidence_level ?? null,
-        confidenceAfter: matchingAttempt?.confidence_level !== undefined
-          ? Math.min(4, matchingAttempt.confidence_level + 1)
-          : null,
+        confidenceAfter: reviewAttempt?.confidence_level ?? null,
+        confidenceSignal,
         nextScheduledRevisit: revisitRecord?.dueAt ?? addDays(new Date(), 1).toISOString().slice(0, 10),
         revisitStatus: revisitRecord
           ? {

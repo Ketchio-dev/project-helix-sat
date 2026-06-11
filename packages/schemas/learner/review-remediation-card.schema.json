@@ -24,6 +24,7 @@
     "lessonAssetIds",
     "confidenceBefore",
     "confidenceAfter",
+    "confidenceSignal",
     "nextScheduledRevisit",
     "revisitStatus"
   ],
@@ -125,6 +126,37 @@
       "type": ["integer", "null"],
       "minimum": 1,
       "maximum": 4
+    },
+    "confidenceSignal": {
+      "type": "object",
+      "required": ["before", "after", "direction", "summary", "evidence", "updatedAt"],
+      "additionalProperties": false,
+      "properties": {
+        "before": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "maximum": 4
+        },
+        "after": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "maximum": 4
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "needs_baseline",
+            "awaiting_retry",
+            "calibrated_gain",
+            "careful_rebuild",
+            "overconfident_miss",
+            "still_uncertain"
+          ]
+        },
+        "summary": { "type": "string", "minLength": 1 },
+        "evidence": { "type": "string", "minLength": 1 },
+        "updatedAt": { "type": ["string", "null"] }
+      }
     },
     "nextScheduledRevisit": { "type": "string", "minLength": 1 },
     "revisitStatus": {

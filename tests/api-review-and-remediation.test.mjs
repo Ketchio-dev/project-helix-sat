@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { withAuthedServer, buildAttemptAnswer } from './api-test-helpers.mjs';
+import { withAuthedServer, buildAttemptAnswer, buildIncorrectAttemptAnswer } from './api-test-helpers.mjs';
 
 test('api serves profile, plan, diagnostic progression, attempt submission, review, reflection, and tutor hint', async () => {
   await withAuthedServer(async (baseUrl, sessions) => {
@@ -46,13 +46,16 @@ test('api serves profile, plan, diagnostic progression, attempt submission, revi
 test('api starts a retry loop from review recommendations and schedules a revisit', async () => {
   await withAuthedServer(async (baseUrl, sessions) => {
     const diagnostic = await fetch(`${baseUrl}/api/diagnostic/start`, { method: 'POST', headers: sessions.student.headers, body: JSON.stringify({}) }).then((res) => res.json());
-    await fetch(`${baseUrl}/api/attempt/submit`, { method: 'POST', headers: sessions.student.headers, body: JSON.stringify({ itemId: diagnostic.items[0].itemId, ...buildAttemptAnswer(diagnostic.items[0].itemId), sessionId: diagnostic.session.id, mode: 'learn', confidenceLevel: 2, responseTimeMs: 35000 }) });
+    await fetch(`${baseUrl}/api/attempt/submit`, { method: 'POST', headers: sessions.student.headers, body: JSON.stringify({ itemId: diagnostic.items[0].itemId, ...buildIncorrectAttemptAnswer(diagnostic.items[0].itemId), sessionId: diagnostic.session.id, mode: 'learn', confidenceLevel: 2, responseTimeMs: 35000 }) });
     for (const item of diagnostic.items.slice(1)) {
       await fetch(`${baseUrl}/api/attempt/submit`, { method: 'POST', headers: sessions.student.headers, body: JSON.stringify({ itemId: item.itemId, ...buildAttemptAnswer(item.itemId), sessionId: diagnostic.session.id, mode: 'learn', confidenceLevel: 3, responseTimeMs: 30000 }) });
     }
 
     const reviewBefore = await fetch(`${baseUrl}/api/review/recommendations`, { headers: sessions.student.headers }).then((res) => res.json());
     assert.equal(reviewBefore.remediationCards[0].retryAction.kind, 'start_retry_loop');
+    assert.equal(reviewBefore.remediationCards[0].confidenceBefore, 2);
+    assert.equal(reviewBefore.remediationCards[0].confidenceAfter, null);
+    assert.equal(reviewBefore.remediationCards[0].confidenceSignal.direction, 'awaiting_retry');
 
     const retryNextAction = await fetch(`${baseUrl}/api/next-best-action`, { headers: sessions.student.headers }).then((res) => res.json());
     assert.equal(retryNextAction.kind, 'start_quick_win');
@@ -75,7 +78,7 @@ test('api starts a retry loop from review recommendations and schedules a revisi
     while (activeItem) {
       lastAttempt = await fetch(`${baseUrl}/api/attempt/submit`, {
         method: 'POST', headers: sessions.student.headers,
-        body: JSON.stringify({ itemId: activeItem.itemId, ...buildAttemptAnswer(activeItem.itemId), sessionId: retrySession.session.id, mode: 'review', confidenceLevel: 3, responseTimeMs: 25000 }),
+        body: JSON.stringify({ itemId: activeItem.itemId, ...buildAttemptAnswer(activeItem.itemId), sessionId: retrySession.session.id, mode: 'review', confidenceLevel: 4, responseTimeMs: 25000 }),
       }).then((res) => res.json());
       activeItem = lastAttempt.nextItem ?? null;
     }
@@ -87,5 +90,10 @@ test('api starts a retry loop from review recommendations and schedules a revisi
 
     const reviewAfter = await fetch(`${baseUrl}/api/review/recommendations`, { headers: sessions.student.headers }).then((res) => res.json());
     assert.ok(reviewAfter.revisitQueue.some((entry) => entry.itemId === reviewBefore.remediationCards[0].itemId));
+    const updatedCard = reviewAfter.remediationCards.find((card) => card.itemId === reviewBefore.remediationCards[0].itemId);
+    assert.equal(updatedCard.confidenceBefore, 2);
+    assert.equal(updatedCard.confidenceAfter, 4);
+    assert.equal(updatedCard.confidenceSignal.direction, 'calibrated_gain');
+    assert.match(updatedCard.confidenceSignal.summary, /Accuracy and confidence moved together/i);
   });
 });

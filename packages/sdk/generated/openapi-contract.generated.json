@@ -97,7 +97,7 @@
       },
       {
         "file": "packages/schemas/learner/review-remediation-card.schema.json",
-        "sha256": "0349e2a111401c508dd7545d4b10aacdf23882ca9755dd5690f8a54ff7530ebb"
+        "sha256": "0dfb616ae2247bf70624341ffe6b372dd0079f675296418eb5bf23c361b35f06"
       },
       {
         "file": "packages/schemas/learner/session-outcome.schema.json",
@@ -148,6 +148,6 @@
         "sha256": "0ab1907076df7e40e44d8653c2291a0b6ae866cc418dc5133322564c8efe22c3"
       }
     ],
-    "combinedSha256": "cef10dbad59df4ecbdfbf0624f8bbf087c0e8d6005dc7bedffe40fa59ada7432"
+    "combinedSha256": "15d76a9e39d1ba8636b307cdd51c96df7ee4ca66b38afacda19d6a035b561448"
   }
 }

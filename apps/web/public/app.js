@@ -1784,6 +1784,16 @@ function renderReview(review) {
   state.reflectionPrompt = review.reflectionPrompt ?? '';
   $('#reflectionPrompt').textContent = state.reflectionPrompt || 'Write one rule you will reuse next time.';
 
+  const confidenceCopy = (cardData) => {
+    const signal = cardData.confidenceSignal ?? null;
+    if (signal?.summary) {
+      const before = signal.before ?? cardData.confidenceBefore ?? '—';
+      const after = signal.after ?? cardData.confidenceAfter ?? '—';
+      return `${signal.summary} (${before} -> ${after})`;
+    }
+    return `Confidence: ${cardData.confidenceBefore ?? '—'} -> ${cardData.confidenceAfter ?? '—'}`;
+  };
+
   const list = node('div', { className: 'stack' });
   const remediationCards = review.remediationCards ?? [];
   if (remediationCards.length) {
@@ -1794,6 +1804,7 @@ function renderReview(review) {
     focusCard.append(node('p', { text: `Misconception: ${firstCard.misconception}` }));
     focusCard.append(node('p', { className: 'muted', text: `Decisive clue: ${firstCard.decisiveClue}` }));
     focusCard.append(node('p', { className: 'muted', text: `Correction rule: ${firstCard.correctionRule}` }));
+    focusCard.append(node('p', { className: 'notice', text: confidenceCopy(firstCard) }));
     focusCard.append(node('p', { className: 'muted', text: `Revisit next: ${firstCard.nextScheduledRevisit ?? 'scheduled after this loop'}` }));
     if (firstCard.coachLanguage?.coachLine) {
       focusCard.append(node('p', { className: 'notice', text: firstCard.coachLanguage.coachLine }));
@@ -1827,9 +1838,13 @@ function renderReview(review) {
       card.append(node('p', { className: 'notice', text: cardData.coachLanguage.coachLine }));
     }
     card.append(node('p', {
-      className: 'muted',
-      text: `Confidence: ${cardData.confidenceBefore ?? '—'} -> ${cardData.confidenceAfter ?? '—'} · revisit ${cardData.nextScheduledRevisit ?? 'soon'}`,
+      className: 'notice',
+      text: confidenceCopy(cardData),
     }));
+    if (cardData.confidenceSignal?.evidence) {
+      card.append(node('p', { className: 'muted', text: cardData.confidenceSignal.evidence }));
+    }
+    card.append(node('p', { className: 'muted', text: `Revisit ${cardData.nextScheduledRevisit ?? 'soon'}` }));
     card.append(node('p', {
       className: 'muted',
       text: `Lesson pack: ${cardData.packDepth === 'full' ? 'Full pack' : 'Middle pack'}${cardData.retryCue ? ` · Retry cue: ${cardData.retryCue}` : ''}`,
