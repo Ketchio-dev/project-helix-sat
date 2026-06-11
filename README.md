@@ -36,6 +36,14 @@ The React app is NOT supported for beta use:
 npm run dev:react
 ```
 
+The Rust API is an incremental migration preview for the same legacy learner
+shell. It is not production-equivalent yet; use it when working on Rust route
+parity, not for beta operation:
+
+```bash
+npm run dev:rust
+```
+
 ## API Authentication
 
 Log in via the auth endpoint:
@@ -82,6 +90,7 @@ apps/
   admin/        (Skeleton only — Non-functional placeholder)
 services/
   api/
+  api-rust/    (Rust migration preview for legacy learner shell route parity)
   worker/       (Skeleton only — Non-functional placeholder)
   tutor/
   analytics/    (Skeleton only — Non-functional placeholder)
@@ -105,6 +114,7 @@ node --test
 Or via npm:
 ```bash
 npm run check
+npm run check:rust
 npm run check:ci-local
 ```
 

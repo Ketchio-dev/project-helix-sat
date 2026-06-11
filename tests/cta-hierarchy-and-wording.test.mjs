@@ -6,6 +6,7 @@ import { createStore } from '../services/api/src/store.mjs';
 import { createDemoData } from '../services/api/src/demo-data.mjs';
 
 const appSource = readFileSync('apps/web/public/app.js', 'utf8');
+const sessionViewModelSource = readFileSync('apps/web/public/session-view-model.js', 'utf8');
 
 const DEMO_ITEM_MAP = new Map(
   Object.values(createDemoData().items).map((item) => [item.itemId, item]),
@@ -482,7 +483,7 @@ describe('CTA hierarchy: dashboard integration coherence', () => {
     assert.match(appSource, /nextBestAction/);
     assert.match(appSource, /launchSessionType/);
     assert.match(appSource, /launchRealismProfile/);
-    assert.match(appSource, /profileLabel \?\? 'Module'/);
+    assert.match(sessionViewModelSource, /profileLabel \?\? 'Module'/);
 
     // Study modes when present should have 3 options
     if (dashboard.studyModes) {

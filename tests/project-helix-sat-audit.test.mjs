@@ -9,6 +9,7 @@ const indexSource = fs.readFileSync(new URL('../apps/web/public/index.html', imp
 const appSource = fs.readFileSync(new URL('../apps/web/public/app.js', import.meta.url), 'utf8');
 const learnerNarrativeSource = fs.readFileSync(new URL('../apps/web/public/learner-narrative.js', import.meta.url), 'utf8');
 const reviewLessonPackSource = fs.readFileSync(new URL('../apps/web/public/review-lesson-pack.js', import.meta.url), 'utf8');
+const sessionViewModelSource = fs.readFileSync(new URL('../apps/web/public/session-view-model.js', import.meta.url), 'utf8');
 const webReadmeSource = fs.readFileSync(new URL('../apps/web/README.md', import.meta.url), 'utf8');
 const readmeSource = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
 const contentReadmeSource = fs.readFileSync(new URL('../content/README.md', import.meta.url), 'utf8');
@@ -135,8 +136,8 @@ test('learner shell prioritizes one main action and tucks secondary detail away'
   assert.match(appSource, /syncModuleProfileControlLabels/);
   assert.match(appSource, /extendedCount = 20/);
   assert.match(appSource, /renderReturnPath/);
-  assert.match(appSource, /Standard practice/);
-  assert.match(appSource, /Exam profile/);
+  assert.match(sessionViewModelSource, /Standard practice/);
+  assert.match(sessionViewModelSource, /Exam profile/);
   assert.match(appSource, /describeReviewLessonPack/);
   assert.match(reviewLessonPackSource, /arcText/);
   assert.match(reviewLessonPackSource, /Open lesson pack/);

@@ -8,9 +8,12 @@ coverage/
 .next/
 dist/
 build/
+target/
 .tmp/
 *.log
 .agents/
 .claude/
 .qwen/
 skills-lock.json
+.sisyphus/
+artifacts/
