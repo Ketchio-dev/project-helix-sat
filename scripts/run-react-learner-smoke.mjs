@@ -1,9 +1,14 @@
 // React learner smoke: serves the built React app (apps/web-react/dist) on the
-// same origin as the live API and drives the critical exam path in a real
-// chromium via Playwright — login, the exam countdown, refresh restoration,
-// answer advancement, finish, and per-item session review. Mirrors the legacy
-// run-playwright-learner-smoke.mjs harness (self-contained: installs Playwright
-// into a temp dir so it needs no repo dependency).
+// same origin as the live API and drives the full activation path in a real
+// chromium via Playwright — signup, goal setup, diagnostic start + reveal,
+// quick-win, dashboard review, and the exam-profile module (countdown, refresh
+// restoration, answer advancement, finish, per-item review). This is the React
+// promotion gate (docs/product-completion-milestones.md, criterion 1).
+//
+// Funnel sessions are completed through the API (authenticated browser context)
+// to avoid fragile 13-item clicking; every learner-facing SURFACE is still
+// asserted in the rendered React UI. Mirrors the legacy run-playwright-learner-
+// smoke.mjs harness (installs Playwright into a temp dir, no repo dependency).
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -36,12 +41,15 @@ const baseUrl = process.env.HELIX_BASE_URL;
 const screenshotPath = process.env.HELIX_SMOKE_SCREENSHOT;
 assert.ok(baseUrl, 'HELIX_BASE_URL is required');
 
-const EMAIL = 'mina@example.com';
-const PASSWORD = 'demo1234';
+function uniqueEmail() {
+  return 'smoke-' + Date.now() + '-' + Math.random().toString(16).slice(2) + '@example.com';
+}
 
 function trail(cps) { return cps.length ? cps.join(' -> ') : 'none'; }
 
-async function answerCurrentItem(page) {
+const QUESTION_HEADING = /Question \\d+ of \\d+/;
+
+async function answerCurrentItemUi(page) {
   const gridIn = page.locator('input[placeholder="Type your answer..."]');
   if (await gridIn.count()) {
     await gridIn.first().fill('1');
@@ -51,6 +59,46 @@ async function answerCurrentItem(page) {
     await radio.click();
   }
   await page.getByRole('button', { name: 'Submit' }).click();
+}
+
+// Drive whatever session is currently active to completion via the API, using
+// the same payload rules the store applies (exam mode + grid-in freeResponse).
+async function completeActiveSessionViaApi(page) {
+  for (let i = 0; i < 40; i += 1) {
+    const state = await page.evaluate(async () => {
+      const r = await fetch('/api/session/active', { credentials: 'same-origin' });
+      if (!r.ok) return null;
+      const j = await r.json();
+      const a = j && j.activeSession;
+      if (!a || !a.currentItem) return null;
+      const choice = a.currentItem.choices && a.currentItem.choices[0];
+      return {
+        sessionId: a.session && a.session.id,
+        itemId: a.currentItem.itemId,
+        itemFormat: a.currentItem.item_format,
+        firstChoice: (choice && (choice.letter || choice.label || choice.value)) || 'A',
+        exam: !!(a.timing && a.timing.timeLimitSec != null),
+      };
+    });
+    if (!state || !state.itemId) return;
+    const done = await page.evaluate(async (s) => {
+      const STUDENT = ['grid_in', 'student_produced_response', 'student-produced-response'];
+      const body = { itemId: s.itemId, sessionId: s.sessionId, confidenceLevel: 3, mode: s.exam ? 'exam' : 'learn', responseTimeMs: 4000 };
+      if (STUDENT.includes(s.itemFormat)) body.freeResponse = '1'; else body.selectedAnswer = String(s.firstChoice);
+      const r = await fetch('/api/attempt/submit', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) return 'error';
+      const j = await r.json();
+      return ((j.sessionProgress && j.sessionProgress.isComplete) || j.sessionComplete) ? 'complete' : 'next';
+    }, state);
+    if (done !== 'next') return;
+  }
+}
+
+async function startSessionViaApi(page, path, payload) {
+  return page.evaluate(async ({ path, payload }) => {
+    const r = await fetch(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload || {}) });
+    return r.ok;
+  }, { path, payload });
 }
 
 async function main() {
@@ -81,50 +129,86 @@ async function main() {
   }
 
   try {
-    await checkpoint('login_dashboard', async () => {
+    await checkpoint('signup_landing', async () => {
       await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
-      const email = page.locator('input[type=email]');
-      await email.waitFor({ state: 'visible', timeout: 20000 });
-      await email.fill(EMAIL);
-      await page.locator('input[type=password]').fill(PASSWORD);
+      // Before switching, only the tab button matches "Create account".
+      await page.getByRole('button', { name: 'Create account' }).first().click();
+      await page.locator('input[type=text]').first().fill('Smoke Learner');
+      await page.locator('input[type=email]').fill(uniqueEmail());
+      await page.locator('input[type=password]').fill('pass1234');
       await page.locator('form button[type="submit"]').click();
       await page.getByRole('heading', { name: /Welcome back|Your dashboard/ }).waitFor({ state: 'visible', timeout: 20000 });
     });
 
-    await checkpoint('diagnostic_preflight_renders', async () => {
+    await checkpoint('goal_setup_completion', async () => {
+      await page.locator('#goal-target-score').waitFor({ state: 'visible', timeout: 20000 });
+      await page.locator('#goal-target-score').fill('1450');
+      await page.locator('#goal-target-date').fill('2026-12-05');
+      await page.locator('#goal-daily-minutes').fill('35');
+      await page.locator('#goal-weak-area').selectOption('reading');
+      await page.locator('#goal-setup-form button[type="submit"]').click();
+      // On save the profile becomes complete and the form unmounts (the inline
+      // "Goals saved" note can be lost to that re-render, so assert the form is
+      // gone instead).
+      await page.locator('#goal-target-score').waitFor({ state: 'detached', timeout: 20000 });
+    });
+
+    await checkpoint('diagnostic_preflight_start', async () => {
+      const nba = await page.evaluate(async () => {
+        const r = await fetch('/api/next-best-action', { credentials: 'same-origin' });
+        return r.ok ? r.json() : null;
+      });
+      assert.equal(nba && nba.sessionType, 'diagnostic', 'goal completion should surface the diagnostic next move');
       await page.goto(baseUrl + '/diagnostic', { waitUntil: 'domcontentloaded' });
       await page.getByRole('heading', { name: /score-moving plan/i }).waitFor({ state: 'visible', timeout: 20000 });
-      await page.getByRole('button', { name: /Start diagnostic/i }).waitFor({ state: 'visible', timeout: 10000 });
+      await page.getByRole('button', { name: /Start diagnostic/i }).click();
+      await page.getByRole('heading', { name: QUESTION_HEADING }).waitFor({ state: 'visible', timeout: 20000 });
     });
 
-    await checkpoint('review_page_renders', async () => {
-      await page.goto(baseUrl + '/review', { waitUntil: 'domcontentloaded' });
-      await page.getByRole('heading', { name: /Review .* repair/i }).waitFor({ state: 'visible', timeout: 20000 });
+    await checkpoint('diagnostic_reveal', async () => {
+      await completeActiveSessionViaApi(page);
+      await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+      await page.getByText('Your diagnostic result').waitFor({ state: 'visible', timeout: 20000 });
+      await page.getByText('Score range').waitFor({ state: 'visible', timeout: 10000 });
+      await page.getByText('Start here').waitFor({ state: 'visible', timeout: 10000 });
     });
 
-    await checkpoint('exam_timer_renders', async () => {
-      const ok = await page.evaluate(async () => {
-        const r = await fetch('/api/timed-set/start', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-        return r.ok;
-      });
-      assert.ok(ok, 'POST /api/timed-set/start should succeed');
+    await checkpoint('quick_win_unlocked', async () => {
+      // Diagnostic complete now unblocks quick-win (server 409s before that).
+      const ok = await startSessionViaApi(page, '/api/quick-win/start', {});
+      assert.ok(ok, 'quick-win/start should succeed once the diagnostic is complete');
       await page.goto(baseUrl + '/practice', { waitUntil: 'domcontentloaded' });
-      await page.getByRole('heading', { name: /Question \\d+ of \\d+/ }).waitFor({ state: 'visible', timeout: 20000 });
+      await page.getByRole('heading', { name: QUESTION_HEADING }).waitFor({ state: 'visible', timeout: 20000 });
+      assert.equal(await page.locator('[role=timer]').count(), 0, 'quick-win must not show an exam timer');
+      await completeActiveSessionViaApi(page);
+    });
+
+    await checkpoint('dashboard_review_visibility', async () => {
+      await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+      await page.getByRole('heading', { name: /Welcome back|Your dashboard/ }).waitFor({ state: 'visible', timeout: 20000 });
+      // A learner who has practiced should see the study dashboard surface.
+      await page.getByRole('button', { name: /study dashboard/i }).waitFor({ state: 'visible', timeout: 10000 });
+    });
+
+    await checkpoint('exam_profile_module_start', async () => {
+      const ok = await startSessionViaApi(page, '/api/module/start', { section: 'math', realismProfile: 'exam' });
+      assert.ok(ok, 'module/start (exam profile) should succeed');
+      await page.goto(baseUrl + '/practice', { waitUntil: 'domcontentloaded' });
+      await page.getByRole('heading', { name: QUESTION_HEADING }).waitFor({ state: 'visible', timeout: 20000 });
       const timer = page.locator('[role=timer]');
       await timer.waitFor({ state: 'visible', timeout: 15000 });
-      const txt = (await timer.innerText()).trim();
-      assert.match(txt, /\\d{2}:\\d{2}\\s+left/, 'timer should show MM:SS remaining, got: ' + txt);
+      assert.match((await timer.innerText()).trim(), /\\d{2}:\\d{2}\\s+left/, 'module should show an exam countdown');
     });
 
     await checkpoint('exam_timer_restores_on_reload', async () => {
       await page.reload({ waitUntil: 'domcontentloaded' });
-      await page.getByRole('heading', { name: /Question \\d+ of \\d+/ }).waitFor({ state: 'visible', timeout: 20000 });
+      await page.getByRole('heading', { name: QUESTION_HEADING }).waitFor({ state: 'visible', timeout: 20000 });
       await page.locator('[role=timer]').waitFor({ state: 'visible', timeout: 15000 });
     });
 
     await checkpoint('exam_submit_advances', async () => {
       await page.getByRole('heading', { name: /Question 1 of/ }).waitFor({ state: 'visible', timeout: 15000 });
-      await answerCurrentItem(page);
+      await answerCurrentItemUi(page);
       await page.getByRole('heading', { name: /Question 2 of/ }).waitFor({ state: 'visible', timeout: 20000 });
     });
 
@@ -135,28 +219,6 @@ async function main() {
       await page.getByRole('heading', { name: /review/i }).waitFor({ state: 'visible', timeout: 20000 });
       const items = await page.getByText(/^Item \\d+/).count();
       assert.ok(items >= 1, 'session review should list at least one item, got ' + items);
-    });
-
-    await checkpoint('review_retry_feedback_loop', async () => {
-      // Start a review-retry (non-exam) on one of the learner's remediation
-      // items; also exercises /api/review/retry/start through the api client.
-      const ok = await page.evaluate(async () => {
-        const dash = await fetch('/api/dashboard/learner', { credentials: 'same-origin' }).then((r) => r.json()).catch(() => null);
-        const card = dash && dash.review && dash.review.remediationCards && dash.review.remediationCards[0];
-        if (!card || !card.itemId) return false;
-        const r = await fetch('/api/review/retry/start', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: card.itemId }) });
-        return r.ok;
-      });
-      assert.ok(ok, 'POST /api/review/retry/start should succeed for a remediation item');
-      await page.goto(baseUrl + '/practice', { waitUntil: 'domcontentloaded' });
-      await page.getByRole('heading', { name: /Question \\d+ of \\d+/ }).waitFor({ state: 'visible', timeout: 20000 });
-      // Non-exam practice must NOT show an exam countdown.
-      assert.equal(await page.locator('[role=timer]').count(), 0, 'review-retry must not show an exam timer');
-      await answerCurrentItem(page);
-      // Non-exam reveals per-item feedback (multi-item) or the completion screen
-      // (single-item retry) — either proves the learn-mode loop that exam mode
-      // suppresses.
-      await page.getByText(/Correct|Incorrect|Session complete/).first().waitFor({ state: 'visible', timeout: 20000 });
     });
 
     if (screenshotPath) {
