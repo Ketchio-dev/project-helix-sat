@@ -91,6 +91,17 @@ async function main() {
       await page.getByRole('heading', { name: /Welcome back|Your dashboard/ }).waitFor({ state: 'visible', timeout: 20000 });
     });
 
+    await checkpoint('diagnostic_preflight_renders', async () => {
+      await page.goto(baseUrl + '/diagnostic', { waitUntil: 'domcontentloaded' });
+      await page.getByRole('heading', { name: /score-moving plan/i }).waitFor({ state: 'visible', timeout: 20000 });
+      await page.getByRole('button', { name: /Start diagnostic/i }).waitFor({ state: 'visible', timeout: 10000 });
+    });
+
+    await checkpoint('review_page_renders', async () => {
+      await page.goto(baseUrl + '/review', { waitUntil: 'domcontentloaded' });
+      await page.getByRole('heading', { name: /Review .* repair/i }).waitFor({ state: 'visible', timeout: 20000 });
+    });
+
     await checkpoint('exam_timer_renders', async () => {
       const ok = await page.evaluate(async () => {
         const r = await fetch('/api/timed-set/start', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{}' });
@@ -124,6 +135,28 @@ async function main() {
       await page.getByRole('heading', { name: /review/i }).waitFor({ state: 'visible', timeout: 20000 });
       const items = await page.getByText(/^Item \\d+/).count();
       assert.ok(items >= 1, 'session review should list at least one item, got ' + items);
+    });
+
+    await checkpoint('review_retry_feedback_loop', async () => {
+      // Start a review-retry (non-exam) on one of the learner's remediation
+      // items; also exercises /api/review/retry/start through the api client.
+      const ok = await page.evaluate(async () => {
+        const dash = await fetch('/api/dashboard/learner', { credentials: 'same-origin' }).then((r) => r.json()).catch(() => null);
+        const card = dash && dash.review && dash.review.remediationCards && dash.review.remediationCards[0];
+        if (!card || !card.itemId) return false;
+        const r = await fetch('/api/review/retry/start', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: card.itemId }) });
+        return r.ok;
+      });
+      assert.ok(ok, 'POST /api/review/retry/start should succeed for a remediation item');
+      await page.goto(baseUrl + '/practice', { waitUntil: 'domcontentloaded' });
+      await page.getByRole('heading', { name: /Question \\d+ of \\d+/ }).waitFor({ state: 'visible', timeout: 20000 });
+      // Non-exam practice must NOT show an exam countdown.
+      assert.equal(await page.locator('[role=timer]').count(), 0, 'review-retry must not show an exam timer');
+      await answerCurrentItem(page);
+      // Non-exam reveals per-item feedback (multi-item) or the completion screen
+      // (single-item retry) — either proves the learn-mode loop that exam mode
+      // suppresses.
+      await page.getByText(/Correct|Incorrect|Session complete/).first().waitFor({ state: 'visible', timeout: 20000 });
     });
 
     if (screenshotPath) {
