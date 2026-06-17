@@ -86,6 +86,8 @@ function normalizeStartedSessionShape(payload = {}, fallbackType = null) {
     sessionType: payload.sessionType ?? payload.session?.type ?? fallbackType,
     currentItem: normalizeItemShape(payload.currentItem ?? null),
     sessionProgress: normalizeSessionProgressShape(payload.sessionProgress ?? null),
+    // Server-authoritative countdown for exam_mode sessions (null otherwise).
+    timing: payload.timing ?? null,
   };
 }
 
@@ -105,6 +107,9 @@ function normalizeSessionEnvelopeShape(payload = {}) {
     sessionType: payload.sessionType ?? session?.type ?? null,
     currentItem: normalizeItemShape(payload.currentItem ?? null),
     sessionProgress: normalizeSessionProgressShape(payload.sessionProgress ?? null),
+    // The active-session envelope carries `timing` for exam_mode sessions; keep
+    // it so a resumed session restores its countdown at the right deadline.
+    timing: payload.timing ?? null,
   };
 }
 
@@ -182,6 +187,7 @@ export const useStore = create((set, get) => ({
   currentItem: null,
   sessionProgress: null,
   activeSessionEnvelope: null,
+  sessionTiming: null,
   sessionLoading: false,
   lastAttemptResult: null,
   hintText: null,
@@ -317,6 +323,7 @@ export const useStore = create((set, get) => ({
         currentItem: normalized.currentItem,
         sessionProgress: normalized.sessionProgress,
         activeSessionEnvelope: data,
+        sessionTiming: normalized.timing,
         sessionLoading: false,
       });
       return true;
@@ -335,6 +342,7 @@ export const useStore = create((set, get) => ({
       currentItem: normalized.currentItem,
       sessionProgress: normalized.sessionProgress,
       activeSessionEnvelope: session,
+      sessionTiming: normalized.timing ?? null,
       lastAttemptResult: null,
       hintText: null,
       sessionComplete: false,
@@ -401,6 +409,39 @@ export const useStore = create((set, get) => ({
     }
   },
 
+  // Finalize an exam (timed-set / module) early or after the timer expires.
+  // The server sets ended_at and returns the summary, which also unlocks
+  // per-item session review; surface it through the same completion screen.
+  async finishExamSession() {
+    const { currentSessionId, currentSessionType, sessionProgress } = get();
+    if (!currentSessionId) return null;
+
+    const type = currentSessionType || '';
+    const path = /timed[_-]?set/.test(type)
+      ? '/timed-set/finish'
+      : /module/.test(type)
+        ? '/module/finish'
+        : null;
+    if (!path) return null;
+
+    try {
+      const result = await api.post(path, { sessionId: currentSessionId });
+      const summary = normalizeSessionSummaryShape(result.timedSummary ?? result.moduleSummary ?? null);
+      set({
+        sessionComplete: true,
+        sessionSummary: summary,
+        currentItem: null,
+        sessionProgress: normalizeSessionProgressShape(result.sessionProgress) ?? sessionProgress,
+        sessionTiming: null,
+        lastAttemptResult: null,
+        hintText: null,
+      });
+      return result;
+    } catch {
+      return null;
+    }
+  },
+
   async getHint() {
     const { currentItem, currentSessionId } = get();
     if (!currentItem || !currentSessionId) return;
@@ -431,6 +472,7 @@ export const useStore = create((set, get) => ({
       currentItem: null,
       sessionProgress: null,
       activeSessionEnvelope: null,
+      sessionTiming: null,
       sessionLoading: false,
       lastAttemptResult: null,
       hintText: null,

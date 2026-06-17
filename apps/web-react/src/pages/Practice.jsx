@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import QuestionCard from '../components/QuestionCard'
 import ChoiceList from '../components/ChoiceList'
+import SessionTimer from '../components/SessionTimer'
+import { hasExamTiming } from '../lib/examTiming'
 
 const SESSION_LABELS = {
   diagnostic: 'Diagnostic',
@@ -16,6 +18,15 @@ const SESSION_LABELS = {
   exam: 'Exam mode',
 }
 
+// Sessions that withhold per-question feedback until the end (exam realism).
+// Diagnostic is feedback-free but untimed; the timed exams (timed set / module)
+// additionally carry a server countdown — see hasExamTiming.
+const EXAM_MODE_SESSION_TYPES = ['exam', 'timed-set', 'timed_set', 'module', 'module_simulation', 'diagnostic']
+
+function isExamModeType(sessionType) {
+  return EXAM_MODE_SESSION_TYPES.includes(sessionType)
+}
+
 function getSessionLabel(sessionType) {
   return SESSION_LABELS[sessionType] || 'Practice'
 }
@@ -26,10 +37,11 @@ function getItemMeta(item) {
   return [section, skill].filter(Boolean)
 }
 
-function SessionHeader({ sessionType, progressCurrent, progressTotal }) {
+function SessionHeader({ sessionType, progressCurrent, progressTotal, timing, onExpire, onFinishExam, finishing, examExpired }) {
   const answered = Math.min(progressCurrent, progressTotal || progressCurrent)
   const questionNumber = progressTotal > 0 ? Math.min(progressCurrent + 1, progressTotal) : progressCurrent + 1
   const percent = progressTotal > 0 ? Math.round((answered / progressTotal) * 100) : 0
+  const timed = hasExamTiming(timing)
 
   return (
     <div className="mb-8 border-b border-neutral-200 pb-5">
@@ -42,12 +54,26 @@ function SessionHeader({ sessionType, progressCurrent, progressTotal }) {
             Question {questionNumber}{progressTotal > 0 ? ` of ${progressTotal}` : ''}
           </h1>
         </div>
-        {progressTotal > 0 && (
+        {timed ? (
+          <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1.5">
+            <SessionTimer timing={timing} label={getSessionLabel(sessionType)} onExpire={onExpire} />
+            {onFinishExam && (
+              <button
+                type="button"
+                onClick={onFinishExam}
+                disabled={finishing}
+                className="text-xs font-medium text-neutral-400 transition-colors hover:text-neutral-600 disabled:opacity-50"
+              >
+                {finishing ? 'Finishing…' : examExpired ? 'See results' : 'End & see results'}
+              </button>
+            )}
+          </div>
+        ) : progressTotal > 0 ? (
           <div className="min-w-36 text-left sm:text-right">
             <p className="text-sm font-medium text-[#111]">{percent}% complete</p>
             <p className="text-xs text-neutral-500">{answered} answered</p>
           </div>
-        )}
+        ) : null}
       </div>
 
       {progressTotal > 0 && (
@@ -91,6 +117,7 @@ function CurrentAttemptPane({
   currentItem,
   currentSessionType,
   showFeedback,
+  examExpired,
   lastAttemptResult,
   correctAnswer,
   explanation,
@@ -106,10 +133,12 @@ function CurrentAttemptPane({
   const [renderStartedAt] = useState(() => Date.now())
 
   const isGridIn = currentItem?.item_format === 'grid_in' || currentItem?.item_format === 'student_produced_response'
-  const isExamMode = ['exam', 'timed-set', 'timed_set', 'diagnostic'].includes(currentSessionType)
+  const isExamMode = isExamModeType(currentSessionType)
+  const locked = showFeedback || examExpired
   const choices = currentItem.choices || currentItem.options || currentItem.answers || []
 
   const handleSubmit = useCallback(async () => {
+    if (examExpired) return
     const answer = isGridIn ? gridInAnswer : selectedAnswer
     if (!answer) return
     setSubmitting(true)
@@ -120,7 +149,7 @@ function CurrentAttemptPane({
       responseTimeMs: Date.now() - renderStartedAt,
     })
     setSubmitting(false)
-  }, [confidence, currentSessionType, gridInAnswer, isGridIn, renderStartedAt, selectedAnswer, submitAttempt])
+  }, [confidence, currentSessionType, examExpired, gridInAnswer, isGridIn, renderStartedAt, selectedAnswer, submitAttempt])
 
   return (
     <>
@@ -132,8 +161,8 @@ function CurrentAttemptPane({
               type="text"
               value={gridInAnswer}
               onChange={(e) => setGridInAnswer(e.target.value)}
-              disabled={showFeedback}
-              className="w-full max-w-xs px-3 py-2 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent"
+              disabled={locked}
+              className="w-full max-w-xs px-3 py-2 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent disabled:bg-neutral-50 disabled:opacity-60"
               placeholder="Type your answer..."
               autoFocus
             />
@@ -143,7 +172,7 @@ function CurrentAttemptPane({
             choices={choices}
             selected={selectedAnswer}
             onSelect={setSelectedAnswer}
-            disabled={showFeedback}
+            disabled={locked}
             correctAnswer={correctAnswer}
           />
         )}
@@ -215,7 +244,7 @@ function CurrentAttemptPane({
           <>
             <button
               onClick={handleSubmit}
-              disabled={submitting || (!selectedAnswer && !gridInAnswer)}
+              disabled={submitting || examExpired || (!selectedAnswer && !gridInAnswer)}
               className="inline-flex items-center justify-center rounded-md bg-[#2563eb] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {submitting ? 'Submitting...' : 'Submit'}
@@ -237,9 +266,12 @@ function CurrentAttemptPane({
 
 export default function Practice() {
   const currentItem = useStore((s) => s.currentItem)
+  const currentSessionId = useStore((s) => s.currentSessionId)
   const sessionProgress = useStore((s) => s.sessionProgress)
   const currentSessionType = useStore((s) => s.currentSessionType)
+  const sessionTiming = useStore((s) => s.sessionTiming)
   const submitAttempt = useStore((s) => s.submitAttempt)
+  const finishExamSession = useStore((s) => s.finishExamSession)
   const getHint = useStore((s) => s.getHint)
   const hintText = useStore((s) => s.hintText)
   const lastAttemptResult = useStore((s) => s.lastAttemptResult)
@@ -250,8 +282,31 @@ export default function Practice() {
   const loadDashboard = useStore((s) => s.loadDashboard)
   const loadActiveSession = useStore((s) => s.loadActiveSession)
   const navigate = useNavigate()
-  const isExamMode = ['exam', 'timed-set', 'timed_set', 'diagnostic'].includes(currentSessionType)
+  const isExamMode = isExamModeType(currentSessionType)
   const showFeedback = lastAttemptResult && !isExamMode
+
+  const [examExpired, setExamExpired] = useState(false)
+  const [finishing, setFinishing] = useState(false)
+  const [trackedSessionId, setTrackedSessionId] = useState(currentSessionId)
+  const canFinishExam = hasExamTiming(sessionTiming)
+
+  // Expiry is a per-session latch: reset it when a new session id takes over.
+  // Adjusting state during render is React's recommended alternative to a reset
+  // effect (no extra commit, no cascading render).
+  if (currentSessionId !== trackedSessionId) {
+    setTrackedSessionId(currentSessionId)
+    setExamExpired(false)
+  }
+
+  const handleExamExpire = useCallback(() => {
+    setExamExpired(true)
+  }, [])
+
+  const handleFinishExam = useCallback(async () => {
+    setFinishing(true)
+    await finishExamSession()
+    setFinishing(false)
+  }, [finishExamSession])
 
   const handleNext = useCallback(() => {
     clearLastAttempt()
@@ -375,7 +430,29 @@ export default function Practice() {
         sessionType={currentSessionType}
         progressCurrent={progressCurrent}
         progressTotal={progressTotal}
+        timing={sessionTiming}
+        onExpire={handleExamExpire}
+        onFinishExam={canFinishExam ? handleFinishExam : null}
+        finishing={finishing}
+        examExpired={examExpired}
       />
+
+      {examExpired && (
+        <div className="mb-6 flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-red-800">Time’s up</p>
+            <p className="text-sm text-red-700">Your answers are locked. Finish now to see your results and review what to repair.</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleFinishExam}
+            disabled={finishing}
+            className="inline-flex shrink-0 items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+          >
+            {finishing ? 'Finishing…' : 'See results'}
+          </button>
+        </div>
+      )}
 
       <section className="mb-8">
         <QuestionMeta item={currentItem} isExamMode={isExamMode} />
@@ -387,6 +464,7 @@ export default function Practice() {
         currentItem={currentItem}
         currentSessionType={currentSessionType}
         showFeedback={showFeedback}
+        examExpired={examExpired}
         lastAttemptResult={lastAttemptResult}
         correctAnswer={correctAnswer}
         explanation={explanation}

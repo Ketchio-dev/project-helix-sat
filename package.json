@@ -19,7 +19,7 @@
     "verify": "node scripts/verify.mjs",
     "generate:contracts": "node scripts/generate-contract-artifacts.mjs",
     "check:contracts": "node scripts/check-contract-artifacts.mjs",
-    "check:web-react": "npm run lint --workspace apps/web-react && npm run build --workspace apps/web-react && node --test tests/web-react-api-client.test.mjs tests/api-contract-drift.test.mjs",
+    "check:web-react": "npm run lint --workspace apps/web-react && npm run build --workspace apps/web-react && node --test tests/web-react-api-client.test.mjs tests/api-contract-drift.test.mjs tests/web-react-exam-timing.test.mjs",
     "check:ci-local": "npm run check && npm run check:contracts && npm run check:web-react && npm run smoke:learner",
     "audit:helix:bars": "node scripts/check-content-release-bars.mjs",
     "build": "npm run verify",
