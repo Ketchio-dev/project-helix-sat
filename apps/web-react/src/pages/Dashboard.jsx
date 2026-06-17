@@ -6,6 +6,7 @@ import ActionCard from '../components/ActionCard'
 import DiagnosticRevealCard from '../components/DiagnosticRevealCard'
 import SessionOutcomeCard from '../components/SessionOutcomeCard'
 import ReviewEntryCard from '../components/ReviewEntryCard'
+import GuidedDailyPath from '../components/GuidedDailyPath'
 import StudyDashboard from '../components/StudyDashboard'
 import NarrativeCard from '../components/NarrativeCard'
 import GoalSetup from '../components/GoalSetup'
@@ -26,6 +27,8 @@ export default function Dashboard() {
   const comebackState = useStore((s) => s.comebackState)
   const completionStreak = useStore((s) => s.completionStreak)
   const review = useStore((s) => s.review)
+  const guidedDailyPath = useStore((s) => s.guidedDailyPath)
+  const guidedWeeklyPath = useStore((s) => s.guidedWeeklyPath)
   const goalProfile = useStore((s) => s.goalProfile)
   const activeSession = useStore((s) => s.activeSession)
   const resumeSession = useStore((s) => s.resumeSession)
@@ -94,6 +97,10 @@ export default function Dashboard() {
   // becomes the hero and replaces the standalone next-best-action card (keeping
   // a single primary CTA). Hidden until goal setup is done, matching legacy.
   const showReveal = Boolean(diagnosticReveal?.scoreBand) && goalProfile?.isComplete !== false
+  // After the reveal, the guided daily path is the home's organizer and carries
+  // its own primary action ("Start today's path"), so it stands in for the
+  // standalone next-best-action card. Falls back to the action card otherwise.
+  const showDailyPath = Boolean(guidedDailyPath?.headline) && goalProfile?.isComplete !== false
 
   return (
     <main className="max-w-2xl mx-auto px-6 py-12">
@@ -110,6 +117,8 @@ export default function Dashboard() {
         <SessionNotice session={activeSession} />
         {showReveal ? (
           <DiagnosticRevealCard reveal={diagnosticReveal} onStart={handleStartAction} />
+        ) : showDailyPath ? (
+          <GuidedDailyPath path={guidedDailyPath} onStart={handleStartAction} />
         ) : (
           <ActionCard action={nextBestAction} onStart={handleStartAction} />
         )}
@@ -126,9 +135,10 @@ export default function Dashboard() {
         weeklyDigest={weeklyDigest}
         comebackState={comebackState}
         completionStreak={completionStreak}
+        guidedWeeklyPath={guidedWeeklyPath}
       />
 
-      {!nextBestAction && !activeSession && !showReveal && !latestSessionOutcome && (
+      {!nextBestAction && !activeSession && !showReveal && !showDailyPath && !latestSessionOutcome && (
         <div className="mt-8 text-center">
           <p className="text-sm text-neutral-500 mb-4">No recommendations yet. Start a diagnostic to get personalized practice.</p>
           <button

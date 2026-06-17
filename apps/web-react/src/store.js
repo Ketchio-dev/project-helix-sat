@@ -75,6 +75,8 @@ function normalizeDashboardContractShape(dashboard = {}) {
     comebackState: dashboard.comebackState ?? null,
     completionStreak: dashboard.completionStreak ?? null,
     review: dashboard.review ?? null,
+    guidedDailyPath: dashboard.guidedDailyPath ?? null,
+    guidedWeeklyPath: dashboard.guidedWeeklyPath ?? null,
   };
 }
 
@@ -168,6 +170,8 @@ export const useStore = create((set, get) => ({
   comebackState: null,
   completionStreak: null,
   review: null,
+  guidedDailyPath: null,
+  guidedWeeklyPath: null,
   activeSession: null,
   dashboardLoading: true,
   dashboardError: null,
@@ -268,6 +272,8 @@ export const useStore = create((set, get) => ({
         comebackState: normalizedDashboard.comebackState,
         completionStreak: normalizedDashboard.completionStreak,
         review: normalizedDashboard.review,
+        guidedDailyPath: normalizedDashboard.guidedDailyPath,
+        guidedWeeklyPath: normalizedDashboard.guidedWeeklyPath,
         goalProfile: goalData,
         activeSession,
         dashboardLoading: false,

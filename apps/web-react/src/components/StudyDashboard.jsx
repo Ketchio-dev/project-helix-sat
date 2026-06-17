@@ -19,6 +19,18 @@ const MOMENTUM_LABELS = {
   strong: 'Strong',
 }
 
+const FOCUS_LABELS = {
+  anchor: 'Anchor',
+  support: 'Support',
+  maintenance: 'Maintenance',
+}
+
+function dayHeader(day) {
+  if (day?.dayOffset === 0) return 'Today'
+  if (day?.dayOffset === 1) return 'Tomorrow'
+  return day?.date || `Day ${(day?.dayOffset ?? 0) + 1}`
+}
+
 function Card({ title, children }) {
   return (
     <div className="border border-neutral-200 rounded-lg p-5">
@@ -193,6 +205,56 @@ function StreakCard({ streak, comeback }) {
   )
 }
 
+function GuidedWeeklyPathCard({ path }) {
+  if (!path || !path.headline) return null
+  const days = Array.isArray(path.days) ? path.days : []
+  const checkpoints = Array.isArray(path.checkpoints) ? path.checkpoints : []
+
+  return (
+    <Card title="This week's plan">
+      <p className="text-sm font-medium text-[#111]">{path.headline}</p>
+      {path.activePhaseTitle && <p className="text-xs text-neutral-500 mt-0.5">{path.activePhaseTitle}</p>}
+
+      <div className="flex flex-wrap gap-2 mt-2">
+        {path.weeklyMinutes ? (
+          <span className="rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-600">
+            ~{path.weeklyMinutes} min/week
+          </span>
+        ) : null}
+        {path.sessionsPerWeek ? (
+          <span className="rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-600">
+            {path.sessionsPerWeek} sessions
+          </span>
+        ) : null}
+      </div>
+
+      {days.length > 0 && (
+        <ul className="mt-3">
+          {days.map((day) => (
+            <li
+              key={day.key}
+              className="flex items-baseline justify-between gap-3 border-b border-neutral-100 py-1.5 last:border-b-0"
+            >
+              <div className="min-w-0">
+                <span className="text-sm text-[#111]">{dayHeader(day)}</span>
+                {day.label && <span className="text-xs text-neutral-400 ml-2">{day.label}</span>}
+              </div>
+              <span className="shrink-0 text-[11px] text-neutral-400">
+                {(FOCUS_LABELS[day.focusType] || day.focusType) ?? ''} &middot; {day.minutes}m
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Collapsible
+        label={`Revisit checkpoints (${checkpoints.length})`}
+        items={checkpoints.map((c) => `${c.label} — due in ${c.dueInDays}d: ${c.reason}`)}
+      />
+    </Card>
+  )
+}
+
 export default function StudyDashboard({
   projectionEvidence,
   errorDnaSummary,
@@ -200,6 +262,7 @@ export default function StudyDashboard({
   weeklyDigest,
   comebackState,
   completionStreak,
+  guidedWeeklyPath,
 }) {
   const [open, setOpen] = useState(false)
 
@@ -213,8 +276,9 @@ export default function StudyDashboard({
     weeklyDigest.recommendedFocus?.length
   )
   const returning = Boolean(comebackState?.isReturning)
+  const hasGuidedWeek = Boolean(guidedWeeklyPath?.headline)
 
-  const hasContent = hasProjection || hasErrors || Boolean(whatChanged) || hasWeekly || hasStreak || returning
+  const hasContent = hasProjection || hasErrors || Boolean(whatChanged) || hasWeekly || hasStreak || returning || hasGuidedWeek
   if (!hasContent) return null
 
   return (
@@ -241,6 +305,7 @@ export default function StudyDashboard({
       {open && (
         <div className="mt-4 space-y-4">
           {hasProjection && <ProjectionCard projection={projectionEvidence} />}
+          {hasGuidedWeek && <GuidedWeeklyPathCard path={guidedWeeklyPath} />}
           {whatChanged && <WhatChangedCard whatChanged={whatChanged} />}
           {hasErrors && <ErrorDnaCard entries={errorDnaSummary} />}
           {(hasStreak || returning) && <StreakCard streak={completionStreak} comeback={comebackState} />}
