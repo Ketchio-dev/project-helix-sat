@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Practice from './pages/Practice'
 import Review from './pages/Review'
+import SessionReview from './pages/SessionReview'
 import DiagnosticPreflight from './pages/DiagnosticPreflight'
 import TopBar from './components/TopBar'
 
@@ -68,6 +69,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Review />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/session-review"
+          element={
+            <ProtectedRoute>
+              <SessionReview />
             </ProtectedRoute>
           }
         />

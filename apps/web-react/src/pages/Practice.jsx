@@ -145,11 +145,10 @@ function CurrentAttemptPane({
     await submitAttempt({
       answer,
       confidence,
-      mode: currentSessionType,
       responseTimeMs: Date.now() - renderStartedAt,
     })
     setSubmitting(false)
-  }, [confidence, currentSessionType, examExpired, gridInAnswer, isGridIn, renderStartedAt, selectedAnswer, submitAttempt])
+  }, [confidence, examExpired, gridInAnswer, isGridIn, renderStartedAt, selectedAnswer, submitAttempt])
 
   return (
     <>
@@ -323,6 +322,14 @@ export default function Practice() {
     navigate('/review')
   }, [clearSession, navigate])
 
+  // Per-item review of the session that just ended. Carry the id in the URL so
+  // the review page is refresh-safe, then clear the (now finished) session.
+  const handleReviewAnswers = useCallback(() => {
+    if (!currentSessionId) return
+    navigate(`/session-review?sessionId=${encodeURIComponent(currentSessionId)}`)
+    clearSession()
+  }, [currentSessionId, navigate, clearSession])
+
   // Auto-advance in exam mode after submit
   useEffect(() => {
     if (lastAttemptResult && isExamMode && !sessionComplete) {
@@ -400,9 +407,17 @@ export default function Practice() {
         </div>
 
         <div className="space-y-3">
+          {currentSessionId && (
+            <button
+              onClick={handleReviewAnswers}
+              className="w-full text-sm font-medium text-white bg-[#2563eb] rounded-md py-2.5 hover:bg-[#1d4ed8] transition-colors"
+            >
+              Review answers
+            </button>
+          )}
           <button
             onClick={handleReview}
-            className="w-full text-sm font-medium text-white bg-[#2563eb] rounded-md py-2.5 hover:bg-[#1d4ed8] transition-colors"
+            className="w-full text-sm font-medium text-[#2563eb] border border-blue-200 rounded-md py-2.5 hover:bg-blue-50 transition-colors"
           >
             Review &amp; repair
           </button>

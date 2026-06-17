@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { api } from './api';
+import { buildAttemptPayload } from './lib/attempt';
+import { hasExamTiming } from './lib/examTiming';
 
 function normalizeItemShape(item = null) {
   if (!item) return null;
@@ -367,24 +369,41 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  async submitAttempt({ answer, confidence, mode, responseTimeMs }) {
-    const { currentItem, currentSessionId } = get();
+  async submitAttempt({ answer, confidence, responseTimeMs }) {
+    const { currentItem, currentSessionId, sessionTiming } = get();
     if (!currentItem || !currentSessionId) return null;
 
-    const itemId = currentItem.itemId;
+    // exam_mode is exactly the set of sessions the server attaches `timing` to,
+    // so the live countdown doubles as the exam-mode signal for submit.
+    const isExamMode = hasExamTiming(sessionTiming);
 
     try {
-      const result = await api.post('/attempt/submit', {
-        itemId,
+      const result = await api.post('/attempt/submit', buildAttemptPayload({
+        itemId: currentItem.itemId,
         sessionId: currentSessionId,
-        selectedAnswer: answer,
-        confidenceLevel: confidence || 3,
-        mode: (mode === 'diagnostic' || mode === 'quick_win' || mode === 'review-retry' || mode === 'timed_set' || mode === 'module_simulation')
-          ? 'learn' : (mode || 'learn'),
-        responseTimeMs: responseTimeMs || 0,
-      });
+        answer,
+        confidence,
+        isExamMode,
+        itemFormat: currentItem.item_format,
+        responseTimeMs,
+      }));
 
       const normalized = normalizeAttemptResultShape(result);
+
+      // Exam sessions withhold per-item feedback: the response carries only a
+      // cursor + ack, never nextItem/correctAnswer. Advance by re-fetching the
+      // active session (which also re-syncs the countdown), and finalize via the
+      // finish endpoint once every item is answered. Mirrors the legacy shell's
+      // correctAnswer===undefined branch.
+      if (isExamMode) {
+        if (normalized.sessionComplete) {
+          await get().finishExamSession();
+        } else {
+          set({ lastAttemptResult: null, hintText: null });
+          await get().loadActiveSession();
+        }
+        return normalized;
+      }
 
       if (normalized.sessionComplete) {
         set({
@@ -437,6 +456,19 @@ export const useStore = create((set, get) => ({
         hintText: null,
       });
       return result;
+    } catch {
+      return null;
+    }
+  },
+
+  // Per-item review for a completed session (GET /session/review?sessionId=).
+  // Server requires the session to have ended; returns null on any failure so
+  // the page can show its own empty state. Held in page-local state, not the
+  // store — this is a detail view, not shared dashboard data.
+  async loadSessionReview(sessionId) {
+    if (!sessionId) return null;
+    try {
+      return await api.get(`/session/review?sessionId=${encodeURIComponent(sessionId)}`);
     } catch {
       return null;
     }
