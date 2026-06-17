@@ -4,6 +4,8 @@ import { useStore } from './store'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Practice from './pages/Practice'
+import Review from './pages/Review'
+import DiagnosticPreflight from './pages/DiagnosticPreflight'
 import TopBar from './components/TopBar'
 
 function ProtectedRoute({ children }) {
@@ -58,6 +60,22 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Practice />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/review"
+          element={
+            <ProtectedRoute>
+              <Review />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/diagnostic"
+          element={
+            <ProtectedRoute>
+              <DiagnosticPreflight />
             </ProtectedRoute>
           }
         />

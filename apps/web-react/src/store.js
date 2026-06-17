@@ -66,6 +66,15 @@ function normalizeDashboardContractShape(dashboard = {}) {
     learnerNarrative: dashboard.learnerNarrative ?? null,
     diagnosticReveal: dashboard.diagnosticReveal ?? null,
     latestSessionOutcome: dashboard.latestSessionOutcome ?? null,
+    // Conviction + retention surfaces already travel in /dashboard/learner;
+    // pass them through (they are canonical schema shapes) instead of refetching.
+    projectionEvidence: dashboard.projectionEvidence ?? null,
+    errorDnaSummary: Array.isArray(dashboard.errorDnaSummary) ? dashboard.errorDnaSummary : [],
+    whatChanged: dashboard.whatChanged ?? null,
+    weeklyDigest: dashboard.weeklyDigest ?? null,
+    comebackState: dashboard.comebackState ?? null,
+    completionStreak: dashboard.completionStreak ?? null,
+    review: dashboard.review ?? null,
   };
 }
 
@@ -114,6 +123,31 @@ function normalizeAttemptResultShape(payload = {}) {
   };
 }
 
+// Map server action kinds / contract sessionType enums to the canonical
+// session type that startSession() switches on. The dashboard, diagnostic
+// reveal, and session-outcome payloads all emit these forms.
+const SESSION_TYPE_ALIASES = {
+  diagnostic: 'diagnostic',
+  start_diagnostic: 'diagnostic',
+  'quick-win': 'quick-win',
+  quick_win: 'quick-win',
+  start_quick_win: 'quick-win',
+  'review-retry': 'review-retry',
+  review: 'review-retry',
+  review_mistakes: 'review-retry',
+  start_retry_loop: 'review-retry',
+  'timed-set': 'timed-set',
+  timed_set: 'timed-set',
+  start_timed_set: 'timed-set',
+  module: 'module',
+  module_simulation: 'module',
+  start_module: 'module',
+};
+
+function resolveSessionType(type) {
+  return SESSION_TYPE_ALIASES[type] || 'quick-win';
+}
+
 export const useStore = create((set, get) => ({
   // Auth
   user: null,
@@ -127,6 +161,13 @@ export const useStore = create((set, get) => ({
   learnerNarrative: null,
   diagnosticReveal: null,
   latestSessionOutcome: null,
+  projectionEvidence: null,
+  errorDnaSummary: [],
+  whatChanged: null,
+  weeklyDigest: null,
+  comebackState: null,
+  completionStreak: null,
+  review: null,
   activeSession: null,
   dashboardLoading: true,
   dashboardError: null,
@@ -192,12 +233,13 @@ export const useStore = create((set, get) => ({
   async loadDashboard() {
     set({ dashboardLoading: true, dashboardError: null });
     try {
-      const [dashboard, goalProfile, activeSessionResp, nba, narrative] = await Promise.allSettled([
+      const [dashboard, goalProfile, activeSessionResp, nba, narrative, reveal] = await Promise.allSettled([
         api.get('/dashboard/learner'),
         api.get('/goal-profile'),
         api.get('/session/active'),
         api.get('/next-best-action'),
         api.get('/learner/narrative'),
+        api.get('/diagnostic/reveal'),
       ]);
 
       const dashData = dashboard.status === 'fulfilled' ? dashboard.value : {};
@@ -206,6 +248,10 @@ export const useStore = create((set, get) => ({
       const sessionResp = activeSessionResp.status === 'fulfilled' ? activeSessionResp.value : null;
       const nbaData = nba.status === 'fulfilled' ? normalizeActionShape(nba.value) : null;
       const narrativeData = narrative.status === 'fulfilled' ? narrative.value : null;
+      // /api/dashboard/learner does not embed diagnosticReveal, so fetch it from
+      // its dedicated endpoint (mirrors the legacy shell). Returns null until a
+      // diagnostic has produced enough evidence.
+      const revealData = reveal.status === 'fulfilled' ? reveal.value : null;
 
       // Active session is nested: { hasActiveSession, activeSession: { session, currentItem, sessionProgress, ... } }
       const activeSession = normalizeSessionEnvelopeShape(sessionResp?.activeSession || null);
@@ -213,8 +259,15 @@ export const useStore = create((set, get) => ({
       set({
         nextBestAction: nbaData || normalizedDashboard.nextBestAction,
         learnerNarrative: narrativeData || normalizedDashboard.learnerNarrative,
-        diagnosticReveal: normalizedDashboard.diagnosticReveal,
+        diagnosticReveal: revealData || normalizedDashboard.diagnosticReveal,
         latestSessionOutcome: normalizedDashboard.latestSessionOutcome,
+        projectionEvidence: normalizedDashboard.projectionEvidence,
+        errorDnaSummary: normalizedDashboard.errorDnaSummary,
+        whatChanged: normalizedDashboard.whatChanged,
+        weeklyDigest: normalizedDashboard.weeklyDigest,
+        comebackState: normalizedDashboard.comebackState,
+        completionStreak: normalizedDashboard.completionStreak,
+        review: normalizedDashboard.review,
         goalProfile: goalData,
         activeSession,
         dashboardLoading: false,
@@ -228,8 +281,9 @@ export const useStore = create((set, get) => ({
   async startSession(type, params = {}) {
     set({ sessionLoading: true, lastAttemptResult: null, hintText: null, sessionComplete: false, sessionSummary: null });
     try {
+      const resolvedType = resolveSessionType(type);
       let data;
-      switch (type) {
+      switch (resolvedType) {
         case 'diagnostic':
           data = await api.post('/diagnostic/start');
           break;
@@ -249,7 +303,7 @@ export const useStore = create((set, get) => ({
           data = await api.post('/quick-win/start');
       }
 
-      const normalized = normalizeStartedSessionShape(data, type);
+      const normalized = normalizeStartedSessionShape(data, resolvedType);
 
       set({
         currentSessionId: normalized.sessionId,

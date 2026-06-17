@@ -4,6 +4,89 @@ import { useStore } from '../store'
 import QuestionCard from '../components/QuestionCard'
 import ChoiceList from '../components/ChoiceList'
 
+const SESSION_LABELS = {
+  diagnostic: 'Diagnostic',
+  'quick-win': 'Quick win',
+  quick_win: 'Quick win',
+  'review-retry': 'Review retry',
+  'timed-set': 'Timed set',
+  timed_set: 'Timed set',
+  module: 'Module practice',
+  module_simulation: 'Module practice',
+  exam: 'Exam mode',
+}
+
+function getSessionLabel(sessionType) {
+  return SESSION_LABELS[sessionType] || 'Practice'
+}
+
+function getItemMeta(item) {
+  const section = item?.section || item?.satSection || item?.domain || item?.subject || null
+  const skill = item?.skill || item?.skillName || item?.standard || item?.topic || null
+  return [section, skill].filter(Boolean)
+}
+
+function SessionHeader({ sessionType, progressCurrent, progressTotal }) {
+  const answered = Math.min(progressCurrent, progressTotal || progressCurrent)
+  const questionNumber = progressTotal > 0 ? Math.min(progressCurrent + 1, progressTotal) : progressCurrent + 1
+  const percent = progressTotal > 0 ? Math.round((answered / progressTotal) * 100) : 0
+
+  return (
+    <div className="mb-8 border-b border-neutral-200 pb-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-neutral-400">
+            {getSessionLabel(sessionType)}
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[#111]">
+            Question {questionNumber}{progressTotal > 0 ? ` of ${progressTotal}` : ''}
+          </h1>
+        </div>
+        {progressTotal > 0 && (
+          <div className="min-w-36 text-left sm:text-right">
+            <p className="text-sm font-medium text-[#111]">{percent}% complete</p>
+            <p className="text-xs text-neutral-500">{answered} answered</p>
+          </div>
+        )}
+      </div>
+
+      {progressTotal > 0 && (
+        <div className="mt-5 h-2 overflow-hidden rounded-full bg-neutral-100">
+          <div
+            className="h-full rounded-full bg-[#2563eb] transition-all duration-500 ease-out"
+            style={{ width: `${percent}%` }}
+            aria-hidden="true"
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function QuestionMeta({ item, isExamMode }) {
+  const meta = getItemMeta(item)
+
+  if (!isExamMode && meta.length === 0) return null
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      {isExamMode && (
+        <span className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+          Feedback after session
+        </span>
+      )}
+      {meta.map((label) => (
+        <span
+          key={label}
+          className="rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-600"
+        >
+          {label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function CurrentAttemptPane({
   currentItem,
   currentSessionType,
@@ -19,10 +102,11 @@ function CurrentAttemptPane({
   const [selectedAnswer, setSelectedAnswer] = useState('')
   const [gridInAnswer, setGridInAnswer] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [confidence, setConfidence] = useState(3)
   const [renderStartedAt] = useState(() => Date.now())
 
   const isGridIn = currentItem?.item_format === 'grid_in' || currentItem?.item_format === 'student_produced_response'
-  const isExamMode = currentSessionType === 'exam' || currentSessionType === 'timed-set' || currentSessionType === 'diagnostic'
+  const isExamMode = ['exam', 'timed-set', 'timed_set', 'diagnostic'].includes(currentSessionType)
   const choices = currentItem.choices || currentItem.options || currentItem.answers || []
 
   const handleSubmit = useCallback(async () => {
@@ -31,12 +115,12 @@ function CurrentAttemptPane({
     setSubmitting(true)
     await submitAttempt({
       answer,
-      confidence: 3,
+      confidence,
       mode: currentSessionType,
       responseTimeMs: Date.now() - renderStartedAt,
     })
     setSubmitting(false)
-  }, [currentSessionType, gridInAnswer, isGridIn, renderStartedAt, selectedAnswer, submitAttempt])
+  }, [confidence, currentSessionType, gridInAnswer, isGridIn, renderStartedAt, selectedAnswer, submitAttempt])
 
   return (
     <>
@@ -93,11 +177,37 @@ function CurrentAttemptPane({
         </div>
       )}
 
-      <div className="flex items-center gap-3">
+      {!isExamMode && !showFeedback && (
+        <div className="mb-5">
+          <p className="text-xs font-medium text-neutral-500 mb-1.5">How confident are you?</p>
+          <div className="inline-flex overflow-hidden rounded-md border border-neutral-200" role="group" aria-label="Confidence level">
+            {[
+              { v: 1, label: 'Guess' },
+              { v: 2, label: 'Unsure' },
+              { v: 3, label: 'Likely' },
+              { v: 4, label: 'Sure' },
+            ].map((opt, idx) => (
+              <button
+                key={opt.v}
+                type="button"
+                onClick={() => setConfidence(opt.v)}
+                aria-pressed={confidence === opt.v}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors ${idx > 0 ? 'border-l border-neutral-200' : ''} ${
+                  confidence === opt.v ? 'bg-[#2563eb] text-white' : 'bg-white text-neutral-600 hover:bg-neutral-50'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         {showFeedback ? (
           <button
             onClick={handleNext}
-            className="text-sm font-medium text-white bg-[#2563eb] rounded-md px-4 py-2 hover:bg-[#1d4ed8] transition-colors"
+            className="inline-flex items-center justify-center rounded-md bg-[#2563eb] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1d4ed8]"
           >
             Next question
           </button>
@@ -106,14 +216,14 @@ function CurrentAttemptPane({
             <button
               onClick={handleSubmit}
               disabled={submitting || (!selectedAnswer && !gridInAnswer)}
-              className="text-sm font-medium text-white bg-[#2563eb] rounded-md px-4 py-2 hover:bg-[#1d4ed8] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center justify-center rounded-md bg-[#2563eb] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {submitting ? 'Submitting...' : 'Submit'}
             </button>
             {!isExamMode && (
               <button
                 onClick={getHint}
-                className="text-sm text-neutral-500 hover:text-[#111] transition-colors"
+                className="inline-flex items-center justify-center rounded-md border border-neutral-200 px-4 py-2.5 text-sm font-medium text-neutral-600 transition-colors hover:border-neutral-300 hover:text-[#111]"
               >
                 Get a hint
               </button>
@@ -140,7 +250,7 @@ export default function Practice() {
   const loadDashboard = useStore((s) => s.loadDashboard)
   const loadActiveSession = useStore((s) => s.loadActiveSession)
   const navigate = useNavigate()
-  const isExamMode = currentSessionType === 'exam' || currentSessionType === 'timed-set' || currentSessionType === 'diagnostic'
+  const isExamMode = ['exam', 'timed-set', 'timed_set', 'diagnostic'].includes(currentSessionType)
   const showFeedback = lastAttemptResult && !isExamMode
 
   const handleNext = useCallback(() => {
@@ -152,6 +262,11 @@ export default function Practice() {
     loadDashboard()
     navigate('/')
   }, [clearSession, loadDashboard, navigate])
+
+  const handleReview = useCallback(() => {
+    clearSession()
+    navigate('/review')
+  }, [clearSession, navigate])
 
   // Auto-advance in exam mode after submit
   useEffect(() => {
@@ -229,12 +344,20 @@ export default function Practice() {
           </div>
         </div>
 
-        <button
-          onClick={handleFinish}
-          className="w-full text-sm font-medium text-white bg-[#2563eb] rounded-md py-2.5 hover:bg-[#1d4ed8] transition-colors"
-        >
-          Back to dashboard
-        </button>
+        <div className="space-y-3">
+          <button
+            onClick={handleReview}
+            className="w-full text-sm font-medium text-white bg-[#2563eb] rounded-md py-2.5 hover:bg-[#1d4ed8] transition-colors"
+          >
+            Review &amp; repair
+          </button>
+          <button
+            onClick={handleFinish}
+            className="w-full text-sm font-medium text-neutral-600 border border-neutral-200 rounded-md py-2.5 hover:border-neutral-300 hover:text-[#111] transition-colors"
+          >
+            Back to dashboard
+          </button>
+        </div>
       </main>
     )
   }
@@ -247,31 +370,17 @@ export default function Practice() {
   const explanation = showFeedback ? lastAttemptResult.explanation : null
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-8">
-      {/* Progress bar */}
-      {progressTotal > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-neutral-400">
-              Question {progressCurrent + 1} of {progressTotal}
-            </span>
-            <span className="text-xs text-neutral-400">
-              {Math.round(((progressCurrent) / progressTotal) * 100)}%
-            </span>
-          </div>
-          <div className="h-1 bg-neutral-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-[#2563eb] rounded-full transition-all duration-300"
-              style={{ width: `${(progressCurrent / progressTotal) * 100}%` }}
-            />
-          </div>
-        </div>
-      )}
+    <main className="mx-auto max-w-3xl px-6 py-8">
+      <SessionHeader
+        sessionType={currentSessionType}
+        progressCurrent={progressCurrent}
+        progressTotal={progressTotal}
+      />
 
-      {/* Question */}
-      <div className="mb-8">
+      <section className="mb-8">
+        <QuestionMeta item={currentItem} isExamMode={isExamMode} />
         <QuestionCard item={currentItem} />
-      </div>
+      </section>
 
       <CurrentAttemptPane
         key={itemKey}

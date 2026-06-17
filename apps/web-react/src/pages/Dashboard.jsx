@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import SessionNotice from '../components/SessionNotice'
 import ActionCard from '../components/ActionCard'
+import DiagnosticRevealCard from '../components/DiagnosticRevealCard'
+import SessionOutcomeCard from '../components/SessionOutcomeCard'
+import ReviewEntryCard from '../components/ReviewEntryCard'
+import StudyDashboard from '../components/StudyDashboard'
 import NarrativeCard from '../components/NarrativeCard'
 import GoalSetup from '../components/GoalSetup'
 
@@ -13,6 +17,15 @@ export default function Dashboard() {
   const dashboardError = useStore((s) => s.dashboardError)
   const nextBestAction = useStore((s) => s.nextBestAction)
   const learnerNarrative = useStore((s) => s.learnerNarrative)
+  const diagnosticReveal = useStore((s) => s.diagnosticReveal)
+  const latestSessionOutcome = useStore((s) => s.latestSessionOutcome)
+  const projectionEvidence = useStore((s) => s.projectionEvidence)
+  const errorDnaSummary = useStore((s) => s.errorDnaSummary)
+  const whatChanged = useStore((s) => s.whatChanged)
+  const weeklyDigest = useStore((s) => s.weeklyDigest)
+  const comebackState = useStore((s) => s.comebackState)
+  const completionStreak = useStore((s) => s.completionStreak)
+  const review = useStore((s) => s.review)
   const goalProfile = useStore((s) => s.goalProfile)
   const activeSession = useStore((s) => s.activeSession)
   const resumeSession = useStore((s) => s.resumeSession)
@@ -41,7 +54,17 @@ export default function Dashboard() {
     }
 
     const sessionType = action.sessionType || kind
-    const success = await startSession(sessionType, { section: action.section, itemId: action.itemId })
+    // Route the diagnostic through its preflight framing instead of starting cold.
+    if (sessionType === 'diagnostic' || kind === 'start_diagnostic') {
+      navigate('/diagnostic')
+      return
+    }
+
+    const success = await startSession(sessionType, {
+      section: action.section,
+      itemId: action.itemId,
+      realismProfile: action.realismProfile,
+    })
     if (success) navigate('/practice')
   }
 
@@ -67,6 +90,11 @@ export default function Dashboard() {
     )
   }
 
+  // After a diagnostic, the reveal carries its own "Start here" action, so it
+  // becomes the hero and replaces the standalone next-best-action card (keeping
+  // a single primary CTA). Hidden until goal setup is done, matching legacy.
+  const showReveal = Boolean(diagnosticReveal?.scoreBand) && goalProfile?.isComplete !== false
+
   return (
     <main className="max-w-2xl mx-auto px-6 py-12">
       <div className="mb-10">
@@ -80,12 +108,27 @@ export default function Dashboard() {
 
       <div className="space-y-4">
         <SessionNotice session={activeSession} />
-        <ActionCard action={nextBestAction} onStart={handleStartAction} />
+        {showReveal ? (
+          <DiagnosticRevealCard reveal={diagnosticReveal} onStart={handleStartAction} />
+        ) : (
+          <ActionCard action={nextBestAction} onStart={handleStartAction} />
+        )}
+        <SessionOutcomeCard outcome={latestSessionOutcome} onStart={handleStartAction} />
+        <ReviewEntryCard review={review} />
         <NarrativeCard narrative={learnerNarrative} />
         <GoalSetup profile={goalProfile} containerRef={goalSetupRef} />
       </div>
 
-      {!nextBestAction && !activeSession && (
+      <StudyDashboard
+        projectionEvidence={projectionEvidence}
+        errorDnaSummary={errorDnaSummary}
+        whatChanged={whatChanged}
+        weeklyDigest={weeklyDigest}
+        comebackState={comebackState}
+        completionStreak={completionStreak}
+      />
+
+      {!nextBestAction && !activeSession && !showReveal && !latestSessionOutcome && (
         <div className="mt-8 text-center">
           <p className="text-sm text-neutral-500 mb-4">No recommendations yet. Start a diagnostic to get personalized practice.</p>
           <button
