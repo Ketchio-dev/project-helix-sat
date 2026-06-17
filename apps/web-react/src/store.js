@@ -94,6 +94,9 @@ function normalizeStartedSessionShape(payload = {}, fallbackType = null) {
 }
 
 function normalizeSessionEnvelopeShape(payload = {}) {
+  // Callers pass `activeSession || null`; with no active session this is null,
+  // and dereferencing it would throw and fail the whole dashboard load.
+  if (!payload) return null;
   const session = payload.session
     ? {
         ...payload.session,

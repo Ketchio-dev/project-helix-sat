@@ -434,7 +434,9 @@ export default function Practice() {
 
   // Active question
   const itemKey = currentItem.itemId || 'current-item'
-  const progressCurrent = sessionProgress?.current || sessionProgress?.completed || 0
+  // Server session progress reports `answered`; `current`/`completed` are
+  // legacy fallbacks. Without this the header is stuck at "Question 1" / 0%.
+  const progressCurrent = sessionProgress?.answered ?? sessionProgress?.current ?? sessionProgress?.completed ?? 0
   const progressTotal = sessionProgress?.total || 0
   const correctAnswer = showFeedback ? lastAttemptResult.correctAnswer : null
   const explanation = showFeedback ? lastAttemptResult.explanation : null
