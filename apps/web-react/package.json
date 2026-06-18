@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node --test ../../tests/web-react-api-client.test.mjs ../../tests/api-contract-drift.test.mjs",
+    "test": "node --test ../../tests/web-react-api-client.test.mjs ../../tests/api-contract-drift.test.mjs ../../tests/web-react-exam-timing.test.mjs ../../tests/web-react-session-review.test.mjs ../../tests/web-react-attempt.test.mjs",
     "check": "npm run lint && npm run build && npm run test",
     "preview": "vite preview"
   },

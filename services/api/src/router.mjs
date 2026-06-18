@@ -7,6 +7,7 @@ import {
   serializeClearedAuthCookie,
   verifyToken,
 } from './auth.mjs';
+import { extname } from 'node:path';
 import { HttpError, readJsonBody, sendJson, serveStaticFile } from './http-utils.mjs';
 import { registerLearnerDashboardRoutes } from './router/routes/learner-dashboard-routes.mjs';
 import { registerLearnerOnboardingRoutes } from './router/routes/learner-onboarding-routes.mjs';
@@ -161,7 +162,7 @@ function buildValidationPayload({ requestMethod, requestSchema, body, auth, lear
   }
 }
 
-export function createRouter({ store, webRoot }) {
+export function createRouter({ store, webRoot, spaFallback = false }) {
   const enforceRateLimitFallback = createRateLimiter();
 
   const routes = new Map();
@@ -280,7 +281,24 @@ export function createRouter({ store, webRoot }) {
     try {
       if (!route) {
         if (request.method === 'GET') {
-          return await serveStaticFile(response, webRoot, pathname);
+          try {
+            return await serveStaticFile(response, webRoot, pathname);
+          } catch (error) {
+            // SPA client routes (no file extension) fall back to the app shell
+            // so deep links and refreshes load index.html instead of 404ing.
+            // Never divert /api/* — an unknown API path must stay a JSON 404,
+            // not silently return HTML to a fetch() caller.
+            if (
+              spaFallback
+              && error instanceof HttpError
+              && error.statusCode === 404
+              && !extname(pathname)
+              && !pathname.startsWith('/api/')
+            ) {
+              return await serveStaticFile(response, webRoot, '/index.html');
+            }
+            throw error;
+          }
         }
         return sendJson(response, 404, { error: 'Not found' });
       }

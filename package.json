@@ -10,7 +10,7 @@
     "packages/*"
   ],
   "scripts": {
-    "start": "node services/api/server.mjs",
+    "start": "npm run build --workspace apps/web-react && node services/api/server.mjs",
     "start:rust": "cargo run --manifest-path services/api-rust/Cargo.toml",
     "dev": "node services/api/server.mjs",
     "dev:rust": "PORT=4322 cargo run --manifest-path services/api-rust/Cargo.toml",
@@ -19,8 +19,8 @@
     "verify": "node scripts/verify.mjs",
     "generate:contracts": "node scripts/generate-contract-artifacts.mjs",
     "check:contracts": "node scripts/check-contract-artifacts.mjs",
-    "check:web-react": "npm run lint --workspace apps/web-react && npm run build --workspace apps/web-react && node --test tests/web-react-api-client.test.mjs tests/api-contract-drift.test.mjs",
-    "check:ci-local": "npm run check && npm run check:contracts && npm run check:web-react && npm run smoke:learner",
+    "check:web-react": "npm run lint --workspace apps/web-react && npm run build --workspace apps/web-react && node --test tests/web-react-api-client.test.mjs tests/api-contract-drift.test.mjs tests/web-react-exam-timing.test.mjs tests/web-react-session-review.test.mjs tests/web-react-attempt.test.mjs",
+    "check:ci-local": "npm run check && npm run check:contracts && npm run check:web-react && npm run smoke:learner && npm run smoke:learner:react",
     "audit:helix:bars": "node scripts/check-content-release-bars.mjs",
     "build": "npm run verify",
     "check": "node scripts/validate-foundation.mjs && npm run verify && node --test && npm run check:rust",
@@ -28,6 +28,7 @@
     "test": "node --test",
     "audit:helix": "node scripts/audit-project-helix-sat.mjs",
     "smoke:learner": "node scripts/run-playwright-learner-smoke.mjs",
+    "smoke:learner:react": "node scripts/run-react-learner-smoke.mjs",
     "check:docs-truth": "node scripts/check-doc-truth.mjs"
   },
   "engines": {

@@ -9,7 +9,7 @@ export function registerTutorRoutes(registerRoute, { store, HttpError }) {
     async handler({ learnerId, body }) {
       const payload = { ...body, userId: learnerId };
       return {
-        body: createTutorHint({
+        body: await createTutorHint({
           store,
           learnerId,
           payload,

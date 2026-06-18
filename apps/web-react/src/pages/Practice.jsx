@@ -3,11 +3,121 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import QuestionCard from '../components/QuestionCard'
 import ChoiceList from '../components/ChoiceList'
+import SessionTimer from '../components/SessionTimer'
+import { hasExamTiming } from '../lib/examTiming'
+
+const SESSION_LABELS = {
+  diagnostic: 'Diagnostic',
+  'quick-win': 'Quick win',
+  quick_win: 'Quick win',
+  'review-retry': 'Review retry',
+  'timed-set': 'Timed set',
+  timed_set: 'Timed set',
+  module: 'Module practice',
+  module_simulation: 'Module practice',
+  exam: 'Exam mode',
+}
+
+// Sessions that withhold per-question feedback until the end (exam realism).
+// Diagnostic is feedback-free but untimed; the timed exams (timed set / module)
+// additionally carry a server countdown — see hasExamTiming.
+const EXAM_MODE_SESSION_TYPES = ['exam', 'timed-set', 'timed_set', 'module', 'module_simulation', 'diagnostic']
+
+function isExamModeType(sessionType) {
+  return EXAM_MODE_SESSION_TYPES.includes(sessionType)
+}
+
+function getSessionLabel(sessionType) {
+  return SESSION_LABELS[sessionType] || 'Practice'
+}
+
+function getItemMeta(item) {
+  const section = item?.section || item?.satSection || item?.domain || item?.subject || null
+  const skill = item?.skill || item?.skillName || item?.standard || item?.topic || null
+  return [section, skill].filter(Boolean)
+}
+
+function SessionHeader({ sessionType, progressCurrent, progressTotal, timing, onExpire, onFinishExam, finishing, examExpired }) {
+  const answered = Math.min(progressCurrent, progressTotal || progressCurrent)
+  const questionNumber = progressTotal > 0 ? Math.min(progressCurrent + 1, progressTotal) : progressCurrent + 1
+  const percent = progressTotal > 0 ? Math.round((answered / progressTotal) * 100) : 0
+  const timed = hasExamTiming(timing)
+
+  return (
+    <div className="mb-8 border-b border-neutral-200 pb-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-neutral-400">
+            {getSessionLabel(sessionType)}
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[#111]">
+            Question {questionNumber}{progressTotal > 0 ? ` of ${progressTotal}` : ''}
+          </h1>
+        </div>
+        {timed ? (
+          <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1.5">
+            <SessionTimer timing={timing} label={getSessionLabel(sessionType)} onExpire={onExpire} />
+            {onFinishExam && (
+              <button
+                type="button"
+                onClick={onFinishExam}
+                disabled={finishing}
+                className="text-xs font-medium text-neutral-400 transition-colors hover:text-neutral-600 disabled:opacity-50"
+              >
+                {finishing ? 'Finishing…' : examExpired ? 'See results' : 'End & see results'}
+              </button>
+            )}
+          </div>
+        ) : progressTotal > 0 ? (
+          <div className="min-w-36 text-left sm:text-right">
+            <p className="text-sm font-medium text-[#111]">{percent}% complete</p>
+            <p className="text-xs text-neutral-500">{answered} answered</p>
+          </div>
+        ) : null}
+      </div>
+
+      {progressTotal > 0 && (
+        <div className="mt-5 h-2 overflow-hidden rounded-full bg-neutral-100">
+          <div
+            className="h-full rounded-full bg-[#2563eb] transition-all duration-500 ease-out"
+            style={{ width: `${percent}%` }}
+            aria-hidden="true"
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function QuestionMeta({ item, isExamMode }) {
+  const meta = getItemMeta(item)
+
+  if (!isExamMode && meta.length === 0) return null
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      {isExamMode && (
+        <span className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+          Feedback after session
+        </span>
+      )}
+      {meta.map((label) => (
+        <span
+          key={label}
+          className="rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-600"
+        >
+          {label}
+        </span>
+      ))}
+    </div>
+  )
+}
 
 function CurrentAttemptPane({
   currentItem,
   currentSessionType,
   showFeedback,
+  examExpired,
   lastAttemptResult,
   correctAnswer,
   explanation,
@@ -19,24 +129,26 @@ function CurrentAttemptPane({
   const [selectedAnswer, setSelectedAnswer] = useState('')
   const [gridInAnswer, setGridInAnswer] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [confidence, setConfidence] = useState(3)
   const [renderStartedAt] = useState(() => Date.now())
 
   const isGridIn = currentItem?.item_format === 'grid_in' || currentItem?.item_format === 'student_produced_response'
-  const isExamMode = currentSessionType === 'exam' || currentSessionType === 'timed-set' || currentSessionType === 'diagnostic'
+  const isExamMode = isExamModeType(currentSessionType)
+  const locked = showFeedback || examExpired
   const choices = currentItem.choices || currentItem.options || currentItem.answers || []
 
   const handleSubmit = useCallback(async () => {
+    if (examExpired) return
     const answer = isGridIn ? gridInAnswer : selectedAnswer
     if (!answer) return
     setSubmitting(true)
     await submitAttempt({
       answer,
-      confidence: 3,
-      mode: currentSessionType,
+      confidence,
       responseTimeMs: Date.now() - renderStartedAt,
     })
     setSubmitting(false)
-  }, [currentSessionType, gridInAnswer, isGridIn, renderStartedAt, selectedAnswer, submitAttempt])
+  }, [confidence, examExpired, gridInAnswer, isGridIn, renderStartedAt, selectedAnswer, submitAttempt])
 
   return (
     <>
@@ -48,8 +160,8 @@ function CurrentAttemptPane({
               type="text"
               value={gridInAnswer}
               onChange={(e) => setGridInAnswer(e.target.value)}
-              disabled={showFeedback}
-              className="w-full max-w-xs px-3 py-2 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent"
+              disabled={locked}
+              className="w-full max-w-xs px-3 py-2 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent disabled:bg-neutral-50 disabled:opacity-60"
               placeholder="Type your answer..."
               autoFocus
             />
@@ -59,7 +171,7 @@ function CurrentAttemptPane({
             choices={choices}
             selected={selectedAnswer}
             onSelect={setSelectedAnswer}
-            disabled={showFeedback}
+            disabled={locked}
             correctAnswer={correctAnswer}
           />
         )}
@@ -93,11 +205,37 @@ function CurrentAttemptPane({
         </div>
       )}
 
-      <div className="flex items-center gap-3">
+      {!isExamMode && !showFeedback && (
+        <div className="mb-5">
+          <p className="text-xs font-medium text-neutral-500 mb-1.5">How confident are you?</p>
+          <div className="inline-flex overflow-hidden rounded-md border border-neutral-200" role="group" aria-label="Confidence level">
+            {[
+              { v: 1, label: 'Guess' },
+              { v: 2, label: 'Unsure' },
+              { v: 3, label: 'Likely' },
+              { v: 4, label: 'Sure' },
+            ].map((opt, idx) => (
+              <button
+                key={opt.v}
+                type="button"
+                onClick={() => setConfidence(opt.v)}
+                aria-pressed={confidence === opt.v}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors ${idx > 0 ? 'border-l border-neutral-200' : ''} ${
+                  confidence === opt.v ? 'bg-[#2563eb] text-white' : 'bg-white text-neutral-600 hover:bg-neutral-50'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         {showFeedback ? (
           <button
             onClick={handleNext}
-            className="text-sm font-medium text-white bg-[#2563eb] rounded-md px-4 py-2 hover:bg-[#1d4ed8] transition-colors"
+            className="inline-flex items-center justify-center rounded-md bg-[#2563eb] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1d4ed8]"
           >
             Next question
           </button>
@@ -105,15 +243,15 @@ function CurrentAttemptPane({
           <>
             <button
               onClick={handleSubmit}
-              disabled={submitting || (!selectedAnswer && !gridInAnswer)}
-              className="text-sm font-medium text-white bg-[#2563eb] rounded-md px-4 py-2 hover:bg-[#1d4ed8] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              disabled={submitting || examExpired || (!selectedAnswer && !gridInAnswer)}
+              className="inline-flex items-center justify-center rounded-md bg-[#2563eb] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {submitting ? 'Submitting...' : 'Submit'}
             </button>
             {!isExamMode && (
               <button
                 onClick={getHint}
-                className="text-sm text-neutral-500 hover:text-[#111] transition-colors"
+                className="inline-flex items-center justify-center rounded-md border border-neutral-200 px-4 py-2.5 text-sm font-medium text-neutral-600 transition-colors hover:border-neutral-300 hover:text-[#111]"
               >
                 Get a hint
               </button>
@@ -127,9 +265,12 @@ function CurrentAttemptPane({
 
 export default function Practice() {
   const currentItem = useStore((s) => s.currentItem)
+  const currentSessionId = useStore((s) => s.currentSessionId)
   const sessionProgress = useStore((s) => s.sessionProgress)
   const currentSessionType = useStore((s) => s.currentSessionType)
+  const sessionTiming = useStore((s) => s.sessionTiming)
   const submitAttempt = useStore((s) => s.submitAttempt)
+  const finishExamSession = useStore((s) => s.finishExamSession)
   const getHint = useStore((s) => s.getHint)
   const hintText = useStore((s) => s.hintText)
   const lastAttemptResult = useStore((s) => s.lastAttemptResult)
@@ -140,8 +281,31 @@ export default function Practice() {
   const loadDashboard = useStore((s) => s.loadDashboard)
   const loadActiveSession = useStore((s) => s.loadActiveSession)
   const navigate = useNavigate()
-  const isExamMode = currentSessionType === 'exam' || currentSessionType === 'timed-set' || currentSessionType === 'diagnostic'
+  const isExamMode = isExamModeType(currentSessionType)
   const showFeedback = lastAttemptResult && !isExamMode
+
+  const [examExpired, setExamExpired] = useState(false)
+  const [finishing, setFinishing] = useState(false)
+  const [trackedSessionId, setTrackedSessionId] = useState(currentSessionId)
+  const canFinishExam = hasExamTiming(sessionTiming)
+
+  // Expiry is a per-session latch: reset it when a new session id takes over.
+  // Adjusting state during render is React's recommended alternative to a reset
+  // effect (no extra commit, no cascading render).
+  if (currentSessionId !== trackedSessionId) {
+    setTrackedSessionId(currentSessionId)
+    setExamExpired(false)
+  }
+
+  const handleExamExpire = useCallback(() => {
+    setExamExpired(true)
+  }, [])
+
+  const handleFinishExam = useCallback(async () => {
+    setFinishing(true)
+    await finishExamSession()
+    setFinishing(false)
+  }, [finishExamSession])
 
   const handleNext = useCallback(() => {
     clearLastAttempt()
@@ -152,6 +316,19 @@ export default function Practice() {
     loadDashboard()
     navigate('/')
   }, [clearSession, loadDashboard, navigate])
+
+  const handleReview = useCallback(() => {
+    clearSession()
+    navigate('/review')
+  }, [clearSession, navigate])
+
+  // Per-item review of the session that just ended. Carry the id in the URL so
+  // the review page is refresh-safe, then clear the (now finished) session.
+  const handleReviewAnswers = useCallback(() => {
+    if (!currentSessionId) return
+    navigate(`/session-review?sessionId=${encodeURIComponent(currentSessionId)}`)
+    clearSession()
+  }, [currentSessionId, navigate, clearSession])
 
   // Auto-advance in exam mode after submit
   useEffect(() => {
@@ -229,55 +406,82 @@ export default function Practice() {
           </div>
         </div>
 
-        <button
-          onClick={handleFinish}
-          className="w-full text-sm font-medium text-white bg-[#2563eb] rounded-md py-2.5 hover:bg-[#1d4ed8] transition-colors"
-        >
-          Back to dashboard
-        </button>
+        <div className="space-y-3">
+          {currentSessionId && (
+            <button
+              onClick={handleReviewAnswers}
+              className="w-full text-sm font-medium text-white bg-[#2563eb] rounded-md py-2.5 hover:bg-[#1d4ed8] transition-colors"
+            >
+              Review answers
+            </button>
+          )}
+          <button
+            onClick={handleReview}
+            className="w-full text-sm font-medium text-[#2563eb] border border-blue-200 rounded-md py-2.5 hover:bg-blue-50 transition-colors"
+          >
+            Review &amp; repair
+          </button>
+          <button
+            onClick={handleFinish}
+            className="w-full text-sm font-medium text-neutral-600 border border-neutral-200 rounded-md py-2.5 hover:border-neutral-300 hover:text-[#111] transition-colors"
+          >
+            Back to dashboard
+          </button>
+        </div>
       </main>
     )
   }
 
   // Active question
   const itemKey = currentItem.itemId || 'current-item'
-  const progressCurrent = sessionProgress?.current || sessionProgress?.completed || 0
+  // Server session progress reports `answered`; `current`/`completed` are
+  // legacy fallbacks. Without this the header is stuck at "Question 1" / 0%.
+  const progressCurrent = sessionProgress?.answered ?? sessionProgress?.current ?? sessionProgress?.completed ?? 0
   const progressTotal = sessionProgress?.total || 0
   const correctAnswer = showFeedback ? lastAttemptResult.correctAnswer : null
   const explanation = showFeedback ? lastAttemptResult.explanation : null
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-8">
-      {/* Progress bar */}
-      {progressTotal > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-neutral-400">
-              Question {progressCurrent + 1} of {progressTotal}
-            </span>
-            <span className="text-xs text-neutral-400">
-              {Math.round(((progressCurrent) / progressTotal) * 100)}%
-            </span>
+    <main className="mx-auto max-w-3xl px-6 py-8">
+      <SessionHeader
+        sessionType={currentSessionType}
+        progressCurrent={progressCurrent}
+        progressTotal={progressTotal}
+        timing={sessionTiming}
+        onExpire={handleExamExpire}
+        onFinishExam={canFinishExam ? handleFinishExam : null}
+        finishing={finishing}
+        examExpired={examExpired}
+      />
+
+      {examExpired && (
+        <div className="mb-6 flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-red-800">Time’s up</p>
+            <p className="text-sm text-red-700">Your answers are locked. Finish now to see your results and review what to repair.</p>
           </div>
-          <div className="h-1 bg-neutral-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-[#2563eb] rounded-full transition-all duration-300"
-              style={{ width: `${(progressCurrent / progressTotal) * 100}%` }}
-            />
-          </div>
+          <button
+            type="button"
+            onClick={handleFinishExam}
+            disabled={finishing}
+            className="inline-flex shrink-0 items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+          >
+            {finishing ? 'Finishing…' : 'See results'}
+          </button>
         </div>
       )}
 
-      {/* Question */}
-      <div className="mb-8">
+      <section className="mb-8">
+        <QuestionMeta item={currentItem} isExamMode={isExamMode} />
         <QuestionCard item={currentItem} />
-      </div>
+      </section>
 
       <CurrentAttemptPane
         key={itemKey}
         currentItem={currentItem}
         currentSessionType={currentSessionType}
         showFeedback={showFeedback}
+        examExpired={examExpired}
         lastAttemptResult={lastAttemptResult}
         correctAnswer={correctAnswer}
         explanation={explanation}

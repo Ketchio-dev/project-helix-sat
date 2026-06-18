@@ -5,10 +5,13 @@
     "schemasRoot": "packages/schemas"
   },
   "openapi": {
-    "sha256": "8e1bd06c57ab933dfdbcb99caeca047e97490153448e4eb17908428cf6d5c867",
-    "pathCount": 34,
+    "sha256": "fd3878bed81d1ad19d1e4424eb2fcaf82d02b5307dfa12d0385c8f45de6f4592",
+    "pathCount": 38,
     "paths": [
       "/api/attempt/submit",
+      "/api/auth/login",
+      "/api/auth/logout",
+      "/api/auth/register",
       "/api/curriculum/path",
       "/api/dashboard/learner",
       "/api/diagnostic/reveal",
@@ -33,6 +36,7 @@
       "/api/reflection/submit",
       "/api/reports/weekly",
       "/api/review/recommendations",
+      "/api/review/retry/start",
       "/api/session/active",
       "/api/session/review",
       "/api/sessions/history",

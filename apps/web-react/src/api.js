@@ -4,7 +4,10 @@ const BASE = '/api';
 const CONTRACT_PATHS = new Set(contractArtifact?.openapi?.paths ?? []);
 
 function assertContractPath(path) {
-  const contractPath = `${BASE}${path}`;
+  // The generated contract is keyed by pathname only; query strings (e.g.
+  // ?sessionId=) are orthogonal, so match against the path without them.
+  const [pathname] = path.split('?');
+  const contractPath = `${BASE}${pathname}`;
   if (!CONTRACT_PATHS.has(contractPath)) {
     throw new Error(`Unsupported API path outside generated contract: ${contractPath}`);
   }

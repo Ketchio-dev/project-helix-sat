@@ -16,6 +16,50 @@ paths:
       responses:
         '200':
           description: Learner profile payload
+  /api/auth/login:
+    post:
+      summary: Authenticate a learner and issue a session cookie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Authenticated learner payload
+  /api/auth/register:
+    post:
+      summary: Register a new learner and issue a session cookie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '201':
+          description: Registered learner payload
+  /api/auth/logout:
+    post:
+      summary: Clear the learner session cookie
+      responses:
+        '200':
+          description: Logout acknowledgement
   /api/items:
     get:
       summary: Fetch starter practice items for the dashboard
@@ -87,6 +131,21 @@ paths:
       responses:
         '201':
           description: Quick-win session created
+  /api/review/retry/start:
+    post:
+      summary: Start a retry-loop session for a specific review item
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                itemId:
+                  type: string
+      responses:
+        '201':
+          description: Review retry session created
   /api/timed-set/start:
     post:
       summary: Start a short timed set in exam mode

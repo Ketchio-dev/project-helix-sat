@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { api } from './api';
+import { buildAttemptPayload } from './lib/attempt';
+import { hasExamTiming } from './lib/examTiming';
 
 function normalizeItemShape(item = null) {
   if (!item) return null;
@@ -66,6 +68,17 @@ function normalizeDashboardContractShape(dashboard = {}) {
     learnerNarrative: dashboard.learnerNarrative ?? null,
     diagnosticReveal: dashboard.diagnosticReveal ?? null,
     latestSessionOutcome: dashboard.latestSessionOutcome ?? null,
+    // Conviction + retention surfaces already travel in /dashboard/learner;
+    // pass them through (they are canonical schema shapes) instead of refetching.
+    projectionEvidence: dashboard.projectionEvidence ?? null,
+    errorDnaSummary: Array.isArray(dashboard.errorDnaSummary) ? dashboard.errorDnaSummary : [],
+    whatChanged: dashboard.whatChanged ?? null,
+    weeklyDigest: dashboard.weeklyDigest ?? null,
+    comebackState: dashboard.comebackState ?? null,
+    completionStreak: dashboard.completionStreak ?? null,
+    review: dashboard.review ?? null,
+    guidedDailyPath: dashboard.guidedDailyPath ?? null,
+    guidedWeeklyPath: dashboard.guidedWeeklyPath ?? null,
   };
 }
 
@@ -75,10 +88,15 @@ function normalizeStartedSessionShape(payload = {}, fallbackType = null) {
     sessionType: payload.sessionType ?? payload.session?.type ?? fallbackType,
     currentItem: normalizeItemShape(payload.currentItem ?? null),
     sessionProgress: normalizeSessionProgressShape(payload.sessionProgress ?? null),
+    // Server-authoritative countdown for exam_mode sessions (null otherwise).
+    timing: payload.timing ?? null,
   };
 }
 
 function normalizeSessionEnvelopeShape(payload = {}) {
+  // Callers pass `activeSession || null`; with no active session this is null,
+  // and dereferencing it would throw and fail the whole dashboard load.
+  if (!payload) return null;
   const session = payload.session
     ? {
         ...payload.session,
@@ -94,6 +112,9 @@ function normalizeSessionEnvelopeShape(payload = {}) {
     sessionType: payload.sessionType ?? session?.type ?? null,
     currentItem: normalizeItemShape(payload.currentItem ?? null),
     sessionProgress: normalizeSessionProgressShape(payload.sessionProgress ?? null),
+    // The active-session envelope carries `timing` for exam_mode sessions; keep
+    // it so a resumed session restores its countdown at the right deadline.
+    timing: payload.timing ?? null,
   };
 }
 
@@ -114,6 +135,31 @@ function normalizeAttemptResultShape(payload = {}) {
   };
 }
 
+// Map server action kinds / contract sessionType enums to the canonical
+// session type that startSession() switches on. The dashboard, diagnostic
+// reveal, and session-outcome payloads all emit these forms.
+const SESSION_TYPE_ALIASES = {
+  diagnostic: 'diagnostic',
+  start_diagnostic: 'diagnostic',
+  'quick-win': 'quick-win',
+  quick_win: 'quick-win',
+  start_quick_win: 'quick-win',
+  'review-retry': 'review-retry',
+  review: 'review-retry',
+  review_mistakes: 'review-retry',
+  start_retry_loop: 'review-retry',
+  'timed-set': 'timed-set',
+  timed_set: 'timed-set',
+  start_timed_set: 'timed-set',
+  module: 'module',
+  module_simulation: 'module',
+  start_module: 'module',
+};
+
+function resolveSessionType(type) {
+  return SESSION_TYPE_ALIASES[type] || 'quick-win';
+}
+
 export const useStore = create((set, get) => ({
   // Auth
   user: null,
@@ -127,6 +173,15 @@ export const useStore = create((set, get) => ({
   learnerNarrative: null,
   diagnosticReveal: null,
   latestSessionOutcome: null,
+  projectionEvidence: null,
+  errorDnaSummary: [],
+  whatChanged: null,
+  weeklyDigest: null,
+  comebackState: null,
+  completionStreak: null,
+  review: null,
+  guidedDailyPath: null,
+  guidedWeeklyPath: null,
   activeSession: null,
   dashboardLoading: true,
   dashboardError: null,
@@ -137,6 +192,7 @@ export const useStore = create((set, get) => ({
   currentItem: null,
   sessionProgress: null,
   activeSessionEnvelope: null,
+  sessionTiming: null,
   sessionLoading: false,
   lastAttemptResult: null,
   hintText: null,
@@ -192,12 +248,13 @@ export const useStore = create((set, get) => ({
   async loadDashboard() {
     set({ dashboardLoading: true, dashboardError: null });
     try {
-      const [dashboard, goalProfile, activeSessionResp, nba, narrative] = await Promise.allSettled([
+      const [dashboard, goalProfile, activeSessionResp, nba, narrative, reveal] = await Promise.allSettled([
         api.get('/dashboard/learner'),
         api.get('/goal-profile'),
         api.get('/session/active'),
         api.get('/next-best-action'),
         api.get('/learner/narrative'),
+        api.get('/diagnostic/reveal'),
       ]);
 
       const dashData = dashboard.status === 'fulfilled' ? dashboard.value : {};
@@ -206,6 +263,10 @@ export const useStore = create((set, get) => ({
       const sessionResp = activeSessionResp.status === 'fulfilled' ? activeSessionResp.value : null;
       const nbaData = nba.status === 'fulfilled' ? normalizeActionShape(nba.value) : null;
       const narrativeData = narrative.status === 'fulfilled' ? narrative.value : null;
+      // /api/dashboard/learner does not embed diagnosticReveal, so fetch it from
+      // its dedicated endpoint (mirrors the legacy shell). Returns null until a
+      // diagnostic has produced enough evidence.
+      const revealData = reveal.status === 'fulfilled' ? reveal.value : null;
 
       // Active session is nested: { hasActiveSession, activeSession: { session, currentItem, sessionProgress, ... } }
       const activeSession = normalizeSessionEnvelopeShape(sessionResp?.activeSession || null);
@@ -213,8 +274,17 @@ export const useStore = create((set, get) => ({
       set({
         nextBestAction: nbaData || normalizedDashboard.nextBestAction,
         learnerNarrative: narrativeData || normalizedDashboard.learnerNarrative,
-        diagnosticReveal: normalizedDashboard.diagnosticReveal,
+        diagnosticReveal: revealData || normalizedDashboard.diagnosticReveal,
         latestSessionOutcome: normalizedDashboard.latestSessionOutcome,
+        projectionEvidence: normalizedDashboard.projectionEvidence,
+        errorDnaSummary: normalizedDashboard.errorDnaSummary,
+        whatChanged: normalizedDashboard.whatChanged,
+        weeklyDigest: normalizedDashboard.weeklyDigest,
+        comebackState: normalizedDashboard.comebackState,
+        completionStreak: normalizedDashboard.completionStreak,
+        review: normalizedDashboard.review,
+        guidedDailyPath: normalizedDashboard.guidedDailyPath,
+        guidedWeeklyPath: normalizedDashboard.guidedWeeklyPath,
         goalProfile: goalData,
         activeSession,
         dashboardLoading: false,
@@ -228,8 +298,9 @@ export const useStore = create((set, get) => ({
   async startSession(type, params = {}) {
     set({ sessionLoading: true, lastAttemptResult: null, hintText: null, sessionComplete: false, sessionSummary: null });
     try {
+      const resolvedType = resolveSessionType(type);
       let data;
-      switch (type) {
+      switch (resolvedType) {
         case 'diagnostic':
           data = await api.post('/diagnostic/start');
           break;
@@ -249,7 +320,17 @@ export const useStore = create((set, get) => ({
           data = await api.post('/quick-win/start');
       }
 
-      const normalized = normalizeStartedSessionShape(data, type);
+      // An exam/diagnostic already in progress returns a resume/conflict
+      // envelope (its session nested under `activeSession`, no top-level item)
+      // instead of a fresh session. Resume that active session rather than
+      // normalizing the empty top level into a blank "no session" screen.
+      if (data && data.conflict && data.activeSession) {
+        get().resumeSession(data.activeSession);
+        set({ sessionLoading: false });
+        return true;
+      }
+
+      const normalized = normalizeStartedSessionShape(data, resolvedType);
 
       set({
         currentSessionId: normalized.sessionId,
@@ -257,6 +338,7 @@ export const useStore = create((set, get) => ({
         currentItem: normalized.currentItem,
         sessionProgress: normalized.sessionProgress,
         activeSessionEnvelope: data,
+        sessionTiming: normalized.timing,
         sessionLoading: false,
       });
       return true;
@@ -275,6 +357,7 @@ export const useStore = create((set, get) => ({
       currentItem: normalized.currentItem,
       sessionProgress: normalized.sessionProgress,
       activeSessionEnvelope: session,
+      sessionTiming: normalized.timing ?? null,
       lastAttemptResult: null,
       hintText: null,
       sessionComplete: false,
@@ -299,24 +382,41 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  async submitAttempt({ answer, confidence, mode, responseTimeMs }) {
-    const { currentItem, currentSessionId } = get();
+  async submitAttempt({ answer, confidence, responseTimeMs }) {
+    const { currentItem, currentSessionId, sessionTiming } = get();
     if (!currentItem || !currentSessionId) return null;
 
-    const itemId = currentItem.itemId;
+    // exam_mode is exactly the set of sessions the server attaches `timing` to,
+    // so the live countdown doubles as the exam-mode signal for submit.
+    const isExamMode = hasExamTiming(sessionTiming);
 
     try {
-      const result = await api.post('/attempt/submit', {
-        itemId,
+      const result = await api.post('/attempt/submit', buildAttemptPayload({
+        itemId: currentItem.itemId,
         sessionId: currentSessionId,
-        selectedAnswer: answer,
-        confidenceLevel: confidence || 3,
-        mode: (mode === 'diagnostic' || mode === 'quick_win' || mode === 'review-retry' || mode === 'timed_set' || mode === 'module_simulation')
-          ? 'learn' : (mode || 'learn'),
-        responseTimeMs: responseTimeMs || 0,
-      });
+        answer,
+        confidence,
+        isExamMode,
+        itemFormat: currentItem.item_format,
+        responseTimeMs,
+      }));
 
       const normalized = normalizeAttemptResultShape(result);
+
+      // Exam sessions withhold per-item feedback: the response carries only a
+      // cursor + ack, never nextItem/correctAnswer. Advance by re-fetching the
+      // active session (which also re-syncs the countdown), and finalize via the
+      // finish endpoint once every item is answered. Mirrors the legacy shell's
+      // correctAnswer===undefined branch.
+      if (isExamMode) {
+        if (normalized.sessionComplete) {
+          await get().finishExamSession();
+        } else {
+          set({ lastAttemptResult: null, hintText: null });
+          await get().loadActiveSession();
+        }
+        return normalized;
+      }
 
       if (normalized.sessionComplete) {
         set({
@@ -336,6 +436,52 @@ export const useStore = create((set, get) => ({
       });
 
       return normalized;
+    } catch {
+      return null;
+    }
+  },
+
+  // Finalize an exam (timed-set / module) early or after the timer expires.
+  // The server sets ended_at and returns the summary, which also unlocks
+  // per-item session review; surface it through the same completion screen.
+  async finishExamSession() {
+    const { currentSessionId, currentSessionType, sessionProgress } = get();
+    if (!currentSessionId) return null;
+
+    const type = currentSessionType || '';
+    const path = /timed[_-]?set/.test(type)
+      ? '/timed-set/finish'
+      : /module/.test(type)
+        ? '/module/finish'
+        : null;
+    if (!path) return null;
+
+    try {
+      const result = await api.post(path, { sessionId: currentSessionId });
+      const summary = normalizeSessionSummaryShape(result.timedSummary ?? result.moduleSummary ?? null);
+      set({
+        sessionComplete: true,
+        sessionSummary: summary,
+        currentItem: null,
+        sessionProgress: normalizeSessionProgressShape(result.sessionProgress) ?? sessionProgress,
+        sessionTiming: null,
+        lastAttemptResult: null,
+        hintText: null,
+      });
+      return result;
+    } catch {
+      return null;
+    }
+  },
+
+  // Per-item review for a completed session (GET /session/review?sessionId=).
+  // Server requires the session to have ended; returns null on any failure so
+  // the page can show its own empty state. Held in page-local state, not the
+  // store — this is a detail view, not shared dashboard data.
+  async loadSessionReview(sessionId) {
+    if (!sessionId) return null;
+    try {
+      return await api.get(`/session/review?sessionId=${encodeURIComponent(sessionId)}`);
     } catch {
       return null;
     }
@@ -371,6 +517,7 @@ export const useStore = create((set, get) => ({
       currentItem: null,
       sessionProgress: null,
       activeSessionEnvelope: null,
+      sessionTiming: null,
       sessionLoading: false,
       lastAttemptResult: null,
       hintText: null,

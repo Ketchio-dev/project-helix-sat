@@ -18,21 +18,22 @@ Adaptive SAT Intelligence Platform — an AI-powered SAT prep app with adaptive 
 
 ## Supported Beta Surface (Wave 1)
 
-For the Wave 1 private-beta, **the legacy learner shell (`apps/web/public/*`) is the single supported learner surface.**
-
-The React app is a secondary development surface and is **parity-gated**. Implementation path: `apps/web-react`. It remains an unsupported preview until it passes the full Playwright browser QA suite and meets the promotion criteria defined in `docs/product-completion-milestones.md`.
+**The React learner app (`apps/web-react`) is the promoted learner surface**, served by default. It has met the promotion criteria in `docs/product-completion-milestones.md`: the full Playwright browser QA suite (`npm run smoke:learner:react`, criterion 1) and HttpOnly cookie-session parity (criterion 2). The legacy shell (`apps/web/public/*`) remains available as a fallback.
 
 ```bash
-# Start the legacy API + web shell (Supported Beta Surface)
-node services/api/server.mjs
+# Build + serve the React learner app on the API (promoted default)
+npm start
 
 # Open in browser
 open http://localhost:4321
 ```
 
-The React app is NOT supported for beta use:
+To serve the legacy shell instead, or to develop the React app with hot reload:
 ```bash
-# Run the React app (Secondary / Parity-Gated / Unsupported)
+# Legacy shell fallback
+HELIX_WEB_CLIENT=legacy node services/api/server.mjs
+
+# React app with hot reload (Vite dev server)
 npm run dev:react
 ```
 
@@ -84,8 +85,8 @@ For the next highest-leverage slice toward private beta, see `docs/product-compl
 ## Repository layout
 ```text
 apps/
-  web/          (Primary Learner Beta Shell)
-  web-react/    (Secondary / Unsupported / Parity-Gated)
+  web/          (Legacy Learner Shell — fallback via HELIX_WEB_CLIENT=legacy)
+  web-react/    (Promoted Learner Surface — served by default)
   mobile/       (Skeleton only — Non-functional placeholder)
   admin/        (Skeleton only — Non-functional placeholder)
 services/

@@ -4,7 +4,7 @@ export default function ChoiceList({ choices, selected, onSelect, disabled, corr
   if (!choices || choices.length === 0) return null
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" role="radiogroup" aria-label="Answer choices">
       {choices.map((choice, idx) => {
         const letter = choice.letter || choice.label || LETTERS[idx]
         const text = choice.text || choice.content || choice.value || choice
@@ -33,8 +33,12 @@ export default function ChoiceList({ choices, selected, onSelect, disabled, corr
             key={letter}
             onClick={() => !disabled && onSelect(letter)}
             disabled={disabled}
-            className={`w-full text-left px-4 py-3 rounded-lg border ${borderClass} ${bgClass} ${ringClass} flex items-start gap-3 transition-all ${
-              disabled ? 'cursor-default' : 'hover:border-neutral-400 cursor-pointer'
+            type="button"
+            role="radio"
+            aria-checked={isSelected}
+            aria-label={`Choice ${letter}`}
+            className={`flex w-full items-start gap-3 rounded-lg border px-4 py-3 text-left ${borderClass} ${bgClass} ${ringClass} transition-all focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:ring-offset-2 ${
+              disabled ? 'cursor-default' : 'cursor-pointer hover:border-neutral-400 hover:shadow-sm'
             }`}
           >
             <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium shrink-0 mt-0.5 ${

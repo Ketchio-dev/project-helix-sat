@@ -213,10 +213,10 @@ test('docs stay aligned with cookie auth and current audit claims', () => {
   assert.match(milestonesSource, /Deepen authored lesson-pack and narrative cohesion/i);
   assert.match(milestonesSource, /Expand Playwright\/browser QA and guardrails/i);
   assert.match(milestonesSource, /checkpoint:diagnostic_reveal_cta/i);
-  assert.match(milestonesSource, /The legacy learner shell is the single supported private-beta surface/i);
+  assert.match(milestonesSource, /React learner app.*is the promoted, default-served learner surface/i);
   assert.match(milestonesSource, /manual signoff/i);
-  assert.match(readmeSource, /legacy learner shell/i);
-  assert.match(readmeSource, /React app is a secondary development surface/i);
+  assert.match(readmeSource, /legacy learner shell|legacy shell/i);
+  assert.match(readmeSource, /React learner app.*is the promoted learner surface/i);
   assert.match(webReadmeSource, /currently verified.*private-beta browser path/i);
   assert.match(webReadmeSource, /goal_setup_completion_resume/i);
   assert.match(webReadmeSource, /manual browser signoff/i);

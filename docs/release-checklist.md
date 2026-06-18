@@ -10,16 +10,17 @@
 
 ## Supported surfaces
 
-- [ ] Legacy learner shell remains the only supported private-beta learner surface.
-- [ ] React app is still marked experimental/parity-gated.
+- [x] React learner app is the promoted, default-served learner surface (passed the promotion gate: `npm run smoke:learner:react` + HttpOnly cookie-session parity).
+- [ ] Legacy learner shell remains available as a fallback via `HELIX_WEB_CLIENT=legacy`.
 
 ## Release gate
 
 - [ ] `npm run check`
 - [ ] `npm run check:contracts`
 - [ ] `npm run check:web-react`
-- [ ] `HELIX_SMOKE_SCREENSHOT=artifacts/learner-smoke.png npm run smoke:learner`
-- [ ] Learner smoke screenshot artifact exists under `artifacts/`.
+- [ ] `HELIX_SMOKE_SCREENSHOT=artifacts/learner-smoke.png npm run smoke:learner` (legacy fallback)
+- [ ] `HELIX_SMOKE_SCREENSHOT=artifacts/react-learner-smoke.png npm run smoke:learner:react` (promoted surface)
+- [ ] Learner smoke screenshot artifacts exist under `artifacts/`.
 
 ## Auth and runtime safety
 
