@@ -39,8 +39,10 @@ test('grid-in items submit freeResponse instead of selectedAnswer', () => {
 });
 
 test('confidence and responseTimeMs fall back to safe defaults', () => {
+  // Pass them absent to actually exercise the `|| 3` / `|| 0` fallbacks (a
+  // regression that dropped the fallback would surface here, unlike feeding 0).
   const payload = buildAttemptPayload({
-    itemId: 'i1', sessionId: 's1', answer: 'A', confidence: 0, isExamMode: false, itemFormat: 'multiple_choice', responseTimeMs: 0,
+    itemId: 'i1', sessionId: 's1', answer: 'A', isExamMode: false, itemFormat: 'multiple_choice',
   });
   assert.equal(payload.confidenceLevel, 3);
   assert.equal(payload.responseTimeMs, 0);

@@ -320,6 +320,16 @@ export const useStore = create((set, get) => ({
           data = await api.post('/quick-win/start');
       }
 
+      // An exam/diagnostic already in progress returns a resume/conflict
+      // envelope (its session nested under `activeSession`, no top-level item)
+      // instead of a fresh session. Resume that active session rather than
+      // normalizing the empty top level into a blank "no session" screen.
+      if (data && data.conflict && data.activeSession) {
+        get().resumeSession(data.activeSession);
+        set({ sessionLoading: false });
+        return true;
+      }
+
       const normalized = normalizeStartedSessionShape(data, resolvedType);
 
       set({

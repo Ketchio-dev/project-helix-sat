@@ -286,7 +286,15 @@ export function createRouter({ store, webRoot, spaFallback = false }) {
           } catch (error) {
             // SPA client routes (no file extension) fall back to the app shell
             // so deep links and refreshes load index.html instead of 404ing.
-            if (spaFallback && error instanceof HttpError && error.statusCode === 404 && !extname(pathname)) {
+            // Never divert /api/* — an unknown API path must stay a JSON 404,
+            // not silently return HTML to a fetch() caller.
+            if (
+              spaFallback
+              && error instanceof HttpError
+              && error.statusCode === 404
+              && !extname(pathname)
+              && !pathname.startsWith('/api/')
+            ) {
               return await serveStaticFile(response, webRoot, '/index.html');
             }
             throw error;

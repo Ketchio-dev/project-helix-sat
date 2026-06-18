@@ -86,11 +86,14 @@ async function completeActiveSessionViaApi(page) {
       const body = { itemId: s.itemId, sessionId: s.sessionId, confidenceLevel: 3, mode: s.exam ? 'exam' : 'learn', responseTimeMs: 4000 };
       if (STUDENT.includes(s.itemFormat)) body.freeResponse = '1'; else body.selectedAnswer = String(s.firstChoice);
       const r = await fetch('/api/attempt/submit', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!r.ok) return 'error';
+      if (!r.ok) return 'error:' + r.status + ':' + (await r.text()).slice(0, 200);
       const j = await r.json();
       return ((j.sessionProgress && j.sessionProgress.isComplete) || j.sessionComplete) ? 'complete' : 'next';
     }, state);
-    if (done !== 'next') return;
+    // Surface a rejected submit here instead of letting it masquerade as a
+    // later checkpoint timeout under the wrong name.
+    if (done.startsWith('error:')) throw new Error('attempt submit failed while completing session (' + done + ')');
+    if (done === 'complete') return;
   }
 }
 
@@ -218,7 +221,9 @@ async function main() {
       await page.getByRole('button', { name: 'Review answers' }).click();
       await page.getByRole('heading', { name: /review/i }).waitFor({ state: 'visible', timeout: 20000 });
       const items = await page.getByText(/^Item \\d+/).count();
-      assert.ok(items >= 1, 'session review should list at least one item, got ' + items);
+      assert.ok(items >= 2, 'session review should list every delivered item, got ' + items);
+      // Not just labels — the per-item answer content must actually render.
+      await page.getByText('Correct answer').first().waitFor({ state: 'visible', timeout: 10000 });
     });
 
     if (screenshotPath) {

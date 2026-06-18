@@ -24,9 +24,11 @@ test('hasExamTiming only recognises a numeric server time limit', () => {
 });
 
 test('resolveExpiresAtMs prefers the authoritative absolute deadline', () => {
-  const timing = { timeLimitSec: 210, expiresAt: EXPIRES, startedAt: START, remainingTimeSec: 5 };
-  // expiresAt wins even when startedAt/remaining would imply something else.
-  assert.equal(resolveExpiresAtMs(timing, startMs), startMs + 210 * 1000);
+  // expiresAt deliberately disagrees with startedAt + timeLimitSec (and with
+  // remainingTimeSec) so this fails if precedence is ever reversed.
+  const distinctExpires = new Date(startMs + 999 * 1000).toISOString();
+  const timing = { timeLimitSec: 210, expiresAt: distinctExpires, startedAt: START, remainingTimeSec: 5 };
+  assert.equal(resolveExpiresAtMs(timing, startMs), startMs + 999 * 1000);
 });
 
 test('resolveExpiresAtMs falls back to startedAt + limit, then remaining', () => {
