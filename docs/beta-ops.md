@@ -1,8 +1,8 @@
 ## Supported Beta Surface (Wave 1)
 
-The **legacy learner shell (`apps/web/public/*`)** is the only supported entry point for Wave 1.
+The **React learner app (`apps/web-react`)** is the promoted, default-served entry point — `node services/api/server.mjs` serves the built React app on the API origin (port 4321). It met the promotion criteria in `docs/product-completion-milestones.md` (full Playwright browser QA via `npm run smoke:learner:react` + HttpOnly cookie-session parity).
 
-The React app is considered **development-only** and does not fall under the managed beta support SLA. Operators should not attempt to route production traffic to the React port (default 5173) until promotion criteria in `docs/product-completion-milestones.md` are met.
+The **legacy learner shell (`apps/web/public/*`)** remains available as a fallback — set `HELIX_WEB_CLIENT=legacy` to serve it, and the server falls back to it automatically if the React build is absent. Note the React app is served from the API origin (4321), not the Vite dev port (5173, development only).
 
 ## Operational Posture
 

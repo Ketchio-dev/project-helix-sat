@@ -10,7 +10,7 @@
     "packages/*"
   ],
   "scripts": {
-    "start": "node services/api/server.mjs",
+    "start": "npm run build --workspace apps/web-react && node services/api/server.mjs",
     "start:rust": "cargo run --manifest-path services/api-rust/Cargo.toml",
     "dev": "node services/api/server.mjs",
     "dev:rust": "PORT=4322 cargo run --manifest-path services/api-rust/Cargo.toml",

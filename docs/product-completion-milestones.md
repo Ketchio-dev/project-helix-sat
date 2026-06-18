@@ -46,9 +46,9 @@ The next slice toward private beta should stay narrow and reviewable while split
 - Keep the smoke runner checking for duplicate IDs, answer-input handling, and section-specific module progress without introducing new runtime dependencies.
 - Keep guardrails explicit in docs so CI failures point to a concrete product surface instead of a generic smoke failure.
 - Name the checkpoints explicitly in the smoke runner and docs so failures read like `checkpoint:diagnostic_reveal_cta` instead of a generic script crash.
-- **The legacy learner shell is the single supported private-beta surface.**
-- **Implementation path:** `apps/web/public/*`
-- **The React app remains a secondary development surface and is parity-gated.**
+- **The React learner app (`apps/web-react`) is the promoted, default-served learner surface.** The legacy shell (`apps/web/public/*`) remains a fallback via `HELIX_WEB_CLIENT=legacy`.
+- **Implementation path:** `apps/web-react`
+- **The React app passed the promotion criteria below.** The automated gate (#1 functional parity via `npm run smoke:learner:react`, #2 auth integrity, #4 state restoration) is verified in headless Chromium; the redesigned UI and final maintainer signoff cover #3 / the manual signoff (the React surface is a deliberate redesign, not a pixel match of the legacy paper tone).
 - **React Promotion Criteria:**
   1. **Functional Parity**: Pass all 7 Playwright smoke checkpoints (diagnostic, quick-win, module-start, etc.).
   2. **Auth Integrity**: Full HttpOnly cookie-session persistence parity with the legacy shell.
